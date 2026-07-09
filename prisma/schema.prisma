@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  password      String
+  dob           DateTime?
+  gender        String?
+  phone         String?
+  address       String?
+  schoolName    String?
+  studyingClass String?
+  ProfilePic    String?
+  role          Role     @default(STUDENT)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Class {
+  id        String    @id @default(cuid())
+  className String    @map("class_name") @unique
+  icon      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  subjects  Subject[]
+}
+
+model Subject {
+  id          String   @id @default(cuid())
+  subjectName String   @map("subject_name")
+  icon        String?
+
+  // Foreign Key
+  classId     String   @map("class_id")
+  class        Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([classId, subjectName]) // Prevent duplicate subject names within a class
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+  PARENT
+}

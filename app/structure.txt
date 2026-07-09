@@ -1,0 +1,73 @@
+Folder PATH listing for volume New Volume
+Volume serial number is ECCD-8EBC
+E:.
+|   favicon.ico
+|   globals.css
+|   layout.tsx
+|   structure.txt
+|   
++---(components)
+|   |   Accomplishments.jsx
+|   |   Animation.jsx
+|   |   Consultants.jsx
+|   |   DoctorCard.jsx
+|   |   Facilities.jsx
+|   |   Global.js
+|   |   GoogleMap.jsx
+|   |   HospitalProvider.jsx
+|   |   ImageSlider.jsx
+|   |   Loader.jsx
+|   |   Navbar.tsx
+|   |   NewDoctorCard.jsx
+|   |   NewsCard.jsx
+|   |   NewsLink.jsx
+|   |   OurHospitals.jsx
+|   |   SocialIcons.jsx
+|   |   WhatsHappening.jsx
+|   |   
+|   +---DoctorCard
+|   |       DoctorCards.jsx
+|   |       DoctorDetails.jsx
+|   |       DoctorSlider.jsx
+|   |       
+|   +---Footer
+|   |       Footer.jsx
+|   |       
+|   \---Header
+|           Header.jsx
+|           
+\---(root)
+    |   layout.tsx
+    |   page.tsx
+    |   
+    +---about_us
+    |       entries.jsx
+    |       page.jsx
+    |       
+    +---academics
+    |       entries.jsx
+    |       page.jsx
+    |       
+    +---consultants
+    |   |   page.jsx
+    |   |   
+    |   \---[id]
+    |           page.jsx
+    |           [id].jsx
+    |           
+    +---contact
+    |       page.jsx
+    |       
+    +---facilities
+    |       page.jsx
+    |       
+    +---newsAndEvents
+    |   |   entries.jsx
+    |   |   page.jsx
+    |   |   
+    |   \---details
+    |           page.jsx
+    |           
+    \---social_infra
+            page.jsx
+            

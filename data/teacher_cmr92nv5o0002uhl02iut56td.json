@@ -1,0 +1,96 @@
+{
+  "classes": [
+    {
+      "id": "59cb5e7d-b8be-47d6-ba98-0118348447af",
+      "name": "Class 3",
+      "createdAt": "2026-07-06T11:30:08.668Z",
+      "updatedAt": "2026-07-06T11:30:08.668Z",
+      "subjects": []
+    },
+    {
+      "id": "50a442dc-830a-411a-a295-64857d457753",
+      "name": "Class 2",
+      "createdAt": "2026-07-06T11:29:59.853Z",
+      "updatedAt": "2026-07-06T11:29:59.853Z",
+      "subjects": []
+    },
+    {
+      "id": "f0fd5201-7bd9-4370-91e2-cc057a4fb3b3",
+      "name": "Class 1",
+      "createdAt": "2026-07-06T11:29:49.142Z",
+      "updatedAt": "2026-07-06T11:40:13.009Z",
+      "subjects": [
+        {
+          "id": "8857e6c9-c30c-4f0e-a534-e1e8b0609453",
+          "name": "MATHS",
+          "createdAt": "2026-07-06T11:40:13.009Z",
+          "updatedAt": "2026-07-06T11:40:13.009Z",
+          "contents": []
+        },
+        {
+          "id": "ede6843d-c93d-4dba-b365-cce9f7026812",
+          "name": "EVS",
+          "createdAt": "2026-07-06T11:39:42.494Z",
+          "updatedAt": "2026-07-06T11:39:42.494Z",
+          "contents": []
+        },
+        {
+          "id": "16993823-ee6b-4ff8-9c8a-f145020cd1cc",
+          "name": "EVS",
+          "createdAt": "2026-07-06T11:37:27.025Z",
+          "updatedAt": "2026-07-06T11:37:27.025Z",
+          "contents": []
+        },
+        {
+          "id": "75fe60e6-45e4-4490-920b-6035729cbbaa",
+          "name": "EVS",
+          "createdAt": "2026-07-06T11:36:56.496Z",
+          "updatedAt": "2026-07-06T11:36:56.496Z",
+          "contents": []
+        },
+        {
+          "id": "30338ed9-056a-4f89-bee1-fddb53ec45a0",
+          "name": "EVS",
+          "createdAt": "2026-07-06T11:35:09.377Z",
+          "updatedAt": "2026-07-06T11:35:09.377Z",
+          "contents": []
+        },
+        {
+          "id": "20faddc9-2c99-4d14-8e11-52eacc31443e",
+          "name": "EVS",
+          "createdAt": "2026-07-06T11:31:18.263Z",
+          "updatedAt": "2026-07-06T11:31:18.263Z",
+          "contents": []
+        },
+        {
+          "id": "b35021a6-459d-4eff-85a2-a2a99e564bdf",
+          "name": "Maths",
+          "createdAt": "2026-07-06T11:31:12.669Z",
+          "updatedAt": "2026-07-06T11:31:12.669Z",
+          "contents": []
+        },
+        {
+          "id": "7e1f2f3a-cdbc-4bd1-a91f-c0910f0bc4a4",
+          "name": "Hindi",
+          "createdAt": "2026-07-06T11:31:05.293Z",
+          "updatedAt": "2026-07-06T11:31:05.293Z",
+          "contents": []
+        },
+        {
+          "id": "c2e2fb9c-f62c-4015-b16e-c626f3a94d47",
+          "name": "Hindi",
+          "createdAt": "2026-07-06T11:31:04.710Z",
+          "updatedAt": "2026-07-06T11:31:04.710Z",
+          "contents": []
+        },
+        {
+          "id": "08e2b940-2f51-4900-9535-6745bc54b235",
+          "name": "English",
+          "createdAt": "2026-07-06T11:30:49.733Z",
+          "updatedAt": "2026-07-06T11:30:49.733Z",
+          "contents": []
+        }
+      ]
+    }
+  ]
+}
