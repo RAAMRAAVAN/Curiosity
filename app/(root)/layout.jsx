@@ -1,9 +1,8 @@
 // app/layout.tsx or a similar layout file
 import { ReactNode } from "react";
-import type { Metadata } from "next";
 
 // ✅ Dynamically generate metadata
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata() {
   const hospital = {HospitalName: "Curiosity With PK", domain: "https://evurev.com", smallName:"edu"};
 
   return {
@@ -51,7 +50,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 // ✅ Layout Component
-export default function Layout({ children }: { children: ReactNode }) {
+export default function Layout({ children }) {
   return (
     <>
       {children}

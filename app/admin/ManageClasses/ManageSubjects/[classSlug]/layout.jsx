@@ -17,10 +17,10 @@ import { Inbox, Mail } from "@mui/icons-material";
 import LoginModal from "@/app/(components)/MyProfile/LoginModal";
 import Logout from "@/app/(components)/MyProfile/Logout";
 
-export default function Layout({ children }: { children: ReactNode }) {
+export default function Layout({ children }) {
   const pathname = usePathname();
   const params = useParams();
-  const classSlug = params?.classSlug as string | undefined;
+  const classSlug = params?.classSlug;
   const [openLogin, setOpenLogin] = useState(false);
 
   useEffect(() => {

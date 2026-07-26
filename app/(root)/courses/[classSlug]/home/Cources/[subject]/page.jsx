@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 
 import Image from "next/image";
-import Chapter from "./Chapter/page";
+import Chapter from "./Chapter/ChapterClient";
 import { Add } from "@mui/icons-material";
 import { useParams } from "next/navigation";
 

@@ -26,11 +26,11 @@ import {
   IconButton,
 } from "@mui/material";
 import AdminDrawyer from "./AdminDrawyer";
-import ManageUsersPage from "./ManageUsers/page";
+import ManageUsersPage from "./ManageUsers/ManageUsers";
 import LoginPage from "./LoginPage";
-import ManageClasses from "./ManageClasses/page";
+import ManageClasses from "./ManageClasses/ManageClasses";
 import { Menu } from "@mui/icons-material";
-import ManageTeachersPage from "./ManageTeachers/page";
+import ManageTeachersPage from "./ManageTeachers/ManageTeachers";
 
 export default function AdminPage() {
   const [users, setUsers] = useState([]);
