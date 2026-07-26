@@ -1,6 +1,7 @@
 import { ApiResponse } from "@/utils/apiResponse";
 import { prisma } from "@/server/prisma";
 import { promises as fs } from "fs";
+import { uploadFile } from "@/lib/uploadFile";
 import path from "path";
 
 const uploadDir = path.join(process.cwd(), "public", "Subject");
@@ -22,179 +23,177 @@ function getFileName(originalName) {
 // ===================== GET =====================
 
 export async function GET(req) {
-  try {
-    const { searchParams } = new URL(req.url);
-    
+    try {
 
-    const className = searchParams.get("className");
+        const { searchParams } = new URL(req.url);
 
-    console.log("frontend", className);
-    
-    const where = {};
+        const className = searchParams.get("className");
 
-    // Filter by related Class table using className
-    if (className) {
-      where.class = {
-        className,
-      };
+        console.log("frontend", className);
+
+
+        const where = {};
+
+
+        // Filter by related Class table using className
+        if (className) {
+
+            where.class = {
+                className,
+            };
+
+        }
+
+
+
+        const subjects = await prisma.subject.findMany({
+
+            where,
+
+            include: {
+
+                class: {
+
+                    select: {
+
+                        className: true,
+                        icon: true,
+
+                    },
+
+                },
+
+            },
+
+
+            orderBy: {
+
+                subjectName: "asc",
+
+            },
+
+        });
+
+
+
+        // Flatten response
+        const result = subjects.map(({ class: cls, ...subject }) => ({
+
+            ...subject,
+
+            className: cls.className,
+
+            classIcon: cls.icon,
+
+        }));
+
+
+        return ApiResponse.success(result);
+
+
+    } catch (err) {
+
+        console.error(err);
+
+        return ApiResponse.error(
+            "Unable to load subjects",
+            500,
+            err
+        );
+
     }
-
-    const subjects = await prisma.subject.findMany({
-      where,
-      include: {
-        class: {
-          select: {
-            className: true,
-          },
-        },
-      },
-      orderBy: {
-        subjectName: "asc",
-      },
-    });
-
-    // Flatten the response
-    const result = subjects.map(({ class: cls, ...subject }) => ({
-      ...subject,
-      className: cls.className,
-    }));
-
-    return ApiResponse.success(result);
-  } catch (err) {
-    console.error(err);
-    return ApiResponse.error("Unable to load subjects", 500, err);
-  }
 }
 
 // ===================== POST =====================
 
-// export async function POST(req) {
-//   try {
-//     const formData = await req.formData();
-
-//     const subjectName = formData.get("subjectName")?.toString().trim();
-//     const classId = formData.get("classId")?.toString().trim();
-//     const iconFile = formData.get("icon");
-
-//     if (!subjectName)
-//       return ApiResponse.error("Subject name is required", 400);
-
-//     if (!classId)
-//       return ApiResponse.error("Class is required", 400);
-
-//     // Verify class exists
-//     const classExists = await prisma.class.findUnique({
-//       where: {
-//         id: classId,
-//       },
-//     });
-
-//     if (!classExists) {
-//       return ApiResponse.error("Invalid Class", 404);
-//     }
-
-//     // Prevent duplicate subject within the same class
-//     const alreadyExists = await prisma.subject.findFirst({
-//       where: {
-//         classId,
-//         subjectName,
-//       },
-//     });
-
-//     if (alreadyExists) {
-//       return ApiResponse.error(
-//         "Subject already exists for this class",
-//         400
-//       );
-//     }
-
-//     let iconPath = null;
-
-//     if (iconFile && typeof iconFile === "object" && "name" in iconFile) {
-//       await ensureUploadDir();
-
-//       const fileName = getFileName(iconFile.name);
-
-//       const buffer = Buffer.from(await iconFile.arrayBuffer());
-
-//       await fs.writeFile(
-//         path.join(uploadDir, fileName),
-//         buffer
-//       );
-
-//       iconPath = `/Subject/${fileName}`;
-//     }
-
-//     const subject = await prisma.subject.create({
-//       data: {
-//         subjectName,
-//         icon: iconPath,
-//         classId,
-//       },
-//       include: {
-//         class: true,
-//       },
-//     });
-
-//     return ApiResponse.success(subject, "Subject created");
-//   } catch (err) {
-//     console.error(err);
-//     return ApiResponse.error("Unable to create subject", 500, err);
-//   }
-// }
-
 export async function POST(req) {
   try {
-    const body = await req.json();
+    const formData = await req.formData();
 
-    const { classId, subjects } = body;
+    const className = formData.get("className");
+    const subjectsData = formData.get("subjects");
 
-    if (!classId)
-      return ApiResponse.error("Class is required", 400);
+    if (!className || !className.trim()) {
+      return ApiResponse.error("Class Name is required", 400);
+    }
 
-    if (!Array.isArray(subjects) || subjects.length === 0)
+    if (!subjectsData) {
+      return ApiResponse.error("Subjects are required", 400);
+    }
+
+    let subjects;
+
+    try {
+      subjects = JSON.parse(subjectsData);
+    } catch {
+      return ApiResponse.error("Invalid subjects data", 400);
+    }
+
+    if (!Array.isArray(subjects) || subjects.length === 0) {
       return ApiResponse.error("Subjects array is required", 400);
+    }
 
-    // Check class exists
-    const classExists = await prisma.class.findUnique({
+    // Find Class
+    const classData = await prisma.class.findUnique({
       where: {
-        id: classId,
+        className: className.trim(),
       },
     });
 
-    if (!classExists) {
+    if (!classData) {
       return ApiResponse.error("Invalid Class", 404);
     }
 
-    // Remove empty names
-    const cleanedSubjects = subjects
-      .filter(
-        (s) =>
-          s.subjectName &&
-          s.subjectName.toString().trim() !== ""
-      )
-      .map((s) => ({
-        subjectName: s.subjectName.trim(),
-        icon: s.icon || null,
-      }));
+    const classId = classData.id;
 
-    if (cleanedSubjects.length === 0)
-      return ApiResponse.error("No valid subjects found", 400);
+    // Upload images
+    const processedSubjects = [];
 
-    // Remove duplicates from request
+    for (let i = 0; i < subjects.length; i++) {
+      const item = subjects[i];
+
+      if (!item.subjectName?.trim()) continue;
+
+      let icon = null;
+
+      const file = formData.get(`icon${i}`);
+
+      if (file && file.size > 0) {
+        icon = await uploadFile(file, "subjects");
+      }
+
+      processedSubjects.push({
+        subjectName: item.subjectName.trim(),
+        icon,
+      });
+    }
+
+    if (processedSubjects.length === 0) {
+      return ApiResponse.error(
+        "No valid subjects found",
+        400
+      );
+    }
+
+    // Remove duplicate names from request
     const uniqueSubjects = [
       ...new Map(
-        cleanedSubjects.map((item) => [
+        processedSubjects.map((item) => [
           item.subjectName.toLowerCase(),
           item,
         ])
       ).values(),
     ];
 
-    // Existing subjects in database
+    // Existing Subjects
     const existingSubjects = await prisma.subject.findMany({
       where: {
         classId,
+        subjectName: {
+          in: uniqueSubjects.map(
+            (s) => s.subjectName
+          ),
+        },
       },
       select: {
         subjectName: true,
@@ -208,7 +207,10 @@ export async function POST(req) {
     );
 
     const newSubjects = uniqueSubjects.filter(
-      (s) => !existingSet.has(s.subjectName.toLowerCase())
+      (s) =>
+        !existingSet.has(
+          s.subjectName.toLowerCase()
+        )
     );
 
     if (newSubjects.length === 0) {
@@ -218,25 +220,28 @@ export async function POST(req) {
       );
     }
 
+    // Save Subjects
     await prisma.subject.createMany({
       data: newSubjects.map((s) => ({
+        classId,
         subjectName: s.subjectName,
         icon: s.icon,
-        classId,
       })),
+      skipDuplicates: true,
     });
 
-    const createdSubjects = await prisma.subject.findMany({
-      where: {
-        classId,
-      },
-      include: {
-        class: true,
-      },
-      orderBy: {
-        subjectName: "asc",
-      },
-    });
+    const createdSubjects =
+      await prisma.subject.findMany({
+        where: {
+          classId,
+        },
+        include: {
+          class: true,
+        },
+        orderBy: {
+          subjectName: "asc",
+        },
+      });
 
     return ApiResponse.success(
       createdSubjects,
@@ -244,6 +249,7 @@ export async function POST(req) {
     );
   } catch (err) {
     console.error(err);
+
     return ApiResponse.error(
       "Unable to create subjects",
       500,

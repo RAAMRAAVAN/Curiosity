@@ -22,6 +22,10 @@ const AdminDrawyer = ({ drawerOpen, adminView, setAdminView, setDrawerOpen }) =>
                 <Button fullWidth variant={adminView === "classes" ? "contained" : "text"} onClick={() => setAdminView("classes")}>
                     Manage Classes
                 </Button>
+
+                <Button fullWidth variant={adminView === "teachers" ? "contained" : "text"} onClick={() => setAdminView("teachers")}>
+                    Manage Teachers
+                </Button>
             </Box>
         </Drawer>
     </>);

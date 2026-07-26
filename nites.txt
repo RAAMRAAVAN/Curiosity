@@ -1,0 +1,309 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+//
+// ENUMS
+//
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+  PARENT
+}
+
+enum TeacherRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+
+//
+// USER
+//
+
+model User {
+
+  id            String   @id @default(cuid())
+
+  name          String
+
+  email         String   @unique
+
+  password      String
+
+
+  dob           DateTime?
+
+  gender        String?
+
+  phone         String?
+
+  address       String?
+
+
+  schoolName    String?
+
+  studyingClass String?
+
+
+  profilePic    String?
+
+
+  role          Role     @default(STUDENT)
+
+
+  createdAt     DateTime @default(now())
+
+  updatedAt     DateTime @updatedAt
+
+
+
+  // Teacher profile
+
+  teacher Teacher?
+
+
+
+  // Student permissions
+
+  classAccesses          UserClassAccess[]
+
+  subjectAccesses        UserSubjectAccess[]
+
+  teacherSubjectAccesses UserTeacherSubjectAccess[]
+}
+
+
+//
+// CLASS
+//
+
+model Class {
+
+  id          String   @id @default(cuid())
+
+  className   String   @unique @map("class_name")
+
+  icon        String?
+
+
+  createdAt   DateTime @default(now())
+
+  updatedAt   DateTime @updatedAt
+
+
+
+  // Relations
+
+  subjects     Subject[]
+
+  userAccesses UserClassAccess[]
+}
+
+
+//
+// SUBJECT
+//
+
+model Subject {
+
+  id          String   @id @default(cuid())
+
+
+  subjectName String   @map("subject_name")
+
+
+  icon        String?
+
+
+
+  // FK
+
+  classId     String   @map("class_id")
+
+  class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  updatedAt   DateTime @updatedAt
+
+
+
+  // Relations
+
+  teacherSubjects TeacherSubject[]
+
+  userAccesses    UserSubjectAccess[]
+
+
+
+  @@unique([classId, subjectName])
+}
+
+
+//
+// TEACHER
+//
+
+model Teacher {
+
+  id String @id @default(cuid())
+
+
+  // Link with User
+
+  userId String @unique @map("user_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+
+
+  name      String
+
+  phone     String @unique
+
+  address   String?
+
+  gender    String?
+
+  dob       DateTime?
+
+
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+
+
+  // Relations
+
+  teacherSubjects TeacherSubject[]
+}
+
+
+//
+// TEACHER SUBJECT
+//
+
+model TeacherSubject {
+
+  id String @id @default(cuid())
+
+
+  teacherId String @map("teacher_id")
+
+  subjectId String @map("subject_id")
+
+
+  role TeacherRole @default(OWNER)
+
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+
+
+  userAccesses UserTeacherSubjectAccess[]
+
+
+
+  @@unique([teacherId, subjectId])
+}
+
+
+//
+// STUDENT CLASS ACCESS
+//
+
+model UserClassAccess {
+
+  id String @id @default(cuid())
+
+
+  userId String @map("user_id")
+
+  classId String @map("class_id")
+
+
+  createdAt DateTime @default(now())
+
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+
+
+  @@unique([userId, classId])
+}
+
+
+//
+// STUDENT SUBJECT ACCESS
+//
+
+model UserSubjectAccess {
+
+  id String @id @default(cuid())
+
+
+  userId String @map("user_id")
+
+  subjectId String @map("subject_id")
+
+
+  createdAt DateTime @default(now())
+
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+
+
+  @@unique([userId, subjectId])
+}
+
+
+//
+// STUDENT TEACHER CONTENT ACCESS
+//
+
+model UserTeacherSubjectAccess {
+
+  id String @id @default(cuid())
+
+
+  userId String @map("user_id")
+
+  teacherSubjectId String @map("teacher_subject_id")
+
+
+  createdAt DateTime @default(now())
+
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  teacherSubject TeacherSubject @relation(fields: [teacherSubjectId], references: [id], onDelete: Cascade)
+
+
+
+  @@unique([userId, teacherSubjectId])
+}

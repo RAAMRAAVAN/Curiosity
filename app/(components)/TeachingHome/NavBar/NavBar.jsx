@@ -14,7 +14,13 @@ import { useDispatch } from "react-redux";
 import { usePathname, useRouter } from "next/navigation";
 import SignupModal from "@/app/(components)/MyProfile/SignupModal";
 import LoginModal from "@/app/(components)/MyProfile/LoginModal";
-import { setAuthUser } from "@/redux/features/authSlice";
+// import { setAuthUser } from "@/redux/features/authSlice";
+import { useSelector } from "react-redux";
+import {
+  setAuthUser,
+  clearAuthUser,
+} from "@/redux/features/authSlice";
+import ComingSoon from "../../ComingSoon";
 
 const pages = [
   "Entrance Exam",
@@ -25,27 +31,46 @@ const pages = [
 
 const NavBar = () => {
   const dispatch = useDispatch();
+  const [open, setOpen] = useState(false);
+  const loggedIn = useSelector((state) => state.auth.loggedIn);
+  const user = useSelector((state) => state.auth.user);
   const router = useRouter();
   const pathname = usePathname();
   const [anchorElNav, setAnchorElNav] = useState(null);
   const [openSignup, setOpenSignup] = useState(false);
   const [openLogin, setOpenLogin] = useState(false);
 
+  const handleClose = () => {
+    setOpen(false);
+  }
+  const handleLogout = () => {
+    sessionStorage.removeItem("authDetails");
+    dispatch(clearAuthUser());
+    router.refresh(); // refresh current page
+  };
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const auth = sessionStorage.getItem("authDetails");
-    if (!auth) return;
 
-    const parsed = JSON.parse(auth);
-    if (parsed?.loggedIn && parsed.user) {
-      dispatch(setAuthUser(parsed.user));
+    if (!auth) {
+      dispatch(clearAuthUser());
+      return;
     }
 
-    if (pathname !== "/courses/class1/ChooseClass/") {
-      router.push("/courses/class1/ChooseClass/");
+    try {
+      const parsed = JSON.parse(auth);
+
+      if (parsed?.loggedIn && parsed?.user) {
+        dispatch(setAuthUser(parsed.user));
+      } else {
+        dispatch(clearAuthUser());
+      }
+    } catch (err) {
+      dispatch(clearAuthUser());
     }
-  }, [dispatch, pathname, router]);
+  }, [dispatch]);
 
   const handleOpenNavMenu = (event) => {
     setAnchorElNav(event.currentTarget);
@@ -86,39 +111,8 @@ const NavBar = () => {
           </Box>
 
           {/* Mobile Menu */}
-          <Box
-            sx={{
-              display: { xs: "flex", md: "none" },
-              flex: 1,
-            }}
-          >
-            <IconButton
-              size="large"
-              color="inherit"
-              onClick={handleOpenNavMenu}
-            >
-              <MenuIcon />
-            </IconButton>
-
-            <Menu
-              anchorEl={anchorElNav}
-              open={Boolean(anchorElNav)}
-              onClose={handleCloseNavMenu}
-              anchorOrigin={{
-                vertical: "bottom",
-                horizontal: "left",
-              }}
-              transformOrigin={{
-                vertical: "top",
-                horizontal: "left",
-              }}
-            >
-              {pages.map((page) => (
-                <MenuItem key={page} onClick={handleCloseNavMenu} >
-                  {page}
-                </MenuItem>
-              ))}
-
+          {!loggedIn ? (
+            <>
               <MenuItem
                 onClick={() => {
                   handleCloseNavMenu();
@@ -127,6 +121,7 @@ const NavBar = () => {
               >
                 Login
               </MenuItem>
+
               <MenuItem
                 onClick={() => {
                   handleCloseNavMenu();
@@ -135,8 +130,17 @@ const NavBar = () => {
               >
                 Sign Up
               </MenuItem>
-            </Menu>
-          </Box>
+            </>
+          ) : (
+            <MenuItem
+              onClick={() => {
+                handleCloseNavMenu();
+                handleLogout();
+              }}
+            >
+              Logout
+            </MenuItem>
+          )}
 
           {/* Mobile Logo */}
           <Box
@@ -184,6 +188,7 @@ const NavBar = () => {
                   textTransform: "none",
                   fontWeight: 'bold'
                 }}
+                onClick={()=>{setOpen(!open)}}
               >
                 {page}
               </Button>
@@ -200,28 +205,44 @@ const NavBar = () => {
               gap: 1,
             }}
           >
-            <Button
-              sx={{
-                color: "black",
-                textTransform: "none",
-              }}
-              onClick={() => setOpenLogin(true)}
-            >
-              Login
-            </Button>
+            {!loggedIn ? (
+              <>
+                <Button
+                  sx={{
+                    color: "black",
+                    textTransform: "none",
+                  }}
+                  onClick={() => setOpenLogin(true)}
+                >
+                  Login
+                </Button>
 
-            <Button
-              variant="contained"
-              sx={{
-                textTransform: "none",
-                borderRadius: 2,
-                color: 'white',
-                backgroundColor: 'black'
-              }}
-              onClick={() => setOpenSignup(true)}
-            >
-              Sign Up
-            </Button>
+                <Button
+                  variant="contained"
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: 2,
+                    color: "white",
+                    backgroundColor: "black",
+                  }}
+                  onClick={() => setOpenSignup(true)}
+                >
+                  Sign Up
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="contained"
+                color="error"
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                }}
+                onClick={handleLogout}
+              >
+                Logout
+              </Button>
+            )}
           </Box>
           <SignupModal
             open={openSignup}
@@ -241,6 +262,7 @@ const NavBar = () => {
           />
         </Toolbar>
       </Container>
+      <ComingSoon open={open} handleClose={handleClose}/>
     </AppBar>
   );
 };

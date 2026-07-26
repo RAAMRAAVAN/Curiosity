@@ -30,10 +30,7 @@ import ManageUsersPage from "./ManageUsers/page";
 import LoginPage from "./LoginPage";
 import ManageClasses from "./ManageClasses/page";
 import { Menu } from "@mui/icons-material";
-
-
-
-
+import ManageTeachersPage from "./ManageTeachers/page";
 
 export default function AdminPage() {
   const [users, setUsers] = useState([]);
@@ -79,20 +76,6 @@ export default function AdminPage() {
       [event.target.name]: event.target.value,
     });
   };
-
-
-
-
-
-  // useEffect(() => {
-  //   checkAdmin();
-  // }, []);
-
-
-
-
-
-
 
   if (loading) {
     return (
@@ -150,6 +133,16 @@ export default function AdminPage() {
             <ManageUsersPage users={users} setUsers={setUsers} setLoading={setLoading} loading={loading} refreshUsers={refreshUsers} setMessage={setMessage} message={message} />
           </>
         ) : null}
+
+        {adminView === "teachers" ? (<>
+                  <>
+                  {message ? (
+              <Paper sx={{ p: 3, mb: 4, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+                <Typography color="text.primary">{message}</Typography>
+              </Paper>
+            ) : null}
+                  <ManageTeachersPage loading={loading} setLoading={setLoading} message={message} setMessage={setMessage} setAdminView={setAdminView} users={users}/></>
+        </>): null}
       </Box>
     </Box>
   );

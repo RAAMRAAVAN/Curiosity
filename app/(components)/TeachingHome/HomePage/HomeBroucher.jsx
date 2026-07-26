@@ -1,8 +1,16 @@
 import { Apple, ArrowRightAlt, Shop } from "@mui/icons-material";
-import { Box, Button, Grid, Typography } from "@mui/material";
+import { Box, Button, Grid, IconButton, Tooltip, Typography } from "@mui/material";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import ComingSoon from "../../ComingSoon";
+import { useState } from "react";
 
 const HomeBroucher = () => {
+    const router = useRouter();
+    const [open, setOpen] = useState(false);
+    const handleClose = () => {
+        setOpen(false);
+    }
     return (<>
         <Box borderRadius={4} sx={{ width: "100%", height: "700px", position: "relative", display: 'flex', justifyContent: 'center' }}>
             <Image
@@ -39,16 +47,60 @@ const HomeBroucher = () => {
                                     marginTop: 2,
                                     borderRadius: 2
                                 }}
+                                onClick={() => { router.push(`http://localhost:3000/courses/NA/ChooseClass/`) }}
                             >
                                 Start Learning for free <ArrowRightAlt />
                             </Button>
                         </Box>
 
 
-                        <Box display='flex' alignItems='center' marginTop={1}>
-                            <Typography fontWeight='bold'>Download App:</Typography>
-                            <Shop sx={{ backgroundColor: 'white', color: 'black', borderRadius: '50%', margin: 2, padding: 1, fontSize: 50 }} />
-                            <Apple sx={{ backgroundColor: 'white', color: 'black', borderRadius: '50%', margin: 1, padding: 1, fontSize: 50 }} />
+                        <Box display="flex" alignItems="center" mt={1}>
+                            <Typography fontWeight="bold" mr={2}>
+                                Download App:
+                            </Typography>
+
+                            {/* Android */}
+                            <Tooltip title="Download for Android">
+                                <IconButton
+                                    component="a"
+                                    onClick={()=>{setOpen(true)}}
+                                    rel="noopener noreferrer"
+                                    sx={{
+                                        bgcolor: "white",
+                                        color: "#34A853",
+                                        boxShadow: 2,
+                                        mr: 1.5,
+                                        "&:hover": {
+                                            bgcolor: "#f5f5f5",
+                                            transform: "scale(1.08)",
+                                        },
+                                        transition: "all 0.2s ease",
+                                    }}
+                                >
+                                    <Shop fontSize="large" />
+                                </IconButton>
+                            </Tooltip>
+
+                            {/* iOS */}
+                            <Tooltip title="Download for iPhone">
+                                <IconButton
+                                    component="a"
+                                    onClick={()=>{setOpen(true)}}
+                                    rel="noopener noreferrer"
+                                    sx={{
+                                        bgcolor: "white",
+                                        color: "black",
+                                        boxShadow: 2,
+                                        "&:hover": {
+                                            bgcolor: "#f5f5f5",
+                                            transform: "scale(1.08)",
+                                        },
+                                        transition: "all 0.2s ease",
+                                    }}
+                                >
+                                    <Apple fontSize="large" />
+                                </IconButton>
+                            </Tooltip>
                         </Box>
                     </Box>
                 </Box>
@@ -89,6 +141,7 @@ const HomeBroucher = () => {
                 </Box>
             </Box>
         </Box>
+        <ComingSoon open={open} handleClose={handleClose} />
     </>);
 }
 export default HomeBroucher;

@@ -54,16 +54,16 @@ export default function Layout({ children }: { children: ReactNode }) {
   }, []);
 
   const pages = [
-    { page: "Home", link: `/courses/${classSlug}/home` },
-    { page: "Explore Courses", link: `/courses/${classSlug}/ExploreCources` },
-    { page: "My Unattempted Tests", link: `/courses/${classSlug}/tests` },
+    { page: "View Subjects", link: `/courses/${classSlug}/home`, disabled: true },
+    { page: "Explore More Courses", link: `/courses/${classSlug}/ExploreCources`, disabled: true },
+    { page: "My Unattempted Tests", link: `/courses/${classSlug}/tests`, disabled: false },
   ];
 
   const pages2 = [
-    { page: "Pricing Plans", link: `/courses/${classSlug}/home` },
-    { page: "Curiosity Store", link: `/courses/${classSlug}/home` },
-    { page: "Emoney", link: `/courses/${classSlug}/home` },
-    { page: "Upgrade to Infinity", link: `/courses/${classSlug}/home` },
+    { page: "Pricing Plans", link: `/courses/${classSlug}/home`, disabled: false },
+    { page: "Curiosity Store", link: `/courses/${classSlug}/home`, disabled: false },
+    { page: "Emoney", link: `/courses/${classSlug}/home`, disabled: false },
+    { page: "Upgrade to Infinity", link: `/courses/${classSlug}/home`, disabled: false },
   ];
 
   return (
@@ -88,7 +88,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               fontSize={24}
               sx={{ textDecoration: "none", color: "inherit" }}
             >
-              Curiosity
+              Curiosity Home
             </Typography>
           </Box>
 
@@ -108,11 +108,13 @@ export default function Layout({ children }: { children: ReactNode }) {
                       bgcolor: "#BBDEFB",
                     },
                   }}
+                  disabled={!item.disabled}
                 >
                   <ListItemIcon
                     sx={{
-                      color: pathname === item.link ? "primary.main" : "inherit",
+                      color: pathname === item.link ? "primary.main" : "inherit"
                     }}
+                    
                   >
                     {index % 2 === 0 ? <Inbox /> : <Mail />}
                   </ListItemIcon>
@@ -134,7 +136,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           <List>
             {pages2.map((item, index) => (
               <ListItem key={item.page} disablePadding>
-                <ListItemButton component={Link} href={item.link}>
+                <ListItemButton component={Link} href={item.link} disabled={!item.disabled}>
                   <ListItemIcon>
                     {index % 2 === 0 ? <Inbox /> : <Mail />}
                   </ListItemIcon>

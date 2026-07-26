@@ -74,8 +74,8 @@ const Logout = () => {
           horizontal: "left",
         }}
       >
-        <MenuItem onClick={handleClose}>Profile</MenuItem>
-        <MenuItem onClick={handleClose}>My Account</MenuItem>
+        <MenuItem onClick={handleClose} disabled>Profile</MenuItem>
+        <MenuItem onClick={handleClose} disabled>My Account</MenuItem>
         <MenuItem onClick={() => { handleClose(); handleSubmit(); }}>Logout</MenuItem>
       </Menu>
     </>

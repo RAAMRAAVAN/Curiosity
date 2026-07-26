@@ -2,57 +2,376 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum VideoType {
+  YOUTUBE
+  ON_SITE
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id            String   @id @default(cuid())
-  name          String
-  email         String   @unique
-  password      String
-  dob           DateTime?
-  gender        String?
-  phone         String?
-  address       String?
-  schoolName    String?
-  studyingClass String?
-  ProfilePic    String?
-  role          Role     @default(STUDENT)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-model Class {
-  id        String    @id @default(cuid())
-  className String    @map("class_name") @unique
-  icon      String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  // Relations
-  subjects  Subject[]
-}
-
-model Subject {
-  id          String   @id @default(cuid())
-  subjectName String   @map("subject_name")
-  icon        String?
-
-  // Foreign Key
-  classId     String   @map("class_id")
-  class        Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@unique([classId, subjectName]) // Prevent duplicate subject names within a class
-}
+//
+// ENUMS
+//
 
 enum Role {
   STUDENT
   TEACHER
   ADMIN
   PARENT
+}
+
+enum TeacherRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+//
+// USER
+//
+
+model User {
+  id String @id @default(cuid())
+
+  name     String
+  email    String @unique
+  password String
+
+  dob     DateTime?
+  gender  String?
+  phone   String?
+  address String?
+
+  schoolName    String?
+  studyingClass String?
+
+  profilePic String?
+
+  role Role @default(STUDENT)
+
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Teacher profile
+  teacher Teacher?
+
+  // Student permissions
+  classAccesses          UserClassAccess[]
+  subjectAccesses        UserSubjectAccess[]
+  teacherSubjectAccesses UserTeacherSubjectAccess[]
+}
+
+//
+// CLASS
+//
+
+model Class {
+  id String @id @default(cuid())
+
+  className String  @unique @map("class_name")
+  icon      String?
+
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  subjects     Subject[]
+  userAccesses UserClassAccess[]
+}
+
+//
+// SUBJECT
+//
+
+model Subject {
+  id String @id @default(cuid())
+
+  subjectName String @map("subject_name")
+
+  icon String?
+
+  // FK
+  classId String @map("class_id")
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  teacherSubjects TeacherSubject[]
+  userAccesses    UserSubjectAccess[]
+  chapters        Chapter[]
+
+  @@unique([classId, subjectName])
+}
+
+//
+// TEACHER
+//
+
+model Teacher {
+  id String @id @default(cuid())
+
+  // Link with User
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name    String
+  phone   String    @unique
+  address String?
+  gender  String?
+  dob     DateTime?
+
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  teacherSubjects TeacherSubject[]
+}
+
+//
+// TEACHER SUBJECT
+//
+
+model TeacherSubject {
+  id String @id @default(cuid())
+
+  teacherId String @map("teacher_id")
+  subjectId String @map("subject_id")
+
+  role TeacherRole @default(OWNER)
+
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  userAccesses UserTeacherSubjectAccess[]
+
+  @@unique([teacherId, subjectId])
+}
+
+//
+// STUDENT CLASS ACCESS
+//
+
+model UserClassAccess {
+  id String @id @default(cuid())
+
+  userId  String @map("user_id")
+  classId String @map("class_id")
+
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, classId])
+}
+
+//
+// STUDENT SUBJECT ACCESS
+//
+
+model UserSubjectAccess {
+  id String @id @default(cuid())
+
+  userId    String @map("user_id")
+  subjectId String @map("subject_id")
+
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, subjectId])
+}
+
+//
+// STUDENT TEACHER CONTENT ACCESS
+//
+
+model UserTeacherSubjectAccess {
+  id String @id @default(cuid())
+
+  userId           String @map("user_id")
+  teacherSubjectId String @map("teacher_subject_id")
+
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teacherSubject TeacherSubject @relation(fields: [teacherSubjectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teacherSubjectId])
+}
+
+model Chapter {
+  id String @id @default(cuid())
+
+  // FK
+  subjectId String  @map("subject_id")
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  chapterName String @map("chapter_name")
+
+  displayOrder Int @default(1) @map("display_order")
+
+  status Boolean @default(true)
+
+  createdBy String? @map("created_by")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  contents ChapterContent[]
+
+  @@unique([subjectId, chapterName])
+  @@map("chapters")
+}
+
+enum ContentType {
+  NOTE
+  VIDEO
+  PDF
+  PPT
+  PREVIOUS_PAPER
+
+  // Future
+  ASSIGNMENT
+  QUIZ
+  LIVE_CLASS
+  AUDIO
+  EXTERNAL_LINK
+}
+
+model ChapterContent {
+  id String @id @default(cuid())
+
+  // FK
+  chapterId String  @map("chapter_id")
+  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  type ContentType
+
+  title String
+
+  description String? @db.Text
+
+  displayOrder Int @default(1) @map("display_order")
+
+  isFree Boolean @default(false) @map("is_free")
+
+  status Boolean @default(true)
+
+  createdBy  String? @map("created_by")
+  modifiedBy String? @map("modified_by")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  note          ChapterNote?
+  video         ChapterVideo?
+  pdf           ChapterPdf?
+  ppt           ChapterPpt?
+  previousPaper ChapterPreviousPaper?
+
+  @@index([chapterId])
+  @@index([chapterId, displayOrder])
+  @@map("chapter_contents")
+}
+
+model ChapterNote {
+  id String @id @default(cuid())
+
+  contentId String         @unique @map("content_id")
+  content   ChapterContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  notes String @db.Text
+
+  @@map("chapter_notes")
+}
+
+model ChapterVideo {
+  id String @id @default(cuid())
+
+  contentId String         @unique @map("content_id")
+  content   ChapterContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  videoType VideoType @default(YOUTUBE) @map("video_type")
+
+  videoLink String? @map("video_link")
+
+  videoPath String? @map("video_path")
+
+  thumbnail String?
+
+  duration Int?
+
+  @@map("chapter_videos")
+}
+
+model ChapterPdf {
+  id String @id @default(cuid())
+
+  contentId String         @unique @map("content_id")
+  content   ChapterContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  fileName String @map("file_name")
+
+  filePath String @map("file_path")
+
+  fileSize Int? @map("file_size")
+
+  @@map("chapter_pdfs")
+}
+
+model ChapterPpt {
+  id String @id @default(cuid())
+
+  contentId String         @unique @map("content_id")
+  content   ChapterContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  fileName String @map("file_name")
+
+  filePath String @map("file_path")
+
+  fileSize Int? @map("file_size")
+
+  @@map("chapter_ppts")
+}
+
+model ChapterPreviousPaper {
+  id String @id @default(cuid())
+
+  contentId String         @unique @map("content_id")
+  content   ChapterContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  fileName String @map("file_name")
+
+  filePath String @map("file_path")
+
+  fileSize Int? @map("file_size")
+
+  @@map("chapter_previous_papers")
 }

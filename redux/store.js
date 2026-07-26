@@ -7,6 +7,7 @@ import newsReducer from './features/newsSlice';
 import depertmentReducer from './features/depertmentSlice';
 import authReducer from './features/authSlice';
 import classReducer from './features/classSlice';
+import subjectReducer from './features/subjectSlice';
 
 export const store = configureStore({
   reducer: {
@@ -18,5 +19,6 @@ export const store = configureStore({
     depertment: depertmentReducer,
     auth: authReducer,
     classes: classReducer,
+    subject: subjectReducer,
   },
 });

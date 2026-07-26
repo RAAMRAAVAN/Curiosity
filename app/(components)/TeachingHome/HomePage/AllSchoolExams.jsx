@@ -108,7 +108,7 @@ const AllSchoolExams = () => {
               <Grid item xs={2.4} padding={1}>
                 <Button
                   fullWidth
-                  onClick={() => router.push("/courses")}
+                  onClick={() => router.push("http://localhost:3000/courses/NA/ChooseClass/")}
                   sx={{
                     boxShadow: "5px 5px 10px rgba(0,0,0,0.4)",
                     borderRadius: 1,

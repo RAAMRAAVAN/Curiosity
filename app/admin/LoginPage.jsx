@@ -1,27 +1,72 @@
+'use client';
+
 import { Box, Button, Paper, TextField, Typography } from "@mui/material";
+import { useEffect } from "react";
 
-const LoginPage = ({ loginForm, refreshUsers, handleLoginChange, message, setMessage, loading, setLoading, setAdmin, setAuthorized, setLoginForm}) => {
+const LoginPage = ({
+  loginForm,
+  refreshUsers,
+  handleLoginChange,
+  message,
+  setMessage,
+  loading,
+  setLoading,
+  setAdmin,
+  setAuthorized,
+  setLoginForm,
+}) => {
 
+  useEffect(() => {
+    restoreSession();
+  }, []);
+
+  const restoreSession = async () => {
+    const auth = sessionStorage.getItem("authDetails");
+
+    if (auth) {
+      try {
+        const parsed = JSON.parse(auth);
+        setAdmin(parsed.user);
+        setAuthorized(true);
+      } catch {
+        sessionStorage.removeItem("authDetails");
+      }
+    }
+
+    await checkAdmin();
+  };
 
   const checkAdmin = async () => {
-    setLoading(true);
     try {
-      const response = await fetch("/api/admin/me");
+      const response = await fetch("/api/admin/me", {
+        credentials: "include",
+      });
+
       const data = await response.json();
 
       if (data.success) {
+        sessionStorage.setItem(
+          "authDetails",
+          JSON.stringify({
+            loggedIn: true,
+            user: data.data,
+          })
+        );
+
         setAdmin(data.data);
         setAuthorized(true);
+
         await refreshUsers();
-        await refreshClasses();
       } else {
+        sessionStorage.removeItem("authDetails");
+        setAdmin(null);
         setAuthorized(false);
       }
     } catch (error) {
       console.error(error);
+      sessionStorage.removeItem("authDetails");
+      setAdmin(null);
       setAuthorized(false);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -32,12 +77,15 @@ const LoginPage = ({ loginForm, refreshUsers, handleLoginChange, message, setMes
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         credentials: "include",
         body: JSON.stringify(loginForm),
       });
 
       const data = await response.json();
+
       if (!data.success) {
         setMessage(data.message || "Unable to login.");
         setAuthorized(false);
@@ -52,11 +100,20 @@ const LoginPage = ({ loginForm, refreshUsers, handleLoginChange, message, setMes
 
       sessionStorage.setItem(
         "authDetails",
-        JSON.stringify({ loggedIn: true, user: data.data })
+        JSON.stringify({
+          loggedIn: true,
+          user: data.data,
+        })
       );
+
       setAdmin(data.data);
       setAuthorized(true);
-      setLoginForm({ email: "", password: "" });
+
+      setLoginForm({
+        email: "",
+        password: "",
+      });
+
       await refreshUsers();
     } catch (error) {
       console.error(error);
@@ -67,14 +124,23 @@ const LoginPage = ({ loginForm, refreshUsers, handleLoginChange, message, setMes
   };
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (err) {
+      console.error(err);
+    }
+
     sessionStorage.removeItem("authDetails");
+
     setAdmin(null);
     setAuthorized(false);
-    setUsers([]);
     setMessage("Logged out.");
   };
-  return (<>
+
+  return (
     <Box
       sx={{
         minHeight: "100vh",
@@ -98,6 +164,7 @@ const LoginPage = ({ loginForm, refreshUsers, handleLoginChange, message, setMes
         <Typography variant="h4" fontWeight={700} mb={1}>
           Admin Sign In
         </Typography>
+
         <Typography color="text.secondary" mb={4}>
           Access the user management console with your admin account.
         </Typography>
@@ -110,6 +177,7 @@ const LoginPage = ({ loginForm, refreshUsers, handleLoginChange, message, setMes
           fullWidth
           sx={{ mb: 2 }}
         />
+
         <TextField
           label="Password"
           name="password"
@@ -123,20 +191,22 @@ const LoginPage = ({ loginForm, refreshUsers, handleLoginChange, message, setMes
         <Button
           variant="contained"
           size="large"
-          onClick={handleAdminLogin}
           fullWidth
+          disabled={loading}
+          onClick={handleAdminLogin}
           sx={{ py: 1.5 }}
         >
-          Sign in
+          {loading ? "Signing In..." : "Sign In"}
         </Button>
 
-        {message ? (
+        {message && (
           <Typography mt={3} color="error">
             {message}
           </Typography>
-        ) : null}
+        )}
       </Paper>
     </Box>
-  </>);
-}
+  );
+};
+
 export default LoginPage;

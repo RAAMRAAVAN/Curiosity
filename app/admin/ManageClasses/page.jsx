@@ -1,9 +1,14 @@
 'use client'
 import { Paper, Typography, Box, Button, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { setDefaultClass } from "@/redux/features/classSlice";
+import { useDispatch } from "react-redux";
 
-const ManageClasses = ({loading, setLoading, setMessage, setAdminView}) => {
 
+const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
+    const dispatch = useDispatch();
+    const router = useRouter();
     const [classes, setClasses] = useState([]);
     const [openClassModal, setOpenClassModal] = useState(false);
     const [classForm, setClassForm] = useState({ className: "", icon: "" });
@@ -31,6 +36,7 @@ const ManageClasses = ({loading, setLoading, setMessage, setAdminView}) => {
     const openEditClass = (c) => {
         setEditingClassId(c.id);
         setClassForm({ className: c.className || "", icon: c.icon || "" });
+        
         setOpenClassModal(true);
         setAdminView("classes");
     };
@@ -108,6 +114,16 @@ const ManageClasses = ({loading, setLoading, setMessage, setAdminView}) => {
         }
     };
 
+    const handleNavigation = (url, c) => {
+        if (url.startsWith("http")) {
+            // console.log("SetDefault Class=", c);
+            
+            window.open(url, "_blank");
+        } else {
+            router.push(url);
+        }
+    };
+
     return (<>
         <Paper sx={{ p: 3, mb: 4, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
@@ -138,7 +154,9 @@ const ManageClasses = ({loading, setLoading, setMessage, setAdminView}) => {
                         <TableRow>
                             <TableCell>Class Name</TableCell>
                             <TableCell>Icon</TableCell>
-                            <TableCell>Actions</TableCell>
+                            <TableCell>Edit</TableCell>
+                            <TableCell>Delete</TableCell>
+                            <TableCell>View Class Contents</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -148,8 +166,10 @@ const ManageClasses = ({loading, setLoading, setMessage, setAdminView}) => {
                                 <TableCell>{c.icon || "-"}</TableCell>
                                 <TableCell>
                                     <Button size="small" onClick={() => openEditClass(c)} sx={{ mr: 1 }}>Edit</Button>
-                                    <Button size="small" color="error" onClick={() => handleDeleteClass(c.id)}>Delete</Button>
+
                                 </TableCell>
+                                <TableCell><Button size="small" color="error" onClick={() => handleDeleteClass(c.id)}>Delete</Button></TableCell>
+                                <TableCell><Button onClick={() => {dispatch(setDefaultClass(c.className)); handleNavigation(`ManageClasses/ManageSubjects/${c.className}/home`) }}>View Class Contents</Button></TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

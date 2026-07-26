@@ -1,0 +1,43 @@
+.tiptap {
+    min-height: 500px;
+    padding: 20px;
+    outline: none;
+    font-size: 16px;
+    line-height: 1.7;
+}
+
+.tiptap h1{
+    font-size:36px;
+}
+
+.tiptap h2{
+    font-size:30px;
+}
+
+.tiptap h3{
+    font-size:24px;
+}
+
+.tiptap p{
+    margin:10px 0;
+}
+
+.tiptap table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.tiptap td,
+.tiptap th{
+    border:1px solid #ddd;
+    padding:8px;
+}
+
+.tiptap img{
+    max-width:100%;
+}
+
+.ProseMirror{
+    min-height:500px;
+    outline:none;
+}

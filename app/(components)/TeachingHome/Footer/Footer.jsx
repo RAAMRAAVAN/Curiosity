@@ -1,7 +1,7 @@
 import { Mail } from "@mui/icons-material"
 import { Box, Button, Grid, Typography } from "@mui/material"
 
-const Footer = () => {
+const Footer = ({openSignup, setOpenSignup}) => {
     return (<>
         <Box position='relative' display='flex'>
             <Box display='flex' width='100%' justifyContent='center' marginTop={5} position='relative'  zIndex={1}>
@@ -12,7 +12,7 @@ const Footer = () => {
 
                     <Typography color="white" textAlign='center' marginTop={2} fontSize={20}>Trusted by 3.2 Crore+ students</Typography>
                     <Box display='flex' justifyContent='center' marginTop={3}>
-                        <Button variant="contained" sx={{ color: 'white', backgroundColor: '#FF6A00', paddingX: '70px', borderRadius: 3 }}>Signup for free</Button>
+                        <Button variant="contained" sx={{ color: 'white', backgroundColor: '#FF6A00', paddingX: '70px', borderRadius: 3 }} onClick={() => setOpenSignup(true)}>Signup for free</Button>
                     </Box>
                 </Box>
 
