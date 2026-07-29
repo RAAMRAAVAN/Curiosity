@@ -31,6 +31,7 @@ import LoginPage from "./LoginPage";
 import ManageClasses from "./ManageClasses/ManageClasses";
 import { Menu } from "@mui/icons-material";
 import ManageTeachersPage from "./ManageTeachers/ManageTeachers";
+import AssessmentResultsDashboard from "./AssessmentResultsDashboard";
 
 export default function AdminPage() {
   const [users, setUsers] = useState([]);
@@ -143,6 +144,14 @@ export default function AdminPage() {
             ) : null}
                   <ManageTeachersPage loading={loading} setLoading={setLoading} message={message} setMessage={setMessage} setAdminView={setAdminView} users={users}/></>
         </>): null}
+
+        {adminView === "results" ? (
+          <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+            <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>Assessment Results</Typography>
+            <Typography color="text.secondary" sx={{ mb: 3 }}>Review live submissions from students across subjects.</Typography>
+            <AssessmentResultsDashboard assessmentId="" />
+          </Paper>
+        ) : null}
       </Box>
     </Box>
   );

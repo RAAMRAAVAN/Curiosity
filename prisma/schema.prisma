@@ -64,6 +64,8 @@ model User {
   classAccesses          UserClassAccess[]
   subjectAccesses        UserSubjectAccess[]
   teacherSubjectAccesses UserTeacherSubjectAccess[]
+  assessmentResults      AssessmentResult[]
+  assessmentReattemptRequests AssessmentReattemptRequest[]
 }
 
 //
@@ -84,6 +86,7 @@ model Class {
   // Relations
   subjects     Subject[]
   userAccesses UserClassAccess[]
+  assessments  Assessment[]
 }
 
 //
@@ -110,6 +113,7 @@ model Subject {
   teacherSubjects TeacherSubject[]
   userAccesses    UserSubjectAccess[]
   chapters        Chapter[]
+  assessments     Assessment[]
 
   @@unique([classId, subjectName])
 }
@@ -248,6 +252,129 @@ model Chapter {
 
   @@unique([subjectId, chapterName])
   @@map("chapters")
+}
+
+enum AssessmentType {
+  ASSESSMENT
+  ASSIGNMENT
+}
+
+enum AssessmentReattemptStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Assessment {
+  id String @id @default(cuid())
+
+  classId String @map("class_id")
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  subjectId String  @map("subject_id")
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  title String
+  description String? @db.Text
+  type AssessmentType @default(ASSESSMENT)
+
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  questions AssessmentQuestion[]
+  results AssessmentResult[]
+  reattemptRequests AssessmentReattemptRequest[]
+
+  @@index([classId])
+  @@index([subjectId])
+  @@map("assessments")
+}
+
+model AssessmentQuestion {
+  id String @id @default(cuid())
+
+  assessmentId String @map("assessment_id")
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  questionText String @map("question_text") @db.Text
+  displayOrder Int @default(1) @map("display_order")
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  options AssessmentOption[]
+
+  @@index([assessmentId])
+  @@map("assessment_questions")
+}
+
+model AssessmentOption {
+  id String @id @default(cuid())
+
+  questionId String @map("question_id")
+  question   AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  optionText String @map("option_text")
+  isCorrect Boolean @default(false) @map("is_correct")
+  displayOrder Int @default(1) @map("display_order")
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([questionId])
+  @@map("assessment_options")
+}
+
+model AssessmentResult {
+  id String @id @default(cuid())
+
+  assessmentId String @map("assessment_id")
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  score Int @default(0)
+  totalQuestions Int @default(0) @map("total_questions")
+  answers String? @db.Text
+
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([assessmentId])
+  @@index([userId])
+  @@map("assessment_results")
+}
+
+model AssessmentReattemptRequest {
+  id String @id @default(cuid())
+
+  assessmentId String @map("assessment_id")
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status AssessmentReattemptStatus @default(PENDING)
+  reason String? @db.Text
+
+  requestedAt DateTime @default(now()) @map("requested_at")
+  reviewedAt DateTime? @map("reviewed_at")
+  reviewedBy String? @map("reviewed_by")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([assessmentId])
+  @@index([userId])
+  @@index([status])
+  @@map("assessment_reattempt_requests")
 }
 
 enum ContentType {

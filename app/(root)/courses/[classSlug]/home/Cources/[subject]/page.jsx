@@ -5,24 +5,22 @@ import { useSelector } from "react-redux";
 import { selectSelectedSubject } from "@/redux/features/subjectSlice";
 import {
     Box,
-    Fab,
-    Typography,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
     Button,
+    Chip,
+    Typography,
 } from "@mui/material";
 
 import Image from "next/image";
 import Chapter from "./Chapter/ChapterClient";
-import { Add } from "@mui/icons-material";
-import { useParams } from "next/navigation";
+import AssessmentManager from "@/app/(components)/AssessmentManager";
+import StudentAssessmentView from "@/app/(components)/StudentAssessmentView";
+import { Quiz } from "@mui/icons-material";
+import { useParams, useRouter } from "next/navigation";
 
 const Subject = () => {
 
     const params = useParams();
+    const router = useRouter();
     const selectedSubject = params?.subject;
     // const selectedSubject = useSelector(
     //     selectSelectedSubject
@@ -34,10 +32,7 @@ const Subject = () => {
     const [chapters, setChapters] = useState([]);
     const [chaptersLoading, setChaptersLoading] = useState(false);
 
-    const [open, setOpen] = useState(false);
-    const [chapterName, setChapterName] = useState("");
-    const [chapterNumber, setChapterNumber] = useState("");
-    const [creating, setCreating] = useState(false);
+    const [showAssessments, setShowAssessments] = useState(false);
 
     const fetchChapters = useCallback(async () => {
 
@@ -124,6 +119,7 @@ const Subject = () => {
 
         }
 
+        sessionStorage.setItem('selectedSubject', JSON.stringify({ id: selectedSubject }));
         fetchSubject();
         fetchChapters();
 
@@ -133,69 +129,8 @@ const Subject = () => {
         fetchChapters
     ]);
 
-    const createChapter = async () => {
-
-        if (
-            !chapterName.trim() ||
-            !chapterNumber ||
-            !selectedSubject
-        ) {
-            return;
-        }
-
-        try {
-
-            setCreating(true);
-
-            const res = await fetch(
-                "/api/admin/chapters",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        chapterName: chapterName.trim(),
-                        chapterNumber: Number(chapterNumber),
-                        subjectId: selectedSubject,
-                    }),
-                }
-            );
-
-            const result = await res.json();
-
-            if (!result.success) {
-                throw new Error(result.message);
-            }
-
-            await fetchChapters();
-
-            setOpen(false);
-            setChapterName("");
-            setChapterNumber("");
-
-            console.log(
-                "Chapter Created Successfully"
-            );
-
-        } catch (error) {
-
-            console.error(
-                "Create Chapter Error:",
-                error
-            );
-
-            alert(
-                error.message ||
-                "Failed to create chapter"
-            );
-
-        } finally {
-
-            setCreating(false);
-
-        }
-
+    const handleOpenAssessments = () => {
+        setShowAssessments(true);
     };
 
     if (!selectedSubject) {
@@ -265,102 +200,39 @@ const Subject = () => {
                         </Typography>
                     </Box>
 
-                    {/* <Box
-                        position="absolute"
-                        right={30}
-                        bottom={30}
-                    >
-                        <Fab
-                            variant="extended"
-                            onClick={() =>
-                                setOpen(true)
-                            }
-                        >
-                            <Add sx={{ mr: 1 }} />
-                            Add New Chapter
-                        </Fab>
-                    </Box> */}
+                    <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Button variant="outlined" onClick={() => setShowAssessments((prev) => !prev)}>
+                            {showAssessments ? 'Show Chapters' : 'Show Assessments'}
+                        </Button>
+                        <Button variant="contained" startIcon={<Quiz />} onClick={handleOpenAssessments}>
+                            View Assessments
+                        </Button>
+                    </Box>
 
                 </Box>
 
                 <Box
                     display="flex"
                     width="100%"
+                    flexDirection="column"
                 >
-                    <Chapter
-                        chapters={chapters}
-                        setChapters={setChapters}
-                        loading={chaptersLoading}
-                        subject={subject}
-                        fetchChapters={fetchChapters}
-                    />
+                    {showAssessments ? (
+                        <Box sx={{ px: 3, pb: 3 }}>
+                            <StudentAssessmentView subjectId={selectedSubject} />
+                        </Box>
+                    ) : (
+                        <Chapter
+                            chapters={chapters}
+                            setChapters={setChapters}
+                            loading={chaptersLoading}
+                            subject={subject}
+                            fetchChapters={fetchChapters}
+                        />
+                    )}
                 </Box>
 
             </Box>
 
-            {/* <Dialog
-                open={open}
-                onClose={() => setOpen(false)}
-                maxWidth="xs"
-                fullWidth
-                height="100%"
-            >
-                <DialogTitle>
-                    Add New Chapter
-                </DialogTitle>
-
-                <DialogContent>
-
-                    <TextField
-                        margin="normal"
-                        fullWidth
-                        label="Chapter Name"
-                        value={chapterName}
-                        onChange={(e) =>
-                            setChapterName(
-                                e.target.value
-                            )
-                        }
-                    />
-
-                    <TextField
-                        margin="normal"
-                        fullWidth
-                        type="number"
-                        label="Chapter Number"
-                        value={chapterNumber}
-                        onChange={(e) =>
-                            setChapterNumber(
-                                e.target.value
-                            )
-                        }
-                    />
-
-                </DialogContent>
-
-                <DialogActions>
-
-                    <Button
-                        onClick={() =>
-                            setOpen(false)
-                        }
-                    >
-                        Cancel
-                    </Button>
-
-                    <Button
-                        variant="contained"
-                        onClick={createChapter}
-                        disabled={creating}
-                    >
-                        {creating
-                            ? "Creating..."
-                            : "Create"}
-                    </Button>
-
-                </DialogActions>
-
-            </Dialog> */}
         </>
     );
 };

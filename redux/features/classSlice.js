@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-
+import { buildClassSlug } from "@/lib/classSlug";
 
 // Fetch all classes
 export const fetchClasses = createAsyncThunk(
@@ -47,7 +47,12 @@ const classSlice = createSlice({
 
     // Change selected/default class
     setDefaultClass: (state, action) => {
-      state.defaultClass = action.payload;
+      const normalized =
+        typeof action.payload === "string"
+          ? action.payload
+          : action.payload?.className || action.payload?.name || "";
+
+      state.defaultClass = normalized;
     },
 
   },
@@ -127,13 +132,28 @@ export const selectClasses = (state) =>
 // Input: "1"
 // Output: "cmrakc7ci0003uhxoxhpbw5rx"
 
-export const getClassIdByName = (state, className) => {
+export const getClassByIdentifier = (state, classNameOrIdentifier) => {
+  const identifier = String(classNameOrIdentifier ?? "").trim();
 
-  const cls = state.classes.items.find(
-    (item) => item.className === className
+  if (!identifier) {
+    return null;
+  }
+
+  return (
+    state.classes.items.find((item) => {
+      const className = item.className || item.name || "";
+      const slug = item.slug || buildClassSlug(className);
+
+      return (
+        className === identifier ||
+        slug === identifier ||
+        buildClassSlug(className) === buildClassSlug(identifier)
+      );
+    }) || null
   );
+};
 
-
+export const getClassIdByName = (state, className) => {
+  const cls = getClassByIdentifier(state, className);
   return cls ? cls.id : null;
-
 };

@@ -16,6 +16,7 @@ import {
   fetchClasses,
   setDefaultClass,
 } from "@/redux/features/classSlice";
+import { buildClassSlug } from "@/lib/classSlug";
 
 const ChooseClass = () => {
   const dispatch = useDispatch();
@@ -32,7 +33,7 @@ const ChooseClass = () => {
     dispatch(setDefaultClass(item.className));
 
     // Navigate
-    router.push(`/admin/ManageClasses/ManageSubjects/${item.className.toLowerCase()}/home`);
+    router.push(`/admin/ManageClasses/ManageSubjects/${buildClassSlug(item.className)}/home`);
   };
 
   return (

@@ -2,6 +2,7 @@ import { ApiResponse } from "@/utils/apiResponse";
 import { prisma } from "@/server/prisma";
 import { promises as fs } from "fs";
 import { uploadFile } from "@/lib/uploadFile";
+import { buildClassSlug } from "@/lib/classSlug";
 import path from "path";
 
 const uploadDir = path.join(process.cwd(), "public", "Subject");
@@ -28,20 +29,37 @@ export async function GET(req) {
         const { searchParams } = new URL(req.url);
 
         const className = searchParams.get("className");
-
-        console.log("frontend", className);
-
+        const classSlug = searchParams.get("classSlug");
 
         const where = {};
 
-
-        // Filter by related Class table using className
         if (className) {
+            const exactClass = await prisma.class.findFirst({
+                where: {
+                    OR: [
+                        { className },
+                        { className: { equals: className.trim(), mode: "insensitive" } },
+                    ],
+                },
+                select: { id: true },
+            });
 
-            where.class = {
-                className,
-            };
+            if (exactClass) {
+                where.classId = exactClass.id;
+            }
+        } else if (classSlug) {
+            const classes = await prisma.class.findMany({
+                select: {
+                    id: true,
+                    className: true,
+                },
+            });
 
+            const matchedClass = classes.find((item) => buildClassSlug(item.className) === classSlug);
+
+            if (matchedClass) {
+                where.classId = matchedClass.id;
+            }
         }
 
 

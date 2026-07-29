@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchClasses, setDefaultClass} from "@/redux/features/classSlice";
+import { buildClassSlug } from "@/lib/classSlug";
 
 const AllSchoolExams = () => {
   const router = useRouter();
@@ -76,7 +77,7 @@ const AllSchoolExams = () => {
                 <Grid item xs={2.4} padding={1} key={item.id}>
                   <Button
                     fullWidth
-                    onClick={() => {handleNavigation(`/courses/${item.className.toLowerCase()}/home`); dispatch(setDefaultClass(item.className.toLowerCase()))}}
+                    onClick={() => {handleNavigation(`/courses/${buildClassSlug(item.className)}/home`); dispatch(setDefaultClass(item.className))}}
                     sx={{
                       boxShadow: "5px 5px 10px rgba(0,0,0,0.4)",
                       borderRadius: 1,

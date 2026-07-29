@@ -56,7 +56,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const pages = [
     { page: "View Subjects", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home` },
     { page: "Chapters", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/ExploreCources` },
-    { page: "My Unattempted Tests", link: `ManageClasses/ManageSubjects/${classSlug}/tests` },
+    { page: "My Unattempted Tests", link: `./Assessments/${classSlug}` },
   ];
 
   const pages2 = [

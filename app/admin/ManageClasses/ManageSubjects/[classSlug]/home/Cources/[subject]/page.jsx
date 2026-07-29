@@ -17,6 +17,7 @@ import {
 
 import Image from "next/image";
 import Chapter from "./Chapter/ChapterClient";
+// import AssessmentManager from "@/app/(components)/AssessmentManager";
 import { Add } from "@mui/icons-material";
 import { useParams } from "next/navigation";
 
@@ -286,6 +287,7 @@ const Subject = () => {
                 <Box
                     display="flex"
                     width="100%"
+                    flexDirection="column"
                 >
                     <Chapter
                         chapters={chapters}
@@ -294,6 +296,7 @@ const Subject = () => {
                         subject={subject}
                         fetchChapters={fetchChapters}
                     />
+                    {/* <AssessmentManager subjectId={selectedSubject} /> */}
                 </Box>
 
             </Box>

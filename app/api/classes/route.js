@@ -24,14 +24,19 @@ export async function GET() {
     const classes = await prisma.class.findMany();
 
     const sortedClasses = [...classes].sort((a, b) => {
-      const aNum = Number.parseInt(a.className, 10);
-      const bNum = Number.parseInt(b.className, 10);
+      const aValue = String(a.className || "");
+      const bValue = String(b.className || "");
+      const aNum = Number.parseInt(aValue, 10);
+      const bNum = Number.parseInt(bValue, 10);
 
-      if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) {
+      const aHasNumber = !Number.isNaN(aNum) && /\d/.test(aValue);
+      const bHasNumber = !Number.isNaN(bNum) && /\d/.test(bValue);
+
+      if (aHasNumber && bHasNumber) {
         return aNum - bNum;
       }
 
-      return a.className.localeCompare(b.className);
+      return aValue.localeCompare(bValue, undefined, { sensitivity: "base" });
     });
 
     return ApiResponse.success(sortedClasses);

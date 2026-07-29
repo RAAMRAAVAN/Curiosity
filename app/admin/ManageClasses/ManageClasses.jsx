@@ -3,6 +3,7 @@ import { Paper, Typography, Box, Button, TableContainer, Table, TableHead, Table
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { setDefaultClass } from "@/redux/features/classSlice";
+import { buildClassSlug } from "@/lib/classSlug";
 import { useDispatch } from "react-redux";
 
 
@@ -143,7 +144,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                         setLoading(false);
                     }}>Seed Classes</Button>
                     <Button variant="contained" onClick={() => {
-                        const name = prompt("Class name (e.g. 1, 2, 3):");
+                        const name = prompt("Class name (e.g. Class 1, BSc Computer Science, 4th sem):");
                         if (name) handleCreateClass(name);
                     }}>Create Class</Button>
                 </Box>
@@ -169,7 +170,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
 
                                 </TableCell>
                                 <TableCell><Button size="small" color="error" onClick={() => handleDeleteClass(c.id)}>Delete</Button></TableCell>
-                                <TableCell><Button onClick={() => {dispatch(setDefaultClass(c.className)); handleNavigation(`ManageClasses/ManageSubjects/${c.className}/home`) }}>View Class Contents</Button></TableCell>
+                                <TableCell><Button onClick={() => {dispatch(setDefaultClass(c.className)); handleNavigation(`ManageClasses/ManageSubjects/${buildClassSlug(c.className)}/home`) }}>View Class Contents</Button></TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

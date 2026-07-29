@@ -9,6 +9,7 @@ if (!JWT_SECRET) {
 export function signToken(user) {
   return jwt.sign(
     {
+      id: user.id,
       userId: user.id,
       role: user.role,
     },

@@ -8,39 +8,33 @@ import { useSelector } from "react-redux";
 import { selectAuthUser } from "@/redux/features/authSlice";
 import Cources from "./Cources/Cources";
 import {
-  getClassIdByName,
+  fetchClasses,
+  getClassByIdentifier,
   selectDefaultClass,
 } from "@/redux/features/classSlice";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useDispatch } from "react-redux";
 
 const HomePage = () => {
+  const dispatch = useDispatch();
   const user = useSelector(selectAuthUser);
   const defaultClass = useSelector(selectDefaultClass);
-  const [classID, setClassID] = useState();
-
-  // Convert class name to database class id
-  const classId = useSelector((state) =>
-    getClassIdByName(state, defaultClass)
-  );
   const params = useParams();
   const classSlug = params?.classSlug;
-  const classLabel = classSlug || "1";
+  const matchedClass = useSelector((state) => getClassByIdentifier(state, classSlug || defaultClass));
+  const resolvedClassName = matchedClass?.className || defaultClass || classSlug || "1";
 
-  console.log("Class Label=", classLabel);
+  useEffect(() => {
+    dispatch(fetchClasses());
+  }, [dispatch]);
+
   const handleClick = () => { };
-
-  // useEffect(()=>{
-  //   let temp = useSelector((state) =>
-  //   getClassIdByName(state, defaultClass)
-  // );
-  // setClassID(temp);
-  // },[defaultClass])
 
   return (
     <Box display="flex" width="100%">
       <Box display="flex" paddingX={3} marginTop={5} flexDirection="column" width="100%">
         <Typography fontWeight="bold" fontSize={24}>Hi {user?.name || "User"}!</Typography>
-        <Typography fontSize={15}>Let's get started for Class {classLabel} with Curiosity</Typography>
+        <Typography fontSize={15}>Let's get started for {resolvedClassName} with Curiosity</Typography>
 
 
 
@@ -55,7 +49,7 @@ const HomePage = () => {
           </Grid>
 
           <Typography fontWeight="bold" fontSize={20} marginBottom={2}>Subjects</Typography>
-          <Cources defaultClass={classLabel} />
+          <Cources defaultClass={resolvedClassName} />
         </Box>
       </Box>
     </Box>

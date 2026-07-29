@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import AssessmentManager from "@/app/(components)/AssessmentManager";
 import {
   Box,
   Button,
@@ -62,6 +63,8 @@ export default function TeacherPage() {
   const [subjectForm, setSubjectForm] = useState(emptySubject);
   const [contentForm, setContentForm] = useState(emptyContent);
   const [editContentId, setEditContentId] = useState(null);
+  const [reattemptRequests, setReattemptRequests] = useState([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
 
   useEffect(() => {
     loadTeacher();
@@ -75,7 +78,7 @@ export default function TeacherPage() {
       if (data.success) {
         setTeacher(data.data);
         setAuthorized(true);
-        await loadClasses();
+        await Promise.all([loadClasses(), loadReattemptRequests()]);
       } else {
         setAuthorized(false);
       }
@@ -108,6 +111,42 @@ export default function TeacherPage() {
     const data = await response.json();
     if (data.success) {
       setContents(data.data);
+    }
+  };
+
+  const loadReattemptRequests = async () => {
+    try {
+      setRequestsLoading(true);
+      const response = await fetch("/api/assessments/reattempt-requests", { credentials: "include" });
+      const data = await response.json();
+      if (data.success) {
+        setReattemptRequests(data.data || []);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setRequestsLoading(false);
+    }
+  };
+
+  const handleReattemptRequestAction = async (requestId, status) => {
+    try {
+      const response = await fetch("/api/assessments/reattempt-requests", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, status }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setReattemptRequests((prev) => prev.map((request) => (request.id === requestId ? { ...request, status } : request)));
+        setMessage(`Reattempt request ${status.toLowerCase()} successfully.`);
+      } else {
+        setMessage(data.message || "Unable to update the request.");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("Unable to update the request.");
     }
   };
 
@@ -302,6 +341,60 @@ export default function TeacherPage() {
             </List>
           </Paper>
         </Box>
+
+        <Paper sx={{ p: 3, mt: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+          {selectedSubject ? (
+            <AssessmentManager subjectId={selectedSubject.id} />
+          ) : (
+            <Typography color="text.secondary">Select a subject to manage assessments.</Typography>
+          )}
+        </Paper>
+
+        <Paper sx={{ p: 3, mt: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+            <Box>
+              <Typography variant="h6" fontWeight={700}>
+                Reattempt Requests
+              </Typography>
+              <Typography color="text.secondary" variant="body2">
+                Review requests for students to retake completed assessments.
+              </Typography>
+            </Box>
+          </Box>
+          {message ? <Typography color="primary.main" sx={{ mb: 2 }}>{message}</Typography> : null}
+          {requestsLoading ? (
+            <Typography color="text.secondary">Loading requests...</Typography>
+          ) : reattemptRequests.length === 0 ? (
+            <Typography color="text.secondary">No reattempt requests yet.</Typography>
+          ) : (
+            <Box sx={{ display: "grid", gap: 2 }}>
+              {reattemptRequests.map((request) => (
+                <Card key={request.id} variant="outlined">
+                  <CardContent>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
+                      <Box>
+                        <Typography fontWeight={700}>{request.assessment?.title || "Assessment"}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {request.user?.name || request.user?.email || "Student"} · {request.assessment?.subject?.subjectName || "Subject"}
+                        </Typography>
+                        {request.reason ? <Typography variant="body2" color="text.secondary">Reason: {request.reason}</Typography> : null}
+                      </Box>
+                      <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                        <Chip label={request.status} color={request.status === "PENDING" ? "warning" : request.status === "APPROVED" ? "success" : "error"} variant="outlined" />
+                        {request.status === "PENDING" ? (
+                          <>
+                            <Button size="small" color="success" onClick={() => handleReattemptRequestAction(request.id, "APPROVED")}>Approve</Button>
+                            <Button size="small" color="error" onClick={() => handleReattemptRequestAction(request.id, "REJECTED")}>Reject</Button>
+                          </>
+                        ) : null}
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          )}
+        </Paper>
 
         <Paper sx={{ p: 3, mt: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
