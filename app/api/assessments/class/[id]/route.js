@@ -28,29 +28,20 @@ const buildAssessmentWithStats = async (assessment, subjectId) => {
 
 export async function GET(req, { params }) {
     try {
-        const { id: classSlug } = await params;
+        const { id: classId } = await params;
+        const searchParams = new URL(req.url).searchParams;
+        const subjectId = searchParams.get('subjectId');
+        const chapterId = searchParams.get('chapterId');
 
-        if (!classSlug) {
-            return ApiResponse.error("Class is required", 400);
-        }
-
-        // Find class by className (e.g. "class-6")
-        const classData = await prisma.class.findUnique({
-            where: {
-                className: classSlug,
-            },
-            select: {
-                id: true,
-            },
-        });
-
-        if (!classData) {
-            return ApiResponse.error("Class not found", 404);
+        if (!classId) {
+            return ApiResponse.error("Class ID is required", 400);
         }
 
         const assessments = await prisma.assessment.findMany({
             where: {
-                classId: classData.id,
+                classId,
+                subjectId: subjectId || undefined,
+                chapterId: chapterId || undefined,
                 status: true,
             },
             include: {
@@ -94,14 +85,16 @@ export async function GET(req, { params }) {
         return ApiResponse.success(assessmentsWithStats);
     } catch (error) {
         console.error(error);
-        console.error(error.message);
 
         return ApiResponse.error(
             "Unable to load assessments",
             500,
             {
                 message: error.message,
-                stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+                stack:
+                    process.env.NODE_ENV === "development"
+                        ? error.stack
+                        : undefined,
             }
         );
     }

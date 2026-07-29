@@ -1,37 +1,139 @@
-import { Menu } from "@mui/icons-material";
-import { Box, Button, Drawer, IconButton, Typography } from "@mui/material";
+'use client';
 
-const AdminDrawyer = ({ drawerOpen, adminView, setAdminView, setDrawerOpen }) => {
-    const handleClick = () => { setDrawerOpen(false) }
-    return (<>
-        <Drawer variant="permanent" open={drawerOpen} sx={{ width: 220 }}>
-            <Box display='flex' padding={2} alignItems='center' justifyContent='space-between'>
-                <Typography fontWeight='bold'>Admin Panel</Typography>
-                <IconButton
-                    onClick={handleClick}
-                    color="inherit"
-                >
-                    <Menu />
-                </IconButton>
-            </Box>
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Box,
+  Divider,
+  Drawer,
+  IconButton,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Typography,
+} from "@mui/material";
 
-            <Box sx={{ width: 220, p: 2 }}>
-                <Button fullWidth variant={adminView === "users" ? "contained" : "text"} onClick={() => setAdminView("users")} sx={{ mb: 1 }}>
-                    Manage Users
-                </Button>
-                <Button fullWidth variant={adminView === "classes" ? "contained" : "text"} onClick={() => setAdminView("classes")}>
-                    Manage Classes
-                </Button>
+import {
+  Menu,
+  People,
+  School,
+  Person,
+  Assessment,
+} from "@mui/icons-material";
 
-                <Button fullWidth variant={adminView === "teachers" ? "contained" : "text"} onClick={() => setAdminView("teachers")}>
-                    Manage Teachers
-                </Button>
+const drawerWidth = 260;
 
-                <Button fullWidth variant={adminView === "results" ? "contained" : "text"} onClick={() => setAdminView("results")}>
-                    Assessment Results
-                </Button>
-            </Box>
-        </Drawer>
-    </>);
-}
-export default AdminDrawyer;
+const AdminDrawer = ({
+  drawerOpen,
+  adminView,
+  setAdminView,
+  setDrawerOpen,
+}) => {
+  const pathname = usePathname();
+
+  const menuItems = [
+    {
+      title: "Manage Users",
+      value: "users",
+      icon: <People />,
+    },
+    {
+      title: "Manage Classes",
+      value: "classes",
+      icon: <School />,
+    },
+    {
+      title: "Manage Teachers",
+      value: "teachers",
+      icon: <Person />,
+    },
+    {
+      title: "Assessment Results",
+      value: "results",
+      icon: <Assessment />,
+    },
+  ];
+
+  return (
+    <Drawer
+      variant="persistent"
+      open={drawerOpen}
+      sx={{
+        width: drawerWidth,
+        flexShrink: 0,
+        "& .MuiDrawer-paper": {
+          width: drawerWidth,
+          boxSizing: "border-box",
+        },
+      }}
+    >
+      <Box
+        display="flex"
+        alignItems="center"
+        justifyContent="space-between"
+        px={3}
+        py={2}
+      >
+        <Typography fontWeight={700} fontSize={20}>
+          Admin Panel
+        </Typography>
+
+        <IconButton onClick={() => setDrawerOpen(false)}>
+          <Menu />
+        </IconButton>
+      </Box>
+
+      <Divider />
+
+      <List>
+        {menuItems.map((item) => (
+          <ListItem key={item.value} disablePadding>
+            <ListItemButton
+              selected={adminView === item.value}
+              onClick={() => setAdminView(item.value)}
+              sx={{
+                mx: 1,
+                my: 0.5,
+                borderRadius: 2,
+
+                "&.Mui-selected": {
+                  bgcolor: "#E3F2FD",
+                  color: "primary.main",
+                },
+
+                "&.Mui-selected:hover": {
+                  bgcolor: "#BBDEFB",
+                },
+              }}
+            >
+              <ListItemIcon
+                sx={{
+                  color:
+                    adminView === item.value
+                      ? "primary.main"
+                      : "text.secondary",
+                  minWidth: 42,
+                }}
+              >
+                {item.icon}
+              </ListItemIcon>
+
+              <ListItemText
+                primary={item.title}
+                primaryTypographyProps={{
+                  fontSize: 14,
+                  fontWeight:
+                    adminView === item.value ? 600 : 400,
+                }}
+              />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+    </Drawer>
+  );
+};
+
+export default AdminDrawer;

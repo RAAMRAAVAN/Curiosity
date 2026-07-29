@@ -54,16 +54,16 @@ export default function Layout({ children }) {
   }, []);
 
   const pages = [
-    { page: "View Subjects", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home` },
-    { page: "Explore More Courses", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/ExploreCources` },
-    { page: "My Unattempted Tests", link: `ManageClasses/ManageSubjects/${classSlug}/tests` },
+    { page: "View Subjects", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home`, disabled: false  },
+    { page: "Explore More Courses", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/ExploreCources`, disabled: false },
+    { page: "My Unattempted Tests", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/tests`, disabled: true },
   ];
 
   const pages2 = [
-    { page: "Pricing Plans", link: `/courses/${classSlug}/home` },
-    { page: "Curiosity Store", link: `/courses/${classSlug}/home` },
-    { page: "Emoney", link: `/courses/${classSlug}/home` },
-    { page: "Upgrade to Infinity", link: `/courses/${classSlug}/home` },
+    { page: "Pricing Plans", link: `/courses/${classSlug}/home`, disabled: true },
+    { page: "Curiosity Store", link: `/courses/${classSlug}/home`, disabled: true },
+    { page: "Emoney", link: `/courses/${classSlug}/home`, disabled: true },
+    { page: "Upgrade to Infinity", link: `/courses/${classSlug}/home`, disabled: true },
   ];
 
   return (
@@ -96,6 +96,7 @@ export default function Layout({ children }) {
             {pages.map((item, index) => (
               <ListItem key={item.page} disablePadding>
                 <ListItemButton
+                  disabled={item.disabled}
                   component={Link}
                   href={item.link}
                   selected={pathname === item.link}
@@ -134,7 +135,7 @@ export default function Layout({ children }) {
           <List>
             {pages2.map((item, index) => (
               <ListItem key={item.page} disablePadding>
-                <ListItemButton component={Link} href={item.link}>
+                <ListItemButton component={Link} href={item.link} disabled={item.disabled}>
                   <ListItemIcon>
                     {index % 2 === 0 ? <Inbox /> : <Mail />}
                   </ListItemIcon>

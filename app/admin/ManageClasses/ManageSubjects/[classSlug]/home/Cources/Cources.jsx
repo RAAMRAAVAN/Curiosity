@@ -46,7 +46,7 @@ const Cources = ({defaultClass}) => {
   const loadSubjects = async () => {
     try {
       const res = await fetch(
-        `/api/subjects?className=${encodeURIComponent(defaultClass || "")}`
+        `/api/subjects?classID=${defaultClass}`
       );
 
       const result = await res.json();

@@ -24,102 +24,43 @@ function getFileName(originalName) {
 // ===================== GET =====================
 
 export async function GET(req) {
-    try {
+  try {
+    const { searchParams } = new URL(req.url);
 
-        const { searchParams } = new URL(req.url);
+    const classID = searchParams.get("classID");
 
-        const className = searchParams.get("className");
-        const classSlug = searchParams.get("classSlug");
+    const where = {};
 
-        const where = {};
-
-        if (className) {
-            const exactClass = await prisma.class.findFirst({
-                where: {
-                    OR: [
-                        { className },
-                        { className: { equals: className.trim(), mode: "insensitive" } },
-                    ],
-                },
-                select: { id: true },
-            });
-
-            if (exactClass) {
-                where.classId = exactClass.id;
-            }
-        } else if (classSlug) {
-            const classes = await prisma.class.findMany({
-                select: {
-                    id: true,
-                    className: true,
-                },
-            });
-
-            const matchedClass = classes.find((item) => buildClassSlug(item.className) === classSlug);
-
-            if (matchedClass) {
-                where.classId = matchedClass.id;
-            }
-        }
-
-
-
-        const subjects = await prisma.subject.findMany({
-
-            where,
-
-            include: {
-
-                class: {
-
-                    select: {
-
-                        className: true,
-                        icon: true,
-
-                    },
-
-                },
-
-            },
-
-
-            orderBy: {
-
-                subjectName: "asc",
-
-            },
-
-        });
-
-
-
-        // Flatten response
-        const result = subjects.map(({ class: cls, ...subject }) => ({
-
-            ...subject,
-
-            className: cls.className,
-
-            classIcon: cls.icon,
-
-        }));
-
-
-        return ApiResponse.success(result);
-
-
-    } catch (err) {
-
-        console.error(err);
-
-        return ApiResponse.error(
-            "Unable to load subjects",
-            500,
-            err
-        );
-
+    if (classID) {
+      where.classId = classID;
     }
+
+    const subjects = await prisma.subject.findMany({
+      where,
+      include: {
+        class: {
+          select: {
+            className: true,
+            icon: true,
+          },
+        },
+      },
+      orderBy: {
+        subjectName: "asc",
+      },
+    });
+
+    const result = subjects.map(({ class: cls, ...subject }) => ({
+      ...subject,
+      className: cls.className,
+      classIcon: cls.icon,
+    }));
+
+    return ApiResponse.success(result);
+  } catch (err) {
+    console.error(err);
+    return ApiResponse.error("Unable to load subjects", 500, err);
+  }
 }
 
 // ===================== POST =====================

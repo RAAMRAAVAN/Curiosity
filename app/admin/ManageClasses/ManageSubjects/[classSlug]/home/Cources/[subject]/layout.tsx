@@ -21,6 +21,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const params = useParams();
   const classSlug = params?.classSlug as string | undefined;
+  const subject = params?.subject as string | undefined;
   const [openLogin, setOpenLogin] = useState(false);
 
   useEffect(() => {
@@ -54,16 +55,16 @@ export default function Layout({ children }: { children: ReactNode }) {
   }, []);
 
   const pages = [
-    { page: "View Subjects", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home` },
-    { page: "Chapters", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/ExploreCources` },
-    { page: "My Unattempted Tests", link: `./Assessments/${classSlug}` },
+    { page: "View Subjects", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home`, disabled: false },
+    { page: "Chapters", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home/Cources/${subject}`, disabled: false },
+    { page: "Assessments", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home/Cources/${subject}/Assessments/${classSlug}`, disabled: false },
   ];
 
   const pages2 = [
-    { page: "Pricing Plans", link: `/courses/${classSlug}/home` },
-    { page: "Curiosity Store", link: `/courses/${classSlug}/home` },
-    { page: "Emoney", link: `/courses/${classSlug}/home` },
-    { page: "Upgrade to Infinity", link: `/courses/${classSlug}/home` },
+    { page: "Pricing Plans", link: `/courses/${classSlug}/home`, disabled: true  },
+    { page: "Curiosity Store", link: `/courses/${classSlug}/home`, disabled: true  },
+    { page: "Emoney", link: `/courses/${classSlug}/home`, disabled: true  },
+    { page: "Upgrade to Infinity", link: `/courses/${classSlug}/home`, disabled: true  },
   ];
 
   return (
@@ -94,8 +95,9 @@ export default function Layout({ children }: { children: ReactNode }) {
 
           <List>
             {pages.map((item, index) => (
-              <ListItem key={item.page} disablePadding>
+              <ListItem key={item.page} disablePadding >
                 <ListItemButton
+                  disabled={item.disabled}
                   component={Link}
                   href={item.link}
                   selected={pathname === item.link}
@@ -134,7 +136,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           <List>
             {pages2.map((item, index) => (
               <ListItem key={item.page} disablePadding>
-                <ListItemButton component={Link} href={item.link}>
+                <ListItemButton component={Link} href={item.link} disabled={item.disabled}>
                   <ListItemIcon>
                     {index % 2 === 0 ? <Inbox /> : <Mail />}
                   </ListItemIcon>

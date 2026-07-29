@@ -8,6 +8,7 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -23,63 +24,7 @@ import {
 } from '@mui/material';
 import { Add, Delete, Quiz } from '@mui/icons-material';
 
-const emptyQuestion = () => ({
-  questionText: '',
-  correctOptionIndex: 0,
-  options: ['', '', '', ''],
-});
-
-const AssessmentManager = ({ subjectId, classId }) => {
-  const [assessments, setAssessments] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [type, setType] = useState('ASSESSMENT');
-  const [questions, setQuestions] = useState([emptyQuestion()]);
-  const [feedback, setFeedback] = useState(null);
-  const [editingAssessment, setEditingAssessment] = useState(null);
-
-  const fetchAssessments = async () => {
-    if (!classId) return;
-
-    try {
-      setLoading(true);
-
-      // Convert slug to class name
-      // class-6 => Class 6
-      const className = classId
-        .replace(/-/g, " ")
-        .replace(/\b\w/g, (char) => char.toUpperCase());
-
-      const res = await fetch(
-        `/api/assessments/class/${encodeURIComponent(className)}`
-      );
-
-      const result = await res.json();
-
-      if (!result.success) {
-        throw new Error(result.message || "Unable to load assessments");
-      }
-
-      setAssessments(result.data || []);
-
-    } catch (error) {
-      console.error(error);
-      setAssessments([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAssessments();
-  }, [classId]);
-
-  const addQuestion = () => {
-    setQuestions((prev) => [...prev, emptyQuestion()]);
-  };
+const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessments, loading, addQuestion, subjectId, classId, chapterId, title, setTitle, description, setDescription, type, setType, questions, setQuestions, feedback, setFeedback, editingAssessment, setEditingAssessment, open, setOpen, saving, setSaving }) => {
 
   const removeQuestion = (index) => {
     setQuestions((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
@@ -102,19 +47,6 @@ const AssessmentManager = ({ subjectId, classId }) => {
     );
   };
 
-  const resetForm = () => {
-    setTitle('');
-    setDescription('');
-    setType('ASSESSMENT');
-    setQuestions([emptyQuestion()]);
-    setEditingAssessment(null);
-  };
-
-  const openCreateDialog = () => {
-    resetForm();
-    setOpen(true);
-  };
-
   const openEditDialog = (assessment) => {
     const normalizedQuestions = (assessment.questions || []).map((question) => {
       const correctOptionIndex = question.options?.findIndex((option) => option.isCorrect) ?? 0;
@@ -134,7 +66,10 @@ const AssessmentManager = ({ subjectId, classId }) => {
   };
 
   const handleSubmit = async () => {
-    if (!subjectId || !title.trim()) return;
+    if (!subjectId && !classId) {
+      alert('Class or subject is required to save assessment.');
+      return;
+    }
 
     const validQuestions = questions
       .filter((question) => question.questionText.trim())
@@ -164,13 +99,17 @@ const AssessmentManager = ({ subjectId, classId }) => {
 
     try {
       setSaving(true);
-      const res = await fetch(`/api/subjects/${subjectId}/assessments`, {
+      const endpoint = classId ? '/api/assessments' : `/api/subjects/${subjectId}/assessments`;
+      const res = await fetch(endpoint, {
         method: editingAssessment ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           assessmentId: editingAssessment?.id,
+          classId: classId || undefined,
+          subjectId: subjectId || null,
+          chapterId: chapterId || null,
           title: title.trim(),
-          description: description.trim(),
+          description: description.trim() || null,
           type,
           questions: validQuestions,
         }),
@@ -195,15 +134,7 @@ const AssessmentManager = ({ subjectId, classId }) => {
   };
 
   return (
-    <Box sx={{ mt: 4, width: '100%' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography fontWeight="bold" fontSize={20}>
-          Assessments & Assignments
-        </Typography>
-        <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog}>
-          Create
-        </Button>
-      </Box>
+    <Box sx={{ mt: 4 }}>
 
       {feedback ? (
         <Alert severity={feedback.severity} sx={{ mb: 2 }} onClose={() => setFeedback(null)}>
@@ -212,13 +143,28 @@ const AssessmentManager = ({ subjectId, classId }) => {
       ) : null}
 
       {loading ? (
-        <Typography color="text.secondary">Loading assessments...</Typography>
+        <Box
+          sx={{
+            width: "100%",
+            minHeight: "400px", // Adjust as needed
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            flexDirection: "column",
+            gap: 2,
+          }}
+        >
+          <CircularProgress size={48} />
+          <Typography variant="body2" color="text.secondary">
+            Loading assessments...
+          </Typography>
+        </Box>
       ) : assessments.length === 0 ? (
-        <Typography color="text.secondary">No assessments created for this subject yet.</Typography>
-      ) : (
+      <Typography color="text.secondary">No assessments created for this subject yet.</Typography>
+      ) : (<>
         <Stack spacing={2}>
           {assessments.map((assessment) => (
-            <Card key={assessment.id} variant="outlined">
+            <Card key={assessment.id} variant="outlined" border='1px solid black'>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
                   <Box>
@@ -240,6 +186,7 @@ const AssessmentManager = ({ subjectId, classId }) => {
             </Card>
           ))}
         </Stack>
+      </>
       )}
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>

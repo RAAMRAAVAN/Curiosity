@@ -249,6 +249,7 @@ model Chapter {
 
   // Relations
   contents ChapterContent[]
+  assessments Assessment[]
 
   @@unique([subjectId, chapterName])
   @@map("chapters")
@@ -271,8 +272,13 @@ model Assessment {
   classId String @map("class_id")
   class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
 
-  subjectId String  @map("subject_id")
-  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  // Optional Subject
+  subjectId String?  @map("subject_id")
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  // Optional Chapter
+  chapterId String?  @map("chapter_id")
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
   title String
   description String? @db.Text
@@ -289,6 +295,8 @@ model Assessment {
 
   @@index([classId])
   @@index([subjectId])
+  @@index([chapterId])
+
   @@map("assessments")
 }
 

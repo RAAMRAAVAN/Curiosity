@@ -37,7 +37,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
     const openEditClass = (c) => {
         setEditingClassId(c.id);
         setClassForm({ className: c.className || "", icon: c.icon || "" });
-        
+
         setOpenClassModal(true);
         setAdminView("classes");
     };
@@ -118,7 +118,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
     const handleNavigation = (url, c) => {
         if (url.startsWith("http")) {
             // console.log("SetDefault Class=", c);
-            
+
             window.open(url, "_blank");
         } else {
             router.push(url);
@@ -170,7 +170,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
 
                                 </TableCell>
                                 <TableCell><Button size="small" color="error" onClick={() => handleDeleteClass(c.id)}>Delete</Button></TableCell>
-                                <TableCell><Button onClick={() => {dispatch(setDefaultClass(c.className)); handleNavigation(`ManageClasses/ManageSubjects/${buildClassSlug(c.className)}/home`) }}>View Class Contents</Button></TableCell>
+                                <TableCell><Button onClick={() => { dispatch(setDefaultClass(c.className)); handleNavigation(`ManageClasses/ManageSubjects/${c.id}/home`) }}>View Class Contents</Button></TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

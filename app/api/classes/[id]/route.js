@@ -18,10 +18,13 @@ function getFileName(originalName) {
   return `${Date.now()}-${base || "icon"}${ext || ".png"}`;
 }
 
-export async function GET(req, { params }) {
+export async function GET(request, { params }) {
   try {
-    const { id } = await params;
-    const record = await prisma.class.findUnique({ where: { id } });
+    const { id } = params;
+
+    const record = await prisma.class.findUnique({
+      where: { id },
+    });
 
     if (!record) {
       return ApiResponse.error("Class not found", 404);

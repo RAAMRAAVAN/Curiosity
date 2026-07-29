@@ -33,7 +33,7 @@ const ChooseClass = () => {
     dispatch(setDefaultClass(item.className));
 
     // Navigate
-    router.push(`/admin/ManageClasses/ManageSubjects/${buildClassSlug(item.className)}/home`);
+    router.push(`/admin/ManageClasses/ManageSubjects/${item.id}/home`);
   };
 
   return (
