@@ -64,9 +64,9 @@ const StudentAssessmentView = ({ subjectId }) => {
 
   return (
     <Box sx={{ mt: 4, width: '100%' }}>
-      <Typography fontWeight="bold" fontSize={18} sx={{ mb: 2 }}>
+      {/* <Typography fontWeight="bold" fontSize={18} sx={{ mb: 2 }}>
         Chapter Assessments
-      </Typography>
+      </Typography> */}
       <Stack spacing={2}>
         {assessments.map((assessment) => (
           <Card key={assessment.id} variant="outlined">

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 
 import {
   Dialog,
@@ -16,6 +17,8 @@ import {
   CircularProgress,
   MenuItem,
 } from "@mui/material";
+
+import { fetchClasses } from "@/redux/features/classSlice";
 
 import CloseIcon from "@mui/icons-material/Close";
 import SchoolRoundedIcon from "@mui/icons-material/SchoolRounded";
@@ -34,6 +37,10 @@ const SignupModal = ({
   onClose,
   onLoginClick,
 }) => {
+  const dispatch = useDispatch();
+  const classes = useSelector((state) => state.classes.items || []);
+  const classStatus = useSelector((state) => state.classes.status);
+
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -55,6 +62,12 @@ const SignupModal = ({
 
   const [showConfirmPassword, setShowConfirmPassword] =
     useState(false);
+
+  useEffect(() => {
+    if (classes.length === 0 && classStatus === "idle") {
+      dispatch(fetchClasses());
+    }
+  }, [classes.length, classStatus, dispatch]);
 
   const handleChange = (e) => {
     setForm((prev) => ({
@@ -328,6 +341,7 @@ const SignupModal = ({
           />
 
           <TextField
+            select
             label="Studying Class"
             name="studyingClass"
             variant="filled"
@@ -335,7 +349,33 @@ const SignupModal = ({
             value={form.studyingClass}
             onChange={handleChange}
             sx={fieldStyle}
-          />
+            helperText={
+              classStatus === "failed"
+                ? "Unable to load classes"
+                : "Select your class from the list"
+            }
+            disabled={classStatus === "loading"}
+          >
+            <MenuItem value="">
+              Select Class
+            </MenuItem>
+            {classStatus === "loading" && (
+              <MenuItem value="" disabled>
+                Loading classes...
+              </MenuItem>
+            )}
+            {classes.length === 0 &&
+              classStatus === "succeeded" && (
+                <MenuItem value="" disabled>
+                  No classes available
+                </MenuItem>
+              )}
+            {classes.map((item) => (
+              <MenuItem key={item.id} value={item.id}>
+                {item.className || item.name}
+              </MenuItem>
+            ))}
+          </TextField>
 
           <TextField
             label="Password *"

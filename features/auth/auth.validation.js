@@ -1,4 +1,6 @@
-export function validateSignup(data) {
+import { prisma } from "@/server/prisma";
+
+export async function validateSignup(data) {
   const {
     name,
     email,
@@ -56,6 +58,14 @@ export function validateSignup(data) {
     throw new Error(
       "Password must be at least 6 characters."
     );
+  }
+
+  const classRecord = await prisma.class.findUnique({
+    where: { id: studyingClass },
+  });
+
+  if (!classRecord) {
+    throw new Error("Selected class does not exist.");
   }
 }
 

@@ -22,9 +22,7 @@ const Subject = () => {
     const params = useParams();
     const router = useRouter();
     const selectedSubject = params?.subject;
-    // const selectedSubject = useSelector(
-    //     selectSelectedSubject
-    // );
+
 
     const [subject, setSubject] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -200,14 +198,14 @@ const Subject = () => {
                         </Typography>
                     </Box>
 
-                    <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {/* <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Button variant="outlined" onClick={() => setShowAssessments((prev) => !prev)}>
                             {showAssessments ? 'Show Chapters' : 'Show Assessments'}
                         </Button>
                         <Button variant="contained" startIcon={<Quiz />} onClick={handleOpenAssessments}>
                             View Assessments
                         </Button>
-                    </Box>
+                    </Box> */}
 
                 </Box>
 
@@ -216,19 +214,15 @@ const Subject = () => {
                     width="100%"
                     flexDirection="column"
                 >
-                    {showAssessments ? (
-                        <Box sx={{ px: 3, pb: 3 }}>
-                            <StudentAssessmentView subjectId={selectedSubject} />
-                        </Box>
-                    ) : (
-                        <Chapter
-                            chapters={chapters}
-                            setChapters={setChapters}
-                            loading={chaptersLoading}
-                            subject={subject}
-                            fetchChapters={fetchChapters}
-                        />
-                    )}
+
+                    <Chapter
+                        chapters={chapters}
+                        setChapters={setChapters}
+                        loading={chaptersLoading}
+                        subject={subject}
+                        fetchChapters={fetchChapters}
+                    />
+
                 </Box>
 
             </Box>

@@ -21,6 +21,7 @@ export default function Layout({ children }) {
   const pathname = usePathname();
   const params = useParams();
   const classSlug = params?.classSlug;
+  const subjectSlug = params?.subject;
   const [openLogin, setOpenLogin] = useState(false);
 
   useEffect(() => {
@@ -55,12 +56,12 @@ export default function Layout({ children }) {
 
   const pages = [
     { page: "View Subjects", link: `/courses/${classSlug}/home`, disabled: true },
-    { page: "Chapters", link: `./`, disabled: true },
+    { page: "Chapters", link: `/courses/${classSlug}/home/Cources/${subjectSlug}`, disabled: true },
     { page: "Explore More Courses", link: `/courses/${classSlug}/ExploreCources`, disabled: true },
   ];
 
   const pages2 = [
-    { page: "Pricing Plans", link: `/courses/${classSlug}/home`, disabled: false },
+    { page: "Assessments", link: `/courses/${classSlug}/home/Cources/${subjectSlug}/Assessments`, disabled: true },
     { page: "Curiosity Store", link: `/courses/${classSlug}/home`, disabled: false },
     { page: "Emoney", link: `/courses/${classSlug}/home`, disabled: false },
     { page: "Upgrade to Infinity", link: `/courses/${classSlug}/home`, disabled: false },

@@ -145,6 +145,7 @@ export const getClassByIdentifier = (state, classNameOrIdentifier) => {
       const slug = item.slug || buildClassSlug(className);
 
       return (
+        item.id === identifier ||
         className === identifier ||
         slug === identifier ||
         buildClassSlug(className) === buildClassSlug(identifier)

@@ -33,7 +33,7 @@ const ChooseClass = () => {
     dispatch(setDefaultClass(item.className));
 
     // Navigate
-    router.push(`/courses/${buildClassSlug(item.className)}/home`);
+    router.push(`/courses/${item.id}/home`);
   };
 
   return (

@@ -2,18 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import AssessmentManager from "@/app/(components)/AssessmentManager";
-import { useSelector } from "react-redux";
-import { selectSelectedSubject } from "@/redux/features/subjectSlice";
 import {
     Box,
     Fab,
     Typography,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
-    Button,
     CircularProgress,
 } from "@mui/material";
 
@@ -29,14 +21,6 @@ const Assessments = () => {
 
     const [subject, setSubject] = useState(null);
     const [loading, setLoading] = useState(false);
-
-    const [chapters, setChapters] = useState([]);
-    const [chaptersLoading, setChaptersLoading] = useState(false);
-
-    // const [open, setOpen] = useState(false);
-    const [chapterName, setChapterName] = useState("");
-    const [chapterNumber, setChapterNumber] = useState("");
-    const [creating, setCreating] = useState(false);
 
     const emptyQuestion = () => ({
         questionText: '',
@@ -144,7 +128,6 @@ const Assessments = () => {
         if (!selectedSubject) {
 
             setSubject(null);
-            setChapters([]);
 
             return;
 
@@ -161,7 +144,7 @@ const Assessments = () => {
         if (classId) {
             fetchAssessments();
         }
-    }, [classId]);
+    }, [classId, selectedSubject]);
 
     if (!selectedSubject) {
         return <>No Subject Selected</>;
@@ -243,7 +226,7 @@ const Assessments = () => {
                             color="text.secondary"
                         >
                             Total Assessments:{" "}
-                            {chapters.length}
+                            {assessments.length}
                         </Typography>
                     </Box>
 
