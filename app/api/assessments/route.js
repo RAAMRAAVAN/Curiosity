@@ -38,6 +38,7 @@ const normalizeQuestions = (questions) => {
 };
 
 const validateClassSubjectChapter = async ({ classId, subjectId, chapterId }) => {
+  let resolvedSubjectId = subjectId || null;
   const classExists = await prisma.class.findUnique({ where: { id: classId } });
   if (!classExists) {
     throw { status: 404, message: 'Class not found' };
@@ -51,6 +52,7 @@ const validateClassSubjectChapter = async ({ classId, subjectId, chapterId }) =>
     if (subject.classId !== classId) {
       throw { status: 400, message: 'Subject does not belong to the provided class' };
     }
+    resolvedSubjectId = subjectId;
   }
 
   if (chapterId) {
@@ -188,15 +190,25 @@ const updateAssessmentWithQuestions = async (tx, assessmentId, data) => {
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { classId, subjectId: rawSubjectId, chapterId, title, description, type, questions } = body;
+
+    const {
+      classId,
+      subjectId: rawSubjectId,
+      chapterId,
+      title,
+      description,
+      type,
+      questions,
+    } = body;
+
     const subjectId = rawSubjectId || null;
 
     if (!classId) {
-      return ApiResponse.error('Class ID is required', 400);
+      return ApiResponse.error("Class ID is required", 400);
     }
 
     if (!title?.trim()) {
-      return ApiResponse.error('Assessment title is required', 400);
+      return ApiResponse.error("Assessment title is required", 400);
     }
 
     let normalizedQuestions;
@@ -206,29 +218,40 @@ export async function POST(req) {
       return ApiResponse.error(error.message, 400);
     }
 
-    let resolvedSubjectId;
+    // Validate Class / Subject / Chapter
+    let finalSubjectId;
     try {
-      resolvedSubjectId = await validateClassSubjectChapter({ classId, subjectId, chapterId });
+      finalSubjectId = await validateClassSubjectChapter({
+        classId,
+        subjectId,
+        chapterId,
+      });
     } catch (error) {
       return ApiResponse.error(error.message, error.status || 400);
     }
 
-    const assessment = await prisma.$transaction(async (tx) =>
-      createAssessmentWithQuestions(tx, {
+    const assessment = await prisma.$transaction(async (tx) => {
+      return await createAssessmentWithQuestions(tx, {
         classId,
-        subjectId: resolvedSubjectId,
+        subjectId: finalSubjectId,
         chapterId: chapterId || null,
         title: title.trim(),
         description: description?.trim() || null,
         type,
         questions: normalizedQuestions,
-      })
-    );
+      });
+    });
 
-    return ApiResponse.success(assessment, 'Assessment created successfully');
+    return ApiResponse.success(
+      assessment,
+      "Assessment created successfully"
+    );
   } catch (error) {
-    console.error(error);
-    return ApiResponse.error('Unable to create assessment', 500, error);
+    console.error("POST Assessment Error:", error);
+    return ApiResponse.error(
+      error.message || "Unable to create assessment",
+      500
+    );
   }
 }
 

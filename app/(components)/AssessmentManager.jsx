@@ -111,6 +111,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
           title: title.trim(),
           description: description.trim() || null,
           type,
+          resolvedSubjectId: subjectId || null,
           questions: validQuestions,
         }),
       });
