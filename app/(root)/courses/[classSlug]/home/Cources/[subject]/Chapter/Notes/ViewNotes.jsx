@@ -177,11 +177,9 @@ const ViewContent = ({
 
                     {/* VIDEO */}
 
-                    {/* VIDEO */}
-
                     {content.type === "VIDEO" && (
 
-                        <Box>
+                        <Box display='flex' width='100%' height='100%'>
 
                             {content.video?.videoType === "YOUTUBE" ? (
 

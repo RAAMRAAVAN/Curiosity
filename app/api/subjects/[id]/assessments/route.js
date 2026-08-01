@@ -29,10 +29,14 @@ export async function GET(req, { params }) {
   try {
     const { id } = await params;
 
+    const searchParams = new URL(req.url).searchParams;
+    const userId = searchParams.get("userId");
+
     if (!id) {
-      return ApiResponse.error('Subject ID is required', 400);
+      return ApiResponse.error("Subject ID is required", 400);
     }
 
+    // Fetch all assessments
     const assessments = await prisma.assessment.findMany({
       where: {
         subjectId: id,
@@ -41,26 +45,59 @@ export async function GET(req, { params }) {
       include: {
         questions: {
           where: { status: true },
-          orderBy: { displayOrder: 'asc' },
+          orderBy: { displayOrder: "asc" },
           include: {
             options: {
               where: { status: true },
-              orderBy: { displayOrder: 'asc' },
+              orderBy: { displayOrder: "asc" },
             },
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
+    // Fetch all assessment results for this user in one query
+    let appearedAssessmentIds = new Set();
+
+    if (userId && assessments.length > 0) {
+      const assessmentResults = await prisma.assessmentResult.findMany({
+        where: {
+          userId,
+          assessmentId: {
+            in: assessments.map((assessment) => assessment.id),
+          },
+        },
+        select: {
+          assessmentId: true,
+        },
+      });
+
+      appearedAssessmentIds = new Set(
+        assessmentResults.map((result) => result.assessmentId)
+      );
+    }
+
     const assessmentsWithStats = await Promise.all(
-      assessments.map((assessment) => buildAssessmentWithStats(assessment, id))
+      assessments.map(async (assessment) => {
+        const assessmentData = await buildAssessmentWithStats(
+          assessment,
+          id
+        );
+
+        return {
+          ...assessmentData,
+          appeared_status: appearedAssessmentIds.has(assessment.id) ? "Y" : "N",
+        };
+      })
     );
 
     return ApiResponse.success(assessmentsWithStats);
   } catch (error) {
     console.error(error);
-    return ApiResponse.error('Unable to load assessments', 500, error);
+    return ApiResponse.error("Unable to load assessments", 500, error);
   }
 }
 

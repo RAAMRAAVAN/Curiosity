@@ -41,12 +41,12 @@ const Cources = ({defaultClass}) => {
     },
   ]);
 
-  // const defaultClass = useSelector(selectDefaultClass);
+  // const defaultClass?.id = useSelector(selectDefaultClass);
 
   const loadSubjects = async () => {
     try {
       const res = await fetch(
-        `/api/subjects?classID=${defaultClass}`
+        `/api/subjects?classID=${defaultClass?.id}`
       );
 
       const result = await res.json();
@@ -61,8 +61,8 @@ const Cources = ({defaultClass}) => {
   };
 
   useEffect(() => {
-    if (defaultClass) loadSubjects();
-  }, [defaultClass]);
+    if (defaultClass?.id) loadSubjects();
+  }, [defaultClass?.id]);
 
   const handleChange = (index, field, value) => {
     const updated = [...newSubjects];
@@ -92,7 +92,7 @@ const Cources = ({defaultClass}) => {
 
       const formData = new FormData();
 
-      formData.append("className", defaultClass);
+      formData.append("className", defaultClass?.id);
 
       const payload = newSubjects
         .filter((s) => s.subjectName.trim())
@@ -221,7 +221,7 @@ const Cources = ({defaultClass}) => {
         maxWidth="md"
       >
         <DialogTitle>
-          Create Subjects ({defaultClass})
+          Create Subjects ({defaultClass?.id})
         </DialogTitle>
 
         <DialogContent>

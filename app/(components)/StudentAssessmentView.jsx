@@ -14,8 +14,11 @@ import {
 import { Quiz } from '@mui/icons-material';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
+import { selectAuthUser } from '@/redux/features/authSlice';
+import { useSelector } from 'react-redux';
 
 const StudentAssessmentView = ({ subjectId }) => {
+  const user = useSelector(selectAuthUser);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -23,21 +26,33 @@ const StudentAssessmentView = ({ subjectId }) => {
   const [loading, setLoading] = useState(false);
 
   const fetchAssessments = async () => {
-    if (!subjectId) return;
+  if (!subjectId || !user?.id) return;
 
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/subjects/${subjectId}/assessments`);
-      const resultData = await res.json();
-      if (!resultData.success) throw new Error(resultData.message || 'Unable to load assessments');
-      setAssessments(resultData.data || []);
-    } catch (error) {
-      console.error(error);
-      setAssessments([]);
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+
+    const params = new URLSearchParams({
+      userId: user.id,
+    });
+
+    const res = await fetch(
+      `/api/subjects/${subjectId}/assessments?${params.toString()}`
+    );
+
+    const resultData = await res.json();
+
+    if (!resultData.success) {
+      throw new Error(resultData.message || "Unable to load assessments");
     }
-  };
+
+    setAssessments(resultData.data || []);
+  } catch (error) {
+    console.error(error);
+    setAssessments([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchAssessments();
@@ -79,9 +94,14 @@ const StudentAssessmentView = ({ subjectId }) => {
                 <Chip icon={<Quiz />} label={assessment.type} color="primary" variant="outlined" />
               </Box>
               <Divider sx={{ my: 1.5 }} />
-              <Button variant="contained" onClick={() => handleStartAssessment(assessment)}>
+              {assessment.appeared_status === 'Y' ? (
+                <Chip label="Already Appeared" color="success" variant="outlined" />
+              ) : (
+                <Button variant="contained" onClick={() => handleStartAssessment(assessment)}>
                 Start
               </Button>
+              )}
+              
             </CardContent>
           </Card>
         ))}

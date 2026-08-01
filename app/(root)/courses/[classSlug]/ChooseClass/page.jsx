@@ -37,7 +37,7 @@ const ChooseClass = () => {
   };
 
   return (
-    <Box sx={{ display: "flex", mt: 4 }}>
+    <Box sx={{ display: "flex", mt: 4 }} width="100%">
       <Box sx={{ px: 3, display: "flex", width: "100%", flexDirection: "column" }}>
         <Typography fontWeight="bold" fontSize={24}>
           Choose Your Class

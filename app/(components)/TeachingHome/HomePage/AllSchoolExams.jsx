@@ -33,8 +33,12 @@ const AllSchoolExams = () => {
   return (
     <>
       <Box display='flex' width='100%' alignItems='center' flexDirection='column' marginTop={5}>
-        <Typography fontWeight='bold' textAlign='center' fontSize={34}>Choose Your Class or Exam</Typography>
-        <Typography color="gray" fontSize='20'>From videos to notes to tests, providing all you need to learn and practice in one place</Typography>
+        <Typography fontWeight='bold' textAlign='center' fontSize={{ xs: 24, sm: 28, md: 32, lg: 34 }}>
+          Choose Your Class or Exam
+        </Typography>
+        <Typography color="gray" fontSize='20' paddingX={{ xs: 2, sm: 4, md: 6, lg: 8 }} textAlign='center' marginTop={1}>
+          From videos to notes to tests, providing all you need to learn and practice in one place
+        </Typography>
       </Box>
       <Box
         display="flex"
@@ -47,7 +51,7 @@ const AllSchoolExams = () => {
           display="flex"
           width="85%"
           boxShadow={2}
-          padding={2}
+          padding={{ xs: 0, sm: 0, md: 2, lg: 2 }}
           borderRadius={3}
           marginTop={3}
           flexDirection="column"
@@ -63,7 +67,7 @@ const AllSchoolExams = () => {
             />
 
             <Typography
-              fontSize={24}
+              fontSize={{ xs: 20, sm: 24, md: 28, lg: 32 }}
               marginLeft={2}
               fontWeight="bold"
             >
@@ -71,10 +75,10 @@ const AllSchoolExams = () => {
             </Typography>
           </Box>
 
-          <Box marginTop={4} paddingX={4}>
+          <Box marginTop={4} paddingX={{ xs: 2, sm: 4, md: 6, lg: 8 }}>
             <Grid container spacing={2}>
               {classes.map((item) => (
-                <Grid item xs={2.4} padding={1} key={item.id}>
+                <Grid item lg={2.4} md={2.4} sm={4} xs={6} padding={1} key={item.id}>
                   <Button
                     fullWidth
                     onClick={() => {handleNavigation(`/courses/${buildClassSlug(item.className)}/home`); dispatch(setDefaultClass(item.className))}}
@@ -106,10 +110,10 @@ const AllSchoolExams = () => {
                 </Grid>
               ))}
 
-              <Grid item xs={2.4} padding={1}>
+              <Grid item lg={2.4} md={2.4} sm={4} xs={6} padding={1} marginBottom={2}>
                 <Button
                   fullWidth
-                  onClick={() => router.push("http://localhost:3000/courses/NA/ChooseClass/")}
+                  onClick={() => router.push("./courses/NA/ChooseClass/")}
                   sx={{
                     boxShadow: "5px 5px 10px rgba(0,0,0,0.4)",
                     borderRadius: 1,

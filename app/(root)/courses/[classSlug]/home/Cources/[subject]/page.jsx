@@ -211,7 +211,7 @@ const Subject = () => {
 
                 <Box
                     display="flex"
-                    width="100%"
+                    width="94%"
                     flexDirection="column"
                 >
 

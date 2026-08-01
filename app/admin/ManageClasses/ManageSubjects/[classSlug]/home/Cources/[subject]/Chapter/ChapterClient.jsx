@@ -175,8 +175,8 @@ const Chapter = ({ chapters, setChapters, loading, subject, fetchChapters }) => 
   return (<>
     <Box width='100%' margin={5}>
       {chapters.map((chapter) => {
-        return (
-          <Accordion sx={{ boxShadow: 3, position: 'relative' }} key={chapter.id}>
+        return (<>
+          <Accordion sx={{ boxShadow: 3, position: 'relative', width: '100%', margin: '0 auto' }} key={chapter.id}>
             <AccordionSummary
               expandIcon={<ExpandMoreIcon />}
               onClick={() => { setSelectedChapter(chapter) }}
@@ -325,7 +325,8 @@ const Chapter = ({ chapters, setChapters, loading, subject, fetchChapters }) => 
             </AccordionSummary>
             {/* Notes */}
             <Notes chapterContents={chapter.contents} fetchChapters={fetchChapters} />
-          </Accordion>)
+          </Accordion>
+          </>)
       })}
 
     </Box>

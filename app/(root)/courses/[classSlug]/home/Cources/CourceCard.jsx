@@ -18,7 +18,7 @@ const CourseCard = ({image, subject, Class}) => {
         />
         <CardContent>
           <Typography gutterBottom component="div" noWrap>
-            {subject} for Class {Class}
+            {subject} for Class {Class.className}
           </Typography>
           {/* <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             

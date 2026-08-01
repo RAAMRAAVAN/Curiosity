@@ -158,8 +158,9 @@ const SignupModal = ({
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="sm"
       fullWidth
+      // width="100vw"
+      display="flex"
       scroll="paper"
       PaperProps={{
         sx: {
@@ -167,6 +168,9 @@ const SignupModal = ({
           overflow: "hidden",
           boxShadow:
             "0 30px 80px rgba(0,0,0,.25)",
+          margin: '10px',
+          display: "flex",
+          width: "100vw",
         },
       }}
     >
@@ -181,6 +185,7 @@ const SignupModal = ({
           py: 4,
           position: "relative",
         }}
+        
       >
         <IconButton
           onClick={onClose}

@@ -160,19 +160,17 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             Loading assessments...
           </Typography>
         </Box>
-      ) : assessments.length === 0 ? (
-      <Typography color="text.secondary">No assessments created for this subject yet.</Typography>
       ) : (<>
         <Stack spacing={2}>
           {assessments.map((assessment) => (
-            <Card key={assessment.id} variant="outlined" border='1px solid black'>
+            <Card key={assessment.id} variant="outlined" border='1px solid black' sx={{backgroundColor: '#f9f9f9'}}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
                   <Box>
                     <Typography fontWeight="bold">{assessment.title}</Typography>
                     <Typography variant="body2" color="text.secondary">{assessment.description || 'No description'}</Typography>
                   </Box>
-                  <Chip label={assessment.type} color="primary" variant="outlined" />
+                  <Chip label={`View ${assessment.type}`} color="primary" variant="outlined" onClick={() => openEditDialog(assessment)}/>
                 </Box>
                 <Divider sx={{ my: 1.5 }} />
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1 }}>
@@ -180,9 +178,9 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                   <Chip label={`Appeared: ${assessment.attempts || 0}`} color="success" variant="outlined" />
                   <Chip label={`Pending: ${assessment.pending || 0}`} color="warning" variant="outlined" />
                 </Stack>
-                <Button size="small" onClick={() => openEditDialog(assessment)}>
+                {/* <Button size="small" onClick={() => openEditDialog(assessment)}>
                   Edit
-                </Button>
+                </Button> */}
               </CardContent>
             </Card>
           ))}

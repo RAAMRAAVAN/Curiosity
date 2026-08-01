@@ -73,7 +73,7 @@ const HomePage = () => {
           </Grid>
 
           <Typography fontWeight="bold" fontSize={20} marginBottom={2}>Subjects</Typography>
-          <Cources defaultClass={classDetails?.id} />
+          <Cources defaultClass={classDetails} />
         </Box>
       </Box>
     </Box>

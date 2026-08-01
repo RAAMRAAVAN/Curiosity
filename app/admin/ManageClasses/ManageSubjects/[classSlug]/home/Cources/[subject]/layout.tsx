@@ -69,7 +69,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <Box display="flex" width="100vw">
-      <Box width="25.7%">
+      <Box width="25.7%" display="flex">
         <Box
           sx={{
             width: 260,
@@ -152,11 +152,8 @@ export default function Layout({ children }: { children: ReactNode }) {
         </Box>
       </Box>
 
-      <Box width="100%" display="flex" position="relative">
+      <Box width="100vw" display="flex">
         {children}
-        <Box position="absolute" top={40} right={20}>
-          <Logout />
-        </Box>
       </Box>
       <LoginModal open={openLogin} onClose={() => setOpenLogin(false)} onSignupClick={() => setOpenLogin(false)} />
     </Box>

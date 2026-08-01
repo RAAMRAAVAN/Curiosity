@@ -144,7 +144,7 @@ const Notes = ({ chapterContents, fetchChapters }) => {
     const handleCloseEdit = () => setOpenEdit(false);
     const handleCloseEditPDF = () => setOpenEditPDF(false);
     const handleCloseEditPPT = () => setOpenEditPPT(false);
-    const handleCloseEditVideo = () => setOpenEditVideo(false); 
+    const handleCloseEditVideo = () => setOpenEditVideo(false);
 
     const handleOpenDelete = async ({ id, type }) => {
 
@@ -244,7 +244,10 @@ const Notes = ({ chapterContents, fetchChapters }) => {
                     <AccordionDetails
                         key={note.id}
                         sx={{
-                            backgroundColor: "white",
+                            "&:hover": {
+                                backgroundColor: "#f5f5f5",
+                                cursor: "pointer",
+                            }, backgroundColor: "white",
                             position: "relative",
                         }}
 

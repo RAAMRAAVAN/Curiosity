@@ -59,7 +59,7 @@ const HomePage = () => {
         <>
             <HomeBroucher />
 
-            <Box marginTop="70px" display="flex" justifyContent="center" alignItems="center">
+            <Box marginTop="170px" display="flex" justifyContent="center" alignItems="center">
                 <Typography color="gray">
                     Trusted by Millions of Students
                 </Typography>
@@ -85,7 +85,7 @@ const HomePage = () => {
                             color: "white",
                             width: 250,
                         }}
-                        onClick={() => { router.push(`http://localhost:3000/courses/NA/ChooseClass/`) }}
+                        onClick={() => { router.push(`./courses/NA/ChooseClass/`) }}
                     >
                         Start learning for free
                     </Button>
@@ -119,37 +119,39 @@ const HomePage = () => {
                 )}
             </Box>
 
-            {/* <Awards /> */}
+            <Awards />
             <Footer openSignup={openSignup} setOpenSignup={setOpenSignup}/>
 
             <Box
                 display="flex"
                 py={2}
-                px={5}
+                px={{ xs: 0, sm: 0, md: 5, lg: 5 }}
                 justifyContent="space-between"
                 alignItems="center"
                 width="100%"
                 height={60}
                 bgcolor="#062f53"
-                mt={30}
+                // mt={30}
             >
-                <Box mx={5} display="flex" alignItems="center">
+                <Box marginRight={{xs:0, sm:2, lg:5}} display="flex" alignItems="center">
                     <Box
                         bgcolor="white"
                         display="flex"
                         borderRadius={3}
                         p="5px"
-                        mr={1}
+                        marginX={2}
                     >
-                        <Typography>PR</Typography>
+                        <Typography fontSize={{sm:14, md:16, lg: 16}}>
+                            PR
+                        </Typography>
                     </Box>
 
-                    <Typography color="white" fontWeight="bold" fontSize={20}>
+                    <Typography color="white" fontWeight="bold" fontSize={{sm:10, md:16, lg: 16}}>
                         Start learning for free today
                     </Typography>
                 </Box>
 
-                <Box mx={5}>
+                <Box marginRight={{xs:1, sm:2, lg:5}} display="flex" alignItems="center" minWidth={200} justifyContent="flex-end">
                     {loggedIn ? (
                         <Button
                             variant="contained"

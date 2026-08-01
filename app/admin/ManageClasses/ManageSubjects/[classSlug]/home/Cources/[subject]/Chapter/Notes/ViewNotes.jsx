@@ -177,11 +177,9 @@ const ViewContent = ({
 
                     {/* VIDEO */}
 
-                    {/* VIDEO */}
-
                     {content.type === "VIDEO" && (
 
-                        <Box>
+                        <Box display='flex' width='100%' height='100%'>
 
                             {content.video?.videoType === "YOUTUBE" ? (
 
@@ -189,7 +187,7 @@ const ViewContent = ({
 
                                     <iframe
                                         width="100%"
-                                        height="100%"
+                                        // height="65vh"
                                         src={getYoutubeEmbedUrl(
                                             content.video.videoLink
                                         )}
@@ -205,7 +203,7 @@ const ViewContent = ({
                                         allowFullScreen
                                         style={{
                                             width: "100%",
-                                            minHeight: "75vh",
+                                            minHeight: "100%",
                                             border: 0,
                                             borderRadius: 8,
                                         }}

@@ -21,14 +21,47 @@ const HomeBroucher = () => {
                 priority
             />
 
-            <Box display='flex' width='100%' height='100%' position='absolute' justifyContent='space-between' marginTop={5} paddingX={5}>
-                <Box display='flex' width='50%' color='white' flexDirection='column' alignItems='end'>
-                    <Box display='flex' width='80%' flexDirection='column'>
+            <Box display='flex' width='100%' height='100%' position='absolute' justifyContent='space-between' paddingX={{
+                xs: 0,
+                sm: 0,
+                md: 5,
+            }}>
+                <Box display='flex' width={{
+                    xs: "100%",
+                    sm: "100%",
+                    md: "50%",
+                    lg: "50%",
+                    xl: "50%",
+                }} color='white' flexDirection='column' alignItems='end'>
+                    <Box display='flex' width='90%' flexDirection='column'>
                         <Box display='flex' width='100%' height='100px'></Box>
-                        <Typography fontWeight='bold' fontSize={50}>
+                        <Typography
+                            fontWeight="bold"
+                            sx={{
+                                fontSize: {
+                                    xs: "2rem",    // 32px
+                                    sm: "2.8rem",  // 45px
+                                    md: "3.5rem",  // 56px
+                                    lg: "4rem",    // 64px
+                                },
+                                lineHeight: 1.1,
+                            }}
+                        >
                             Study Smarter
                         </Typography>
-                        <Typography fontWeight='bold' fontSize={50}>
+
+                        <Typography
+                            fontWeight="bold"
+                            sx={{
+                                fontSize: {
+                                    xs: "2rem",
+                                    sm: "2.8rem",
+                                    md: "3.5rem",
+                                    lg: "4rem",
+                                },
+                                lineHeight: 1.1,
+                            }}
+                        >
                             Score Higher
                         </Typography>
 
@@ -47,14 +80,14 @@ const HomeBroucher = () => {
                                     marginTop: 2,
                                     borderRadius: 2
                                 }}
-                                onClick={() => { router.push(`http://localhost:3000/courses/NA/ChooseClass/`) }}
+                                onClick={() => { router.push(`./courses/NA/ChooseClass/`) }}
                             >
                                 Start Learning for free <ArrowRightAlt />
                             </Button>
                         </Box>
 
 
-                        <Box display="flex" alignItems="center" mt={1}>
+                        <Box display="flex" alignItems="center" mt={2}>
                             <Typography fontWeight="bold" mr={2}>
                                 Download App:
                             </Typography>
@@ -63,7 +96,7 @@ const HomeBroucher = () => {
                             <Tooltip title="Download for Android">
                                 <IconButton
                                     component="a"
-                                    onClick={()=>{setOpen(true)}}
+                                    onClick={() => { setOpen(true) }}
                                     rel="noopener noreferrer"
                                     sx={{
                                         bgcolor: "white",
@@ -85,7 +118,7 @@ const HomeBroucher = () => {
                             <Tooltip title="Download for iPhone">
                                 <IconButton
                                     component="a"
-                                    onClick={()=>{setOpen(true)}}
+                                    onClick={() => { setOpen(true) }}
                                     rel="noopener noreferrer"
                                     sx={{
                                         bgcolor: "white",
@@ -105,7 +138,19 @@ const HomeBroucher = () => {
                     </Box>
                 </Box>
 
-                <Box display='flex' width='50%' color='white' flexDirection='column'>
+                <Box display='flex' width='50%' color='white' flexDirection='column' sx={{
+                    position: "absolute",
+                    bottom: {
+                        xs: 150,
+                        sm: 150,
+                        md: 140,
+                    },
+                    right: {
+                        xs: 0,
+                        sm: 0,
+                        md: 0,
+                    }
+                }}>
                     <Image
                         src="https://cn.edurev.in/cdn_lib/v13/lib/img/landingpage/updated_landingpage/webp_images/hero_illustration_v2.webp?w=700&dpr=3.0"
                         alt="A Image"
@@ -118,24 +163,24 @@ const HomeBroucher = () => {
 
             </Box>
 
-            <Box display='flex' bottom={-50} width='93%' height='180px' position='absolute' justifyContent='center' alignItems='center' borderRadius={5} backgroundColor='#E6EDF3'>
+            <Box display='flex' top='78%' width='93%' border='10px solid #E6EDF3' position='absolute' justifyContent='center' alignItems='center' borderRadius={5} backgroundColor='white'>
                 <Box display='flex' backgroundColor='white' width='97%' height='80%' borderRadius={3}>
                     <Grid container>
-                        <Grid item sm={3} borderRadius='1px black solid' sx={{ display: 'flex', width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', color: 'rgb(0, 57, 103)' }}>
-                            <Box display='flex' alignItems='end' ><Typography fontWeight='bold' fontSize={35}>3.2</Typography><Typography marginLeft={1} marginBottom='5px' fontSize={23}>Crore +</Typography></Box>
-                            <Typography>Students on Curiosity</Typography>
+                        <Grid item lg={3} md={3}  sm={6} xs={6} borderRadius='1px black solid' sx={{ display: 'flex', width: '100%', height:'170px', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', color: 'rgb(0, 57, 103)' }}>
+                            <Box display='flex' alignItems='end' ><Typography fontWeight='bold' fontSize={{ xs: 25, sm: 30, md: 35 }}>3.2</Typography><Typography marginLeft={1} marginBottom='5px' fontSize={{ xs: 16, sm: 23, md: 23 }}>Crore +</Typography></Box>
+                            <Typography justifyContent='center' display='flex' align="center" fontSize={{xs:16, md: 17}}>Students on Curiosity</Typography>
                         </Grid>
-                        <Grid item sm={3} borderRadius='1px black solid' sx={{ display: 'flex', width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', color: 'rgb(0, 57, 103)' }}>
-                            <Box display='flex' alignItems='end' ><Typography fontWeight='bold' fontSize={35}>4.7</Typography><Typography marginLeft={1} marginBottom='5px' fontSize={23}>/5</Typography></Box>
-                            <Typography>150k+ ratings By Students</Typography>
+                        <Grid item lg={3} md={3} sm={6} xs={6} borderRadius='1px black solid' sx={{ display: 'flex', width: '100%', height:'170px', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', color: 'rgb(0, 57, 103)' }}>
+                            <Box display='flex' alignItems='end' ><Typography fontWeight='bold' fontSize={{ xs: 25, sm: 30, md: 35 }}>4.7</Typography><Typography marginLeft={1} marginBottom='5px' fontSize={{ xs: 16, sm: 23, md: 23 }}>/5</Typography></Box>
+                            <Typography justifyContent='center' display='flex' align="center" fontSize={{xs:16, md: 17}}>150k+ ratings By Students</Typography>
                         </Grid>
-                        <Grid item sm={3} borderRadius='1px black solid' sx={{ display: 'flex', width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', color: 'rgb(0, 57, 103)' }}>
-                            <Box display='flex' alignItems='end'><Typography fontWeight='bold' fontSize={35}>55</Typography><Typography marginLeft={1} marginBottom='5px' fontSize={23}>Crore +</Typography></Box>
-                            <Typography>Docs & Videos viewed</Typography>
+                        <Grid item lg={3} md={3} sm={6} xs={6} borderRadius='1px black solid' sx={{ display: 'flex', width: '100%', height:'170px', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', color: 'rgb(0, 57, 103)' }}>
+                            <Box display='flex' alignItems='end'><Typography fontWeight='bold' fontSize={{ xs: 25, sm: 30, md: 35 }}>55</Typography><Typography marginLeft={1} marginBottom='5px' fontSize={{ xs: 16, sm: 23, md: 23 }}>Crore +</Typography></Box>
+                            <Typography justifyContent='center' display='flex' align="center" fontSize={{xs:16, md: 17}}>Docs & Videos viewed</Typography>
                         </Grid>
-                        <Grid item sm={3} borderRadius='1px black solid' sx={{ display: 'flex', width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', color: 'rgb(0, 57, 103)' }}>
-                            <Box display='flex' alignItems='end' ><Typography fontWeight='bold' fontSize={35}>280</Typography><Typography marginLeft={1} marginBottom='5px' fontSize={23}>Crore +</Typography></Box>
-                            <Typography>Students on Curiosity</Typography>
+                        <Grid item lg={3} md={3} sm={6} xs={6} borderRadius='1px black solid' sx={{ display: 'flex', width: '100%', height:'170px', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', color: 'rgb(0, 57, 103)' }}>
+                            <Box display='flex' alignItems='end' ><Typography fontWeight='bold' fontSize={{ xs: 25, sm: 30, md: 35 }}>280</Typography><Typography marginLeft={1} marginBottom='5px' fontSize={{ xs: 16, sm: 23, md: 23 }}>Crore +</Typography></Box>
+                            <Typography justifyContent='center' display='flex' align="center" fontSize={{xs:16, md: 17}}>Students on Curiosity</Typography>
                         </Grid>
                     </Grid>
                 </Box>

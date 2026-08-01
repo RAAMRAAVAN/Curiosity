@@ -109,6 +109,9 @@ const LoginModal = ({ open, onClose, onSignupClick }) => {
           borderRadius: 5,
           overflow: "hidden",
           boxShadow: "0 30px 80px rgba(0,0,0,.25)",
+          display: "flex",
+          width: "100vw",
+          margin: '10px',
         },
       }}
     >
