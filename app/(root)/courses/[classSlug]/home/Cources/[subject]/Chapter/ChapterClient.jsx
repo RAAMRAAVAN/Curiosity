@@ -175,7 +175,7 @@ const Chapter = ({ chapters, setChapters, loading, subject, fetchChapters }) => 
   }
 
   return (<>
-    <Box width='100%' margin={5}>
+    <Box width='100%' marginY={3}>
       {chapters.map((chapter) => {
         return (
           <Accordion sx={{ boxShadow: 3, position: 'relative' }} key={chapter.id}>

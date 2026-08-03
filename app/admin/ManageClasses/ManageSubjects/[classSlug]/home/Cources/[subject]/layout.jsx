@@ -34,9 +34,11 @@ export default function Layout({ children }) {
   const pathname = usePathname();
   const params = useParams();
   const classSlug = params?.classSlug;
+  const subjectSlug = params?.subject;
   const [openLogin, setOpenLogin] = useState(false);
   const [openSignup, setOpenSignup] = useState(false);
   const [authDetails, setAuthDetails] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
@@ -102,7 +104,28 @@ export default function Layout({ children }) {
   };
 
   useEffect(() => {
-    refreshAuthDetails();
+    if (typeof window === "undefined") return;
+
+    const auth = sessionStorage.getItem("authDetails");
+    if (!auth) {
+      router.replace("/admin");
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(auth);
+      if (!parsed?.loggedIn) {
+        router.replace("/admin");
+        return;
+      }
+
+      setAuthDetails(parsed);
+      setAuthChecked(true);
+    } catch (err) {
+      sessionStorage.removeItem("authDetails");
+      router.replace("/admin");
+      return;
+    }
 
     const handleStorage = (event) => {
       if (event.key === "authDetails") {
@@ -112,22 +135,23 @@ export default function Layout({ children }) {
 
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, []);
+  }, [router]);
 
   const pages = [
     { page: "View Subjects", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home`, disabled: true },
+    { page: "Chapters", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home/Cources/${subjectSlug}`, disabled: true },
     { page: "Explore More Courses", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/ExploreCources`, disabled: true },
-    { page: "My Unattempted Tests", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/tests`, disabled: false },
   ];
 
   const pages2 = [
-    { page: "Pricing Plans", link: `/courses/${classSlug}/home`, disabled: false },
-    { page: "Curiosity Store", link: `/courses/${classSlug}/home`, disabled: false },
-    { page: "Emoney", link: `/courses/${classSlug}/home`, disabled: false },
-    { page: "Upgrade to Infinity", link: `/courses/${classSlug}/home`, disabled: false },
+    { page: "Assessments", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home/Cources/${subjectSlug}/Assessments`, disabled: true },
+    { page: "Curiosity Store", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home`, disabled: false },
+    { page: "Emoney", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home`, disabled: false },
+    { page: "Upgrade to Infinity", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home`, disabled: false },
   ];
 
   return (
+    !authChecked ? null : (
     <Box sx={{ display: "flex", width: "100%", minHeight: "100vh" }}>
       {!isMdUp && (
         <Box sx={{ position: "fixed", top: 16, left: 16, zIndex: theme.zIndex.drawer + 10 }}>
@@ -305,9 +329,6 @@ export default function Layout({ children }) {
         sx={{
           flexGrow: 1,
           width: "100%",
-          ml: isMdUp ? (collapsed ? "80px" : "260px") : 0,
-          pt: isMdUp ? 0 : 8,
-          px: { xs: 2, sm: 3, md: 4 },
           pb: 4,
           minHeight: "100vh",
         }}
@@ -329,5 +350,6 @@ export default function Layout({ children }) {
         onLoginClick={handleSignInClick}
       />
     </Box>
+    )
   );
 }

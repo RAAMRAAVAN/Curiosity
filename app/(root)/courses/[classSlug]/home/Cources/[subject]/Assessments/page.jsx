@@ -74,7 +74,8 @@ const Assessments = () => {
                 display="flex"
                 alignItems="center"
                 gap={3}
-                p={3}
+                // p={3}
+                marginTop={2}
             >
                 <Image
                     src={subject?.icon || "/Courses/OIP.webp"}

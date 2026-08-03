@@ -1,17 +1,14 @@
 'use client'
 import * as React from 'react';
 import Accordion from '@mui/material/Accordion';
-import AccordionActions from '@mui/material/AccordionActions';
 import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
 import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Button from '@mui/material/Button';
-import { Avatar, Box, Fab, Fade, IconButton, Modal, TextField } from '@mui/material';
-import { deepOrange } from '@mui/material/colors';
+import { Avatar, Box, Fade, Fab, IconButton, Menu, MenuItem, Modal, TextField, Tooltip, ListItemIcon, ListItemText } from '@mui/material';
 import Image from 'next/image';
 import { useEffect } from 'react';
-import { Close, Edit, NotesOutlined, PictureAsPdf, VideoSettings } from '@mui/icons-material';
+import { Add, Close, Edit, NoteAdd, PictureAsPdf, Slideshow, VideoLibrary } from '@mui/icons-material';
 import { useState } from 'react';
 import EditChapter from './EditChapter';
 import Notes from './Notes/Notes';
@@ -42,6 +39,8 @@ const Chapter = ({ chapters, setChapters, loading, subject, fetchChapters }) => 
   const [openAddPPT, setopenAddPPT] = useState(false);
   const [openAddVideo, setopenAddVideo] = useState(false);
   const [selectedChapter, setSelectedChapter] = useState(null);
+  const [actionMenuAnchor, setActionMenuAnchor] = useState(null);
+  const [expandedChapterId, setExpandedChapterId] = useState(null);
   const [formData, setFormData] = useState({
     chapterNumber: "",
     chapterName: "",
@@ -84,52 +83,73 @@ const Chapter = ({ chapters, setChapters, loading, subject, fetchChapters }) => 
     setOpenEdit(true);
   };
 
-  const handleopenAddNotes = (chapter) => {
+  const handleopenAddNotes = (chapter = selectedChapter) => {
+    if (!chapter) return;
     setSelectedChapter(chapter);
 
     setFormData_AddNotes({
       chapterNumber: chapter.displayOrder,
       chapterName: chapter.chapterName,
-      chapterID: chapter.id
+      chapterID: chapter.id,
     });
 
     setopenAddNotes(true);
+    setActionMenuAnchor(null);
   };
 
-  const handleopenAddPDF = (chapter) => {
+  const handleopenAddPDF = (chapter = selectedChapter) => {
+    if (!chapter) return;
     setSelectedChapter(chapter);
 
     setFormData_AddPDF({
       chapterNumber: chapter.displayOrder,
       chapterName: chapter.chapterName,
-      chapterID: chapter.id
+      chapterID: chapter.id,
     });
 
     setopenAddPDF(true);
+    setActionMenuAnchor(null);
   };
 
-  const handleopenAddPPT = (chapter) => {
+  const handleopenAddPPT = (chapter = selectedChapter) => {
+    if (!chapter) return;
     setSelectedChapter(chapter);
 
-    setFormData_AddPDF({
+    setFormData_AddPPT({
       chapterNumber: chapter.displayOrder,
       chapterName: chapter.chapterName,
-      chapterID: chapter.id
+      chapterID: chapter.id,
     });
 
     setopenAddPPT(true);
+    setActionMenuAnchor(null);
   };
 
-  const handleopenAddVideo = (chapter) => {
+  const handleopenAddVideo = (chapter = selectedChapter) => {
+    if (!chapter) return;
     setSelectedChapter(chapter);
 
-    setFormData_AddPDF({
+    setFormData_AddVideo({
       chapterNumber: chapter.displayOrder,
       chapterName: chapter.chapterName,
-      chapterID: chapter.id
+      chapterID: chapter.id,
     });
 
     setopenAddVideo(true);
+    setActionMenuAnchor(null);
+  };
+
+  const handleActionButtonClick = (event, chapter) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setSelectedChapter(chapter);
+    setActionMenuAnchor(event.currentTarget);
+  };
+
+  const handleActionMenuClose = (event) => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    setActionMenuAnchor(null);
   };
 
   const handleCloseEdit = () => {
@@ -172,21 +192,53 @@ const Chapter = ({ chapters, setChapters, loading, subject, fetchChapters }) => 
 
   }
 
-  return (<>
-    <Box width='100%' margin={5}>
-      {chapters.map((chapter) => {
-        return (<>
-          <Accordion sx={{ boxShadow: 3, position: 'relative', width: '100%', margin: '0 auto' }} key={chapter.id}>
+  return (
+    <>
+      <Box width='100%' marginY={5}>
+        {chapters.map((chapter) => (
+          <Accordion
+            expanded={expandedChapterId === chapter.id}
+            onChange={(event, isExpanded) => {
+              if (actionMenuAnchor) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+              }
+              setExpandedChapterId(isExpanded ? chapter.id : null);
+              if (isExpanded) {
+                setSelectedChapter(chapter);
+              }
+            }}
+            sx={{ boxShadow: 3, position: 'relative', width: '100%', margin: '0 auto' }}
+            key={chapter.id}
+          >
             <AccordionSummary
               expandIcon={<ExpandMoreIcon />}
-              onClick={() => { setSelectedChapter(chapter) }}
+              onClick={(e) => {
+                if (actionMenuAnchor) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setActionMenuAnchor(null);
+                }
+              }}
               aria-controls={`${id}-panel1-content`}
               id={`${id}-panel1-header`}
-              sx={{ ":hover": { backgroundColor: '#fbfbfb' }, borderRadius: 2 }}
+              sx={{
+                ":hover": { backgroundColor: '#fbfbfb' },
+                borderRadius: 2,
+                minHeight: 90,
+                '.MuiAccordionSummary-content': {
+                  alignItems: 'center',
+                },
+                '.MuiAccordionSummary-expandIconWrapper': {
+                  display: { xs: 'none', sm: 'none', md: 'none', lg: 'flex' },
+                },
+              }}
             >
-              <Box display='flex' width='100%' justifyContent='space-between' >
+              <Box display='flex' width='100%' justifyContent='space-between' position='relative'>
                 <Box display='flex'>
-                  <Avatar sx={{ bgcolor: '#fbfbfb', color: 'black', padding: '5px', display: 'flex', height: '70px', width: '70px', flexDirection: 'column', border: '4px lightGray solid' }}> <Typography fontSize={12} marginTop={1} fontWeight='bold'>Chapter</Typography>
+                  <Avatar sx={{ bgcolor: '#fbfbfb', color: 'black', padding: '5px', display: 'flex', height: '70px', width: '70px', flexDirection: 'column', border: '4px lightGray solid' }}>
+                    <Typography fontSize={12} marginTop={1} fontWeight='bold'>Chapter</Typography>
                     <Typography fontSize={12} fontWeight='bold'>{chapter.displayOrder}</Typography>
                   </Avatar>
 
@@ -240,97 +292,95 @@ const Chapter = ({ chapters, setChapters, loading, subject, fetchChapters }) => 
                     </Fab>
                   </Box>
                 </Box>
-                {/* Notes */}
-                <Box
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleopenAddNotes(chapter);
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  sx={{ position: 'absolute', top: '20%', right: '6%' }}
-                >
-                  <Fab sx={{
-                    bgcolor: "orange",
-                    color: "#fff",
-                    "&:hover": {
-                      bgcolor: "#f57c00", // Darker orange on hover
-                    },
-                  }} aria-label="edit">
-                    <NotesOutlined />
-                  </Fab>
-                </Box>
-
-                {/* PDF */}
-                <Box
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleopenAddPDF(chapter);
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  sx={{ position: 'absolute', top: '20%', right: '14%' }}
-                >
-                  <Fab sx={{
-                    bgcolor: "#863232",
-                    color: "#fff",
-                    "&:hover": {
-                      bgcolor: "#8B2F2F", // Darker orange on hover
-                    },
-                  }} aria-label="edit">
-                    <PictureAsPdf />
-                  </Fab>
-                </Box>
-
-                {/* PPT */}
-                <Box
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleopenAddPPT(chapter);
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  sx={{ position: 'absolute', top: '20%', right: '22%' }}
-                >
-                  <Fab sx={{
-                    bgcolor: "#863232",
-                    color: "#fff",
-                    "&:hover": {
-                      bgcolor: "#8B2F2F", // Darker orange on hover
-                    },
-                  }} aria-label="edit">
-                    {/* <PictureAsPdf /> */}
-                    <Box display='flex' width={30} height={30} sx={{ borderRadius: '50%' }}><Image src='/ppt2.gif' width={30} display='flex' sx={{ borderRadius: '50%' }} height={30} /></Box>
-                  </Fab>
-                </Box>
-
-
-                {/* Videos */}
-                <Box
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleopenAddVideo(chapter);
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  sx={{ position: 'absolute', top: '20%', right: '30%' }}
-                >
-                  <Fab sx={{
-                    bgcolor: "#863232",
-                    color: "#fff",
-                    "&:hover": {
-                      bgcolor: "#8B2F2F", // Darker orange on hover
-                    },
-                  }} aria-label="edit">
-                    <VideoSettings />
-                  </Fab>
+                <Box display="flex" alignItems="center" justifyContent="center" sx={{ minWidth: 140 }} position="absolute" right={{ xs: -55, sm: 16, md: -30 }} top={{ xs: 26, sm: 18, md: 15 }}>
+                  <Tooltip title="Add Content" arrow>
+                    <IconButton
+                      size="large"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleActionButtonClick(e, chapter);
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      sx={{
+                        bgcolor: "primary.main",
+                        color: "#fff",
+                        boxShadow: 3,
+                        '&:hover': {
+                          bgcolor: 'primary.dark',
+                        },
+                      }}
+                      aria-label="add content"
+                    >
+                      <Add />
+                    </IconButton>
+                  </Tooltip>
                 </Box>
               </Box>
             </AccordionSummary>
-            {/* Notes */}
             <Notes chapterContents={chapter.contents} fetchChapters={fetchChapters} />
           </Accordion>
-          </>)
-      })}
+        ))}
 
-    </Box>
-    {/* <EditChapter openEdit={openEdit} setOpenEdit={setOpenEdit}/> */}
+        <Menu
+          anchorEl={actionMenuAnchor}
+          open={Boolean(actionMenuAnchor)}
+          onClose={handleActionMenuClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+          keepMounted
+          PaperProps={{ sx: { minWidth: 200, borderRadius: 3, boxShadow: 5 } }}
+        >
+          <MenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              handleopenAddNotes();
+            }}
+            sx={{ py: 1.5 }}
+          >
+            <ListItemIcon sx={{ minWidth: 40, color: 'primary.main' }}>
+              <NoteAdd fontSize="medium" />
+            </ListItemIcon>
+            <ListItemText primary="Add Notes" primaryTypographyProps={{ fontWeight: 600 }} />
+          </MenuItem>
+          <MenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              handleopenAddPDF();
+            }}
+            sx={{ py: 1.5 }}
+          >
+            <ListItemIcon sx={{ minWidth: 40, color: 'error.main' }}>
+              <PictureAsPdf fontSize="medium" />
+            </ListItemIcon>
+            <ListItemText primary="Add PDF" primaryTypographyProps={{ fontWeight: 600 }} />
+          </MenuItem>
+          <MenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              handleopenAddPPT();
+            }}
+            sx={{ py: 1.5 }}
+          >
+            <ListItemIcon sx={{ minWidth: 40, color: 'secondary.main' }}>
+              <Slideshow fontSize="medium" />
+            </ListItemIcon>
+            <ListItemText primary="Add PPT" primaryTypographyProps={{ fontWeight: 600 }} />
+          </MenuItem>
+          <MenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              handleopenAddVideo();
+            }}
+            sx={{ py: 1.5 }}
+          >
+            <ListItemIcon sx={{ minWidth: 40, color: 'success.main' }}>
+              <VideoLibrary fontSize="medium" />
+            </ListItemIcon>
+            <ListItemText primary="Add Video" primaryTypographyProps={{ fontWeight: 600 }} />
+          </MenuItem>
+        </Menu>
+      </Box>
+      {/* <EditChapter openEdit={openEdit} setOpenEdit={setOpenEdit}/> */}
     <Modal
       open={openEdit}
       onClose={handleCloseEdit}

@@ -63,14 +63,14 @@ const HomePage = () => {
 
   return (
     <Box display="flex" width="100%">
-      <Box display="flex" paddingX={3} marginTop={5} flexDirection="column" width="100%">
+      <Box display="flex" paddingX={{ xs: 0, sm: 1, md: 2, lg: 3 }} marginTop={5} flexDirection="column" width="100%">
         <Typography fontWeight="bold" fontSize={24}>Hi {user?.name || "User"}!</Typography>
         <Typography fontSize={15}>Let's get started for {classDetails?.className} with Curiosity</Typography>
 
 
 
         <Box display="flex" width="100%" flexDirection="column">
-          <Grid container marginTop={2} marginBottom={5} display="flex" maxWidth="800px">
+          <Grid container marginTop={{ xs: 0, sm: 1, md: 2, lg: 2 }} marginBottom={{ xs: 1, sm: 2, md: 3, lg: 5 }} display="flex" maxWidth="800px" spacing={2}>
             <Grid item xs={2}><Box display="flex"><Chip label="All Cources" sx={{ display: "flex", width: "120px" }} borderRadius={3} variant="outlined" onClick={handleClick} /></Box></Grid>
             <Grid item xs={2}><Box display="flex"><Chip label="Main Subjects" sx={{ display: "flex", width: "120px" }} borderRadius={3} variant="outlined" onClick={handleClick} /></Box></Grid>
             <Grid item xs={2}><Box display="flex"><Chip label="Grammar" sx={{ display: "flex", width: "120px" }} borderRadius={3} variant="outlined" onClick={handleClick} /></Box></Grid>

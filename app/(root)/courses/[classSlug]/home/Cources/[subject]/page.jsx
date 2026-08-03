@@ -144,7 +144,7 @@ const Subject = () => {
             <Box
                 display="flex"
                 width="100%"
-                mt={3}
+                marginTop={{xs:0, md:2}}
                 flexDirection="column"
             >
 
@@ -152,7 +152,6 @@ const Subject = () => {
                     display="flex"
                     alignItems="center"
                     position="relative"
-                    p={3}
                     width="100%"
                 >
 
@@ -211,8 +210,9 @@ const Subject = () => {
 
                 <Box
                     display="flex"
-                    width="94%"
+                    width="100%"
                     flexDirection="column"
+                    // border='1px red solid'
                 >
 
                     <Chapter

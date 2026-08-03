@@ -212,15 +212,15 @@ const Subject = () => {
             <Box
                 display="flex"
                 width="100%"
-                mt={3}
+                mt={2}
                 flexDirection="column"
             >
 
                 <Box
                     display="flex"
-                    alignItems="center"
+                    alignItems={{ sm:"start", md: "center", lg: "center" }}
                     position="relative"
-                    p={3}
+                    // p={3}
                     width="100%"
                 >
 
@@ -240,17 +240,13 @@ const Subject = () => {
                     <Box
                         display="flex"
                         flexDirection="column"
-                        marginLeft={3}
+                        marginLeft={{ xs: 1, sm: 2, md: 3 }}
                     >
                         <Typography
                             fontSize={18}
                             fontWeight="bold"
                         >
-                            {subject?.subjectName} for Class{" "}
-                            {
-                                subject?.class
-                                    ?.className
-                            }
+                            {subject?.subjectName}
                         </Typography>
 
                         <Typography>
@@ -268,8 +264,8 @@ const Subject = () => {
 
                     <Box
                         position="absolute"
-                        right={30}
-                        bottom={30}
+                        right={10}
+                        bottom={10}
                     >
                         <Fab
                             variant="extended"
@@ -286,7 +282,8 @@ const Subject = () => {
 
                 <Box
                     display="flex"
-                    width="94%"
+                    width="100%"
+                    // border='1px solid #ccc'
                     flexDirection="column"
                 >
                     <Chapter
