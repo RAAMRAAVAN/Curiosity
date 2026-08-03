@@ -70,10 +70,11 @@ export async function POST(req) {
     const formData = await req.formData();
 
     const className = formData.get("className");
+    const classIdValue = formData.get("classId");
     const subjectsData = formData.get("subjects");
 
-    if (!className || !className.trim()) {
-      return ApiResponse.error("Class Name is required", 400);
+    if (!classIdValue && (!className || !className.trim())) {
+      return ApiResponse.error("Class ID or Class Name is required", 400);
     }
 
     if (!subjectsData) {
@@ -92,18 +93,39 @@ export async function POST(req) {
       return ApiResponse.error("Subjects array is required", 400);
     }
 
-    // Find Class
-    const classData = await prisma.class.findUnique({
-      where: {
-        className: className.trim(),
-      },
-    });
+    let classData;
+    let classId;
 
-    if (!classData) {
-      return ApiResponse.error("Invalid Class", 404);
+    if (classIdValue) {
+      const classIdString = classIdValue.toString().trim();
+      if (!classIdString) {
+        return ApiResponse.error("Invalid Class ID", 400);
+      }
+
+      classData = await prisma.class.findUnique({
+        where: {
+          id: classIdString,
+        },
+      });
+
+      if (classData) {
+        classId = classData.id;
+      }
     }
 
-    const classId = classData.id;
+    if (!classData) {
+      classData = await prisma.class.findUnique({
+        where: {
+          className: className.trim(),
+        },
+      });
+
+      if (!classData) {
+        return ApiResponse.error("Invalid Class", 404);
+      }
+
+      classId = classData.id;
+    }
 
     // Upload images
     const processedSubjects = [];

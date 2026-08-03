@@ -1,8 +1,8 @@
 'use client';
 
-import { ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useParams } from "next/navigation";
+import { usePathname, useParams, useRouter } from "next/navigation";
 import {
   Box,
   Divider,
@@ -14,44 +14,38 @@ import {
   Typography,
 } from "@mui/material";
 import { Inbox, Mail } from "@mui/icons-material";
-import LoginModal from "@/app/(components)/MyProfile/LoginModal";
 import Logout from "@/app/(components)/MyProfile/Logout";
 
 export default function Layout({ children }) {
   const pathname = usePathname();
+  const router = useRouter();
   const params = useParams();
   const classSlug = params?.classSlug;
-  const [openLogin, setOpenLogin] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const checkAuth = () => {
-      const auth = sessionStorage.getItem("authDetails");
-      if (!auth) {
-        setOpenLogin(true);
-        return false;
-      }
+    const auth = sessionStorage.getItem("authDetails");
+    if (!auth) {
+      router.replace("/admin");
+      return;
+    }
 
+    try {
       const parsed = JSON.parse(auth);
       if (!parsed?.loggedIn) {
-        setOpenLogin(true);
-        return false;
+        router.replace("/admin");
+        return;
       }
+    } catch (error) {
+      sessionStorage.removeItem("authDetails");
+      router.replace("/admin");
+      return;
+    }
 
-      return true;
-    };
-
-    checkAuth();
-
-    const intervalId = window.setInterval(() => {
-      if (!checkAuth()) {
-        setOpenLogin(true);
-      }
-    }, 30000);
-
-    return () => window.clearInterval(intervalId);
-  }, []);
+    setAuthChecked(true);
+  }, [router]);
 
   const pages = [
     { page: "View Subjects", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home`, disabled: false  },
@@ -65,6 +59,10 @@ export default function Layout({ children }) {
     { page: "Emoney", link: `/courses/${classSlug}/home`, disabled: true },
     { page: "Upgrade to Infinity", link: `/courses/${classSlug}/home`, disabled: true },
   ];
+
+  if (!authChecked) {
+    return null;
+  }
 
   return (
     <Box display="flex" width="100vw">
@@ -157,7 +155,6 @@ export default function Layout({ children }) {
           <Logout />
         </Box>
       </Box>
-      <LoginModal open={openLogin} onClose={() => setOpenLogin(false)} onSignupClick={() => setOpenLogin(false)} />
     </Box>
   );
 }

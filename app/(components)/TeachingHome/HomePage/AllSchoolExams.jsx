@@ -81,7 +81,7 @@ const AllSchoolExams = () => {
                 <Grid item lg={2.4} md={2.4} sm={4} xs={6} padding={1} key={item.id}>
                   <Button
                     fullWidth
-                    onClick={() => {handleNavigation(`/courses/${buildClassSlug(item.className)}/home`); dispatch(setDefaultClass(item.className))}}
+                    onClick={() => {handleNavigation(`/courses/${item.id}/home`); dispatch(setDefaultClass(item.id))}}
                     sx={{
                       boxShadow: "5px 5px 10px rgba(0,0,0,0.4)",
                       borderRadius: 1,

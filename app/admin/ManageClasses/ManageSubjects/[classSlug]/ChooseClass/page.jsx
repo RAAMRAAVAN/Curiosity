@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import {
   fetchClasses,
@@ -21,9 +21,19 @@ import { buildClassSlug } from "@/lib/classSlug";
 const ChooseClass = () => {
   const dispatch = useDispatch();
   const router = useRouter();
+  const params = useSearchParams();
+  const classSlug = params?.classSlug;
 
   const classes = useSelector((state) => state.classes.items || []);
 
+  const fetchClassDetails = async () => {
+    try {
+      const res = await fetch(`/api/classes`);
+      const data = await res.json();  }
+    catch (error) {
+      console.error("Error fetching class details:", error);
+    }
+  }
   useEffect(() => {
     dispatch(fetchClasses());
   }, [dispatch]);
@@ -37,7 +47,7 @@ const ChooseClass = () => {
   };
 
   return (
-    <Box sx={{ display: "flex", mt: 4 }}>
+    <Box sx={{ display: "flex", mt: 4 }} width='100%'>
       <Box sx={{ px: 3, display: "flex", width: "100%", flexDirection: "column" }}>
         <Typography fontWeight="bold" fontSize={24}>
           Choose Your Class

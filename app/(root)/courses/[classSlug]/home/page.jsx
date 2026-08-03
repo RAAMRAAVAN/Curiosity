@@ -14,6 +14,7 @@ import {
 } from "@/redux/features/classSlice";
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
+import ComingSoon from "@/app/(components)/ComingSoon";
 
 const HomePage = () => {
   const dispatch = useDispatch();
@@ -25,6 +26,10 @@ const HomePage = () => {
   const resolvedClassName = matchedClass?.className || defaultClass || classSlug || "1";
   const [loading, setLoading] = useState(false);
   const [classDetails, setClassDetails] = useState(null);
+  const [open, setOpen] = useState(false);
+  const handleClose = () => {
+    setOpen(false);
+  }
 
   const GetClassDetails = async () => {
     setLoading(true);
@@ -44,7 +49,9 @@ const HomePage = () => {
     GetClassDetails();
   }, [dispatch]);
 
-  const handleClick = () => { };
+  const handleClick = () => { 
+    setOpen(true);
+  };
 
   if (loading) {
     return (
@@ -76,6 +83,7 @@ const HomePage = () => {
           <Cources defaultClass={classDetails} />
         </Box>
       </Box>
+      <ComingSoon open={open} handleClose={handleClose} />
     </Box>
   );
 };

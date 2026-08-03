@@ -2,13 +2,11 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import CardActionArea from '@mui/material/CardActionArea';
-import CardActions from '@mui/material/CardActions';
 
 const CourseCard = ({image, subject, Class}) => {
   return (
-    <Card sx={{ width:'100%'}}>
+    <Card sx={{ width:'100%', height: '100%', borderRadius: 3, boxShadow: 2 }}>
       <CardActionArea>
         <CardMedia
           component="img"
@@ -18,18 +16,10 @@ const CourseCard = ({image, subject, Class}) => {
         />
         <CardContent>
           <Typography gutterBottom component="div" noWrap>
-            {subject} for Class {Class}
+            {subject}
           </Typography>
-          {/* <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            
-          </Typography> */}
         </CardContent>
       </CardActionArea>
-      {/* <CardActions>
-        <Button size="small" color="primary">
-          Share
-        </Button>
-      </CardActions> */}
     </Card>
   );
 }

@@ -22,14 +22,18 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setSelectedSubject } from "@/redux/features/subjectSlice";
 import { selectDefaultClass } from "@/redux/features/classSlice";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import CourseCard from "./CourceCard";
 
-const Cources = ({defaultClass}) => {
+const Cources = ({ defaultClass }) => {
   const [subjects, setSubjects] = useState([]);
-  const dispatch = useDispatch();
+  const [className, setClassName] = useState("");
+  const [classId, setClassId] = useState(defaultClass);
 
+  const dispatch = useDispatch();
   const router = useRouter();
+  const params = useParams();
+  const classSlug = params?.classSlug;
 
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,16 +47,17 @@ const Cources = ({defaultClass}) => {
 
   // const defaultClass = useSelector(selectDefaultClass);
 
-  const loadSubjects = async () => {
+  const loadSubjects = async (classIdToLoad) => {
+    if (!classIdToLoad) return;
+
     try {
       const res = await fetch(
-        `/api/subjects?classID=${defaultClass}`
+        `/api/subjects?classID=${classIdToLoad}`
       );
 
       const result = await res.json();
 
-      if (!result.success)
-        throw new Error(result.message);
+      if (!result.success) throw new Error(result.message);
 
       setSubjects(result.data || []);
     } catch (err) {
@@ -60,9 +65,36 @@ const Cources = ({defaultClass}) => {
     }
   };
 
+  const loadClassDetails = async (slug) => {
+    if (!slug) return;
+
+    try {
+      const res = await fetch(`/api/classes/${slug}`);
+      const data = await res.json();
+
+      if (data?.success && data?.data) {
+        setClassName(data.data.className || "");
+        setClassId(data.data.id || defaultClass);
+      }
+    } catch (err) {
+      console.error("Failed to load class details", err);
+      setClassId(defaultClass);
+    }
+  };
+
   useEffect(() => {
-    if (defaultClass) loadSubjects();
-  }, [defaultClass]);
+    if (classSlug) {
+      loadClassDetails(classSlug);
+    } else if (defaultClass) {
+      setClassId(defaultClass);
+    }
+  }, [defaultClass, classSlug]);
+
+  useEffect(() => {
+    if (classId) {
+      loadSubjects(classId);
+    }
+  }, [classId]);
 
   const handleChange = (index, field, value) => {
     const updated = [...newSubjects];
@@ -92,7 +124,7 @@ const Cources = ({defaultClass}) => {
 
       const formData = new FormData();
 
-      formData.append("className", defaultClass);
+      formData.append("classId", classId);
 
       const payload = newSubjects
         .filter((s) => s.subjectName.trim())
@@ -133,7 +165,7 @@ const Cources = ({defaultClass}) => {
           },
         ]);
 
-        loadSubjects();
+        loadSubjects(classId);
       }
     } catch (err) {
       console.log(err);
@@ -159,7 +191,7 @@ const Cources = ({defaultClass}) => {
       <Box display="flex">
         <Grid container spacing={2}>
           {subjects.map((item) => (
-            <Grid item xs={3} key={item.id}>
+            <Grid item xs={3} key={item.id} marginBottom={2}>
               <Box
                 onClick={() =>
                   handleSubjectClick(item)
@@ -167,6 +199,8 @@ const Cources = ({defaultClass}) => {
                 sx={{
                   cursor: "pointer",
                   width: "100%",
+                  height: '100%',
+                  // border: "1px solid #e0e0e0",
                 }}
               >
 
@@ -182,13 +216,14 @@ const Cources = ({defaultClass}) => {
             </Grid>
           ))}
 
-          <Grid item xs={3}>
+          <Grid item xs={3} marginBottom={2}>
             <Box
               display="flex"
               flexDirection="column"
               boxShadow={2}
               width="100%"
-              height="250px"
+              height="100%"
+              minHeight={300}
               borderRadius={3}
               justifyContent="center"
               alignItems="center"
@@ -221,7 +256,7 @@ const Cources = ({defaultClass}) => {
         maxWidth="md"
       >
         <DialogTitle>
-          Create Subjects ({defaultClass})
+          Create Subjects for {className || defaultClass}
         </DialogTitle>
 
         <DialogContent>
