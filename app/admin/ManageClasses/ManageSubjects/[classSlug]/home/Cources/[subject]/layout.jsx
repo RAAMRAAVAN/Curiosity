@@ -144,7 +144,7 @@ export default function Layout({ children }) {
   ];
 
   const pages2 = [
-    { page: "Assessments", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home/Cources/${subjectSlug}/Assessments`, disabled: true },
+    { page: "Assessments", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home/Cources/${subjectSlug}/Assessments/${classSlug}`, disabled: true },
     { page: "Curiosity Store", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home`, disabled: false },
     { page: "Emoney", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home`, disabled: false },
     { page: "Upgrade to Infinity", link: `/admin/ManageClasses/ManageSubjects/${classSlug}/home`, disabled: false },

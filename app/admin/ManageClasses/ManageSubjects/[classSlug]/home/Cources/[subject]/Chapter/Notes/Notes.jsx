@@ -15,12 +15,17 @@ import {
 } from "@mui/material";
 
 import {
+    Assignment,
     Close,
     Delete,
+    Description,
     Edit,
+    OndemandVideo,
+    PictureAsPdf,
+    Slideshow,
+    VideoLibrary,
 } from "@mui/icons-material";
 
-import Image from "next/image";
 import EditNotes from "./EditNotes";
 import EditPDF from "../PDF/EditPDF";
 import ViewNotes from "./ViewNotes";
@@ -253,98 +258,132 @@ const Notes = ({ chapterContents, fetchChapters }) => {
 
                     >
 
-                        <Box display="flex" onClick={() => {
-                            setSelectedContent(note);
-                            setOpenView(true);
-                        }}>
-
-                            <Image
-                                src={config.image}
-                                alt={config.label}
-                                width={60}
-                                height={60}
-                                style={{
-                                    borderRadius: 8,
-                                    objectFit: "cover",
-                                }}
-                            />
-
+                        <Box
+                            sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                gap: 2,
+                                flexWrap: "wrap",
+                                width: "100%",
+                            }}
+                        >
                             <Box
-                                ml={2}
                                 display="flex"
-                                flexDirection="column"
-                                justifyContent="center"
+                                alignItems="center"
+                                flex="1 1 auto"
+                                minWidth={0}
+                                sx={{ cursor: "pointer" }}
+                                onClick={() => {
+                                    setSelectedContent(note);
+                                    setOpenView(true);
+                                }}
                             >
-
-                                <Typography
-                                    fontSize={18}
-                                    fontWeight="bold"
+                                <Box
+                                    sx={{
+                                        width: 60,
+                                        height: 60,
+                                        borderRadius: 2,
+                                        bgcolor: "rgba(25, 118, 210, 0.08)",
+                                        display: "flex",
+                                        justifyContent: "center",
+                                        alignItems: "center",
+                                    }}
                                 >
-                                    {note.title}
-                                </Typography>
+                                    {note.type === "NOTE" && <Assignment sx={{ fontSize: 32, color: "#1565c0" }} />}
+                                    {note.type === "VIDEO" && <OndemandVideo sx={{ fontSize: 32, color: "#d32f2f" }} />}
+                                    {note.type === "PDF" && <PictureAsPdf sx={{ fontSize: 32, color: "#7b1fa2" }} />}
+                                    {note.type === "PPT" && <Slideshow sx={{ fontSize: 32, color: "#f57c00" }} />}
+                                    {note.type === "PREVIOUS_PAPER" && <Description sx={{ fontSize: 32, color: "#2e7d32" }} />}
+                                    {!["NOTE","VIDEO","PDF","PPT","PREVIOUS_PAPER"].includes(note.type) && <VideoLibrary sx={{ fontSize: 32, color: "#1976d2" }} />}
+                                </Box>
 
-                                <Typography
-                                    fontSize={15}
-                                    color="gray"
+                                <Box
+                                    ml={2}
+                                    display="flex"
+                                    flexDirection="column"
+                                    justifyContent="center"
+                                    minWidth={0}
                                 >
-                                    {config.label}
-                                </Typography>
+                                    <Typography
+                                        fontSize={{ xs: 16, sm: 18 }}
+                                        fontWeight="bold"
+                                        noWrap
+                                    >
+                                        {note.title}
+                                    </Typography>
 
+                                    <Typography
+                                        fontSize={{ xs: 13, sm: 15 }}
+                                        color="gray"
+                                        noWrap
+                                    >
+                                        {config.label}
+                                    </Typography>
+                                </Box>
                             </Box>
 
-                        </Box>
-
-                        <Box
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                switch (note.type) {
-                                    case 'NOTE': handleOpenEdit(note);
-                                        break;
-                                    case 'PDF': handleOpenEditPDF(note);
-                                        break;
-                                    case 'PPT': handleOpenEditPPT(note);
-                                        break;
-                                    case 'VIDEO': handleOpenEditVideo(note);
-                                        break;
-                                }
-
-                            }}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            sx={{
-                                position: "absolute",
-                                top: "20%",
-                                right: "12%",
-                            }}
-                        >
-                            <Fab
-                                color="secondary"
-                                size="small"
-                            >
-                                <Edit />
-                            </Fab>
-                        </Box>
-
-                        <Box
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenDelete(note);
-                            }}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            sx={{
-                                position: "absolute",
-                                top: "20%",
-                                right: "6%",
-                            }}
-                        >
-                            <Fab
-                                size="small"
+                            <Box
                                 sx={{
-                                    bgcolor: "red",
-                                    color: "#fff",
+                                    display: "flex",
+                                    gap: { xs: 1, sm: 1.5 },
+                                    alignItems: "center",
+                                    flexShrink: 0,
                                 }}
                             >
-                                <Delete />
-                            </Fab>
+                                <Button
+                                    color="secondary"
+                                    variant="outlined"
+                                    size="small"
+                                    startIcon={<Edit />}
+                                    sx={{
+                                        textTransform: "none",
+                                        fontWeight: 600,
+                                        minWidth: { xs: 38, sm: 90 },
+                                        px: { xs: 0.75, sm: 1.5 },
+                                        height: { xs: 34, sm: 36 },
+                                    }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        switch (note.type) {
+                                            case 'NOTE': handleOpenEdit(note);
+                                                break;
+                                            case 'PDF': handleOpenEditPDF(note);
+                                                break;
+                                            case 'PPT': handleOpenEditPPT(note);
+                                                break;
+                                            case 'VIDEO': handleOpenEditVideo(note);
+                                                break;
+                                        }
+                                    }}
+                                >
+                                    <Typography sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                                        Edit
+                                    </Typography>
+                                </Button>
+
+                                <Button
+                                    color="error"
+                                    variant="contained"
+                                    size="small"
+                                    startIcon={<Delete />}
+                                    sx={{
+                                        textTransform: "none",
+                                        fontWeight: 600,
+                                        minWidth: { xs: 38, sm: 94 },
+                                        px: { xs: 0.75, sm: 1.5 },
+                                        height: { xs: 34, sm: 36 },
+                                    }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenDelete(note);
+                                    }}
+                                >
+                                    <Typography sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                                        Delete
+                                    </Typography>
+                                </Button>
+                            </Box>
                         </Box>
 
                     </AccordionDetails>

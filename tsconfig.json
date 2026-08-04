@@ -22,6 +22,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "next.config.ts", "app/(root)/consultants/DoctorsList.jsx", "app/(components)/Navbar/Navbar.jsx", "app/(root)/consultants/ConsultantsClient.jsx", "lib/fetchData.ts", "app/admin/ManageClasses/ManageSubjects/[classSlug]/layout.jsx", "app/(root)/layout.jsx", "app/(root)/courses/[classSlug]/layout.jsx", "app/(root)/courses/[classSlug]/home/Cources/[subject]/layout.jsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "next.config.ts", "app/(root)/consultants/DoctorsList.jsx", "app/(components)/Navbar/Navbar.jsx", "app/(root)/consultants/ConsultantsClient.jsx", "lib/fetchData.ts", "app/admin/ManageClasses/ManageSubjects/[classSlug]/layout.jsx", "app/(root)/layout.jsx", "app/(root)/courses/[classSlug]/layout.jsx", "app/(root)/courses/[classSlug]/home/Cources/[subject]/layout.jsx", "app/admin/ManageClasses/ManageSubjects/[classSlug]/home/Cources/[subject]/layout.jsx"],
   "exclude": ["node_modules"]
 }

@@ -15,6 +15,8 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  IconButton,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Select,
@@ -22,7 +24,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { Add, Delete, Quiz } from '@mui/icons-material';
+import { AddCircleOutline, CheckCircleOutline, DeleteOutline, RadioButtonUnchecked, Quiz, SaveOutlined } from '@mui/icons-material';
 
 const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessments, loading, addQuestion, subjectId, classId, chapterId, title, setTitle, description, setDescription, type, setType, questions, setQuestions, feedback, setFeedback, editingAssessment, setEditingAssessment, open, setOpen, saving, setSaving }) => {
 
@@ -135,7 +137,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
   };
 
   return (
-    <Box sx={{ mt: 4 }}>
+    <Box sx={{ mt: 4, px: { xs: 2, sm: 3, md: 4 }, width: '100%', maxWidth: 1400, mx: 'auto' }}>
 
       {feedback ? (
         <Alert severity={feedback.severity} sx={{ mb: 2 }} onClose={() => setFeedback(null)}>
@@ -163,14 +165,14 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
       ) : (<>
         <Stack spacing={2}>
           {assessments.map((assessment) => (
-            <Card key={assessment.id} variant="outlined" border='1px solid black' sx={{backgroundColor: '#f9f9f9'}}>
+            <Card key={assessment.id} variant="outlined" border='1px solid black' sx={{ backgroundColor: '#f9f9f9' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
                   <Box>
                     <Typography fontWeight="bold">{assessment.title}</Typography>
                     <Typography variant="body2" color="text.secondary">{assessment.description || 'No description'}</Typography>
                   </Box>
-                  <Chip label={`View ${assessment.type}`} color="primary" variant="outlined" onClick={() => openEditDialog(assessment)}/>
+                  <Chip label={`View ${assessment.type}`} color="primary" variant="outlined" onClick={() => openEditDialog(assessment)} sx={{ fontWeight: 600 }} />
                 </Box>
                 <Divider sx={{ my: 1.5 }} />
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1 }}>
@@ -188,12 +190,21 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
       </>
       )}
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>{editingAssessment ? 'Edit Assessment / Assignment' : 'Create Assessment / Assignment'}</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2} sx={{ mt: 1 }}>
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { minHeight: 620, borderRadius: 3, overflow: 'hidden' } }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontWeight: 700 }}>
+          <Quiz sx={{ fontSize: 28, color: '#1a73e8' }} />
+          {editingAssessment ? 'Edit Assessment / Assignment' : 'Create Assessment'}
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: { xs: 2.5, sm: 3.5, md: 4 } }}>
+          <Stack spacing={3} sx={{ mt: 1 }}>
             <TextField
-              label="Title"
+              label="Assessment Title"
               fullWidth
               value={title}
               onChange={(event) => setTitle(event.target.value)}
@@ -202,7 +213,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
               label="Description"
               fullWidth
               multiline
-              minRows={3}
+              minRows={2}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
             />
@@ -210,64 +221,141 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
               <InputLabel>Type</InputLabel>
               <Select value={type} label="Type" onChange={(event) => setType(event.target.value)}>
                 <MenuItem value="ASSESSMENT">Assessment</MenuItem>
-                <MenuItem value="ASSIGNMENT">Assignment</MenuItem>
+                {/* <MenuItem value="ASSIGNMENT">Assignment</MenuItem> */}
               </Select>
             </FormControl>
 
             {questions.map((question, questionIndex) => (
-              <Box key={questionIndex} sx={{ border: '1px solid #e2e8f0', borderRadius: 2, p: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography fontWeight="bold">Question {questionIndex + 1}</Typography>
+              <Box
+                key={questionIndex}
+                sx={{
+                  bgcolor: "#fff",
+                  borderRadius: 4,
+                  boxShadow: "0 2px 10px rgba(0,0,0,.08)",
+                  borderLeft: "6px solid #673ab7",
+                  p: { xs: 2, sm: 3 },
+                  mb: 3,
+                  transition: ".25s",
+                  "&:hover": {
+                    boxShadow: "0 6px 18px rgba(0,0,0,.12)",
+                  },
+                }}
+              >
+                {/* Header */}
+                <Box
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  mb={2}
+                >
+                  <Typography
+                    fontWeight={700}
+                    fontSize={18}
+                    color="text.primary"
+                  >
+                    Question {questionIndex + 1}
+                  </Typography>
+
                   {questions.length > 1 && (
-                    <Button color="error" startIcon={<Delete />} onClick={() => removeQuestion(questionIndex)}>
-                      Remove
-                    </Button>
+                    <IconButton
+                      color="error"
+                      onClick={() => removeQuestion(questionIndex)}
+                    >
+                      <DeleteOutline />
+                    </IconButton>
                   )}
                 </Box>
 
+                {/* Question */}
                 <TextField
-                  label="Question"
                   fullWidth
+                  variant="outlined"
+                  placeholder="Type your question"
                   value={question.questionText}
-                  onChange={(event) => updateQuestion(questionIndex, 'questionText', event.target.value)}
-                  sx={{ mb: 2 }}
+                  onChange={(e) =>
+                    updateQuestion(questionIndex, "questionText", e.target.value)
+                  }
+                  sx={{
+                    mb: 3,
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 3,
+                    },
+                  }}
                 />
 
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Correct Option</InputLabel>
-                  <Select
-                    value={question.correctOptionIndex}
-                    label="Correct Option"
-                    onChange={(event) => updateQuestion(questionIndex, 'correctOptionIndex', event.target.value)}
-                  >
-                    <MenuItem value={0}>Option 1</MenuItem>
-                    <MenuItem value={1}>Option 2</MenuItem>
-                    <MenuItem value={2}>Option 3</MenuItem>
-                    <MenuItem value={3}>Option 4</MenuItem>
-                  </Select>
-                </FormControl>
+                <Divider sx={{ mb: 3 }} />
 
-                {question.options.map((option, optionIndex) => (
-                  <TextField
-                    key={optionIndex}
-                    label={`Option ${optionIndex + 1}`}
-                    fullWidth
-                    value={option}
-                    onChange={(event) => updateOption(questionIndex, optionIndex, event.target.value)}
-                    sx={{ mb: 1 }}
-                  />
-                ))}
+                {/* Options */}
+                <Box display="flex" flexDirection="column" gap={2}>
+                  {question.options.map((option, optionIndex) => (
+                    <TextField
+                      key={optionIndex}
+                      fullWidth
+                      variant="outlined"
+                      placeholder={`Option ${optionIndex + 1}`}
+                      value={option}
+                      onChange={(e) =>
+                        updateOption(
+                          questionIndex,
+                          optionIndex,
+                          e.target.value
+                        )
+                      }
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <IconButton
+                              size="small"
+                              sx={{ mr: 1 }}
+                              onClick={() =>
+                                updateQuestion(
+                                  questionIndex,
+                                  "correctOptionIndex",
+                                  optionIndex
+                                )
+                              }
+                            >
+                              {question.correctOptionIndex === optionIndex ? (
+                                <CheckCircleOutline color="success" />
+                              ) : (
+                                <RadioButtonUnchecked color="disabled" />
+                              )}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 3,
+                        },
+                      }}
+                    />
+                  ))}
+                </Box>
               </Box>
             ))}
 
-            <Button variant="outlined" onClick={addQuestion}>
+            <Button
+              variant="outlined"
+              startIcon={<AddCircleOutline />}
+              onClick={addQuestion}
+              sx={{ width: { xs: '100%', sm: 'auto' }, textTransform: 'none', fontWeight: 600 }}
+            >
               Add Question
             </Button>
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSubmit} disabled={saving}>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1, justifyContent: 'flex-end', p: { xs: 2, sm: 3 } }}>
+          <Button onClick={() => setOpen(false)} sx={{ textTransform: 'none', width: { xs: '100%', sm: 'auto' }, borderRadius: 3 }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<SaveOutlined />}
+            onClick={handleSubmit}
+            disabled={saving}
+            sx={{ textTransform: 'none', width: { xs: '100%', sm: 'auto' }, minWidth: 140, borderRadius: 3 }}
+          >
             {saving ? (editingAssessment ? 'Updating...' : 'Creating...') : 'Save'}
           </Button>
         </DialogActions>

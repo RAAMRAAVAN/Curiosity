@@ -176,15 +176,15 @@ const Assessments = () => {
             <Box
                 display="flex"
                 width="100%"
-                mt={3}
+                mt={2}
                 flexDirection="column"
             >
 
                 <Box
                     display="flex"
-                    alignItems="center"
+                    alignItems={{ sm:"start", md: "center", lg: "center" }}
                     position="relative"
-                    p={3}
+                    // p={3}
                     width="100%"
                 >
 
@@ -204,7 +204,7 @@ const Assessments = () => {
                     <Box
                         display="flex"
                         flexDirection="column"
-                        marginLeft={3}
+                        marginLeft={{ xs: 1, sm: 2, md: 3 }}
                     >
                         <Typography
                             fontSize={18}
@@ -232,8 +232,8 @@ const Assessments = () => {
 
                     <Box
                         position="absolute"
-                        right={50}
-                        bottom={30}
+                        right={10}
+                        bottom={10}
                     >
                         <Fab
                             variant="extended"
@@ -255,7 +255,6 @@ const Assessments = () => {
                 >
                     <AssessmentManager resetForm={resetForm} fetchAssessments={fetchAssessments} emptyQuestion={emptyQuestion} assessments={assessments} loading={loading} addQuestion={addQuestion} subjectId={selectedSubject} classId={classId} title={title} setTitle={setTitle} description={description} setDescription={setDescription} type={type} setType={setType} questions={questions} setQuestions={setQuestions} feedback={feedback} setFeedback={setFeedback} editingAssessment={editingAssessment} setEditingAssessment={setEditingAssessment} open={open} setOpen={setOpen} saving={saving} setSaving={setSaving} />
                 </Box>
-
             </Box>
         </>
     );

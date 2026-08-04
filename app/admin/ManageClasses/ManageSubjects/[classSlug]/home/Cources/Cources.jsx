@@ -250,200 +250,200 @@ const Cources = ({ defaultClass }) => {
       </Box>
 
       <Dialog
-  open={open}
-  onClose={() => setOpen(false)}
-  fullWidth
-  maxWidth="md"
-  PaperProps={{
-    sx: {
-      borderRadius: 3,
-      mx: { xs: 2, sm: 3 },
-      width: { xs: "calc(100% - 32px)", sm: "100%" },
-    },
-  }}
->
-  <DialogTitle
-    sx={{
-      fontSize: { xs: "1.1rem", sm: "1.25rem" },
-      fontWeight: 600,
-      pb: 1,
-    }}
-  >
-    Create Subjects for {className || defaultClass}
-  </DialogTitle>
-
-  <DialogContent
-    sx={{
-      pt: 2,
-    }}
-  >
-    {newSubjects.map((subject, index) => (
-      <Box
-        key={index}
-        sx={{
-          display: "flex",
-          flexDirection: {
-            xs: "column",
-            sm: "column",
-            md: "row",
+        open={open}
+        onClose={() => setOpen(false)}
+        fullWidth
+        maxWidth="md"
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            mx: { xs: 2, sm: 3 },
+            width: { xs: "calc(100% - 32px)", sm: "100%" },
           },
-          gap: 2,
-          mt: 2,
-          alignItems: {
-            xs: "stretch",
-            sm: "stretch",
-            md: "center",
-          },
-          p: 2,
-          border: "1px solid",
-          borderColor: "divider",
-          borderRadius: 2,
         }}
       >
-        {/* Subject Name */}
-        <TextField
-          fullWidth
-          label="Subject Name"
-          value={subject.subjectName}
-          onChange={(e) =>
-            handleChange(index, "subjectName", e.target.value)
-          }
-        />
-
-        {/* Upload */}
-        <Box
+        <DialogTitle
           sx={{
-            width: {
-              xs: "100%",
-              sm: "100%",
-              md: 220,
+            fontSize: { xs: "1.1rem", sm: "1.25rem" },
+            fontWeight: 600,
+            pb: 1,
+          }}
+        >
+          Create Subjects for {className || defaultClass}
+        </DialogTitle>
+
+        <DialogContent
+          sx={{
+            pt: 2,
+          }}
+        >
+          {newSubjects.map((subject, index) => (
+            <Box
+              key={index}
+              sx={{
+                display: "flex",
+                flexDirection: {
+                  xs: "column",
+                  sm: "column",
+                  md: "row",
+                },
+                gap: 2,
+                mt: 2,
+                alignItems: {
+                  xs: "stretch",
+                  sm: "stretch",
+                  md: "center",
+                },
+                p: 2,
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 2,
+              }}
+            >
+              {/* Subject Name */}
+              <TextField
+                fullWidth
+                label="Subject Name"
+                value={subject.subjectName}
+                onChange={(e) =>
+                  handleChange(index, "subjectName", e.target.value)
+                }
+              />
+
+              {/* Upload */}
+              <Box
+                sx={{
+                  width: {
+                    xs: "100%",
+                    sm: "100%",
+                    md: 220,
+                  },
+                  flexShrink: 0,
+                }}
+              >
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  component="label"
+                >
+                  Upload Icon
+
+                  <input
+                    hidden
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+
+                      if (!file) return;
+
+                      if (file.size > 200 * 1024) {
+                        alert("Image size must be less than 200 KB.");
+                        e.target.value = "";
+                        return;
+                      }
+
+                      handleChange(index, "file", file);
+                    }}
+                  />
+                </Button>
+
+                {subject.file && (
+                  <Typography
+                    mt={1}
+                    fontSize={12}
+                    color="text.secondary"
+                    sx={{
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {subject.file.name}
+                  </Typography>
+                )}
+              </Box>
+
+              {/* Delete Button */}
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: {
+                    xs: "flex-end",
+                    sm: "flex-end",
+                    md: "center",
+                  },
+                  width: {
+                    xs: "100%",
+                    sm: "100%",
+                    md: "auto",
+                  },
+                }}
+              >
+                <IconButton
+                  color="error"
+                  onClick={() => removeRow(index)}
+                  disabled={newSubjects.length === 1}
+                >
+                  <Delete />
+                </IconButton>
+              </Box>
+            </Box>
+          ))}
+
+          <Button
+            sx={{
+              mt: 3,
+              width: {
+                xs: "100%",
+                sm: "100%",
+                md: "auto",
+              },
+            }}
+            variant="outlined"
+            onClick={addRow}
+          >
+            + Add More Subject
+          </Button>
+        </DialogContent>
+
+        <DialogActions
+          sx={{
+            px: 3,
+            pb: 3,
+            flexDirection: {
+              xs: "column-reverse",
+              sm: "row",
             },
-            flexShrink: 0,
+            gap: 1.5,
           }}
         >
           <Button
-            fullWidth
-            variant="outlined"
-            component="label"
+            fullWidth={{ xs: true }}
+            onClick={() => setOpen(false)}
+            sx={{
+              width: {
+                xs: "100%",
+                sm: "auto",
+              },
+            }}
           >
-            Upload Icon
-
-            <input
-              hidden
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-
-                if (!file) return;
-
-                if (file.size > 200 * 1024) {
-                  alert("Image size must be less than 200 KB.");
-                  e.target.value = "";
-                  return;
-                }
-
-                handleChange(index, "file", file);
-              }}
-            />
+            Cancel
           </Button>
 
-          {subject.file && (
-            <Typography
-              mt={1}
-              fontSize={12}
-              color="text.secondary"
-              sx={{
-                wordBreak: "break-word",
-              }}
-            >
-              {subject.file.name}
-            </Typography>
-          )}
-        </Box>
-
-        {/* Delete Button */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: {
-              xs: "flex-end",
-              sm: "flex-end",
-              md: "center",
-            },
-            width: {
-              xs: "100%",
-              sm: "100%",
-              md: "auto",
-            },
-          }}
-        >
-          <IconButton
-            color="error"
-            onClick={() => removeRow(index)}
-            disabled={newSubjects.length === 1}
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+            disabled={loading}
+            sx={{
+              width: {
+                xs: "100%",
+                sm: "auto",
+              },
+            }}
           >
-            <Delete />
-          </IconButton>
-        </Box>
-      </Box>
-    ))}
-
-    <Button
-      sx={{
-        mt: 3,
-        width: {
-          xs: "100%",
-          sm: "100%",
-          md: "auto",
-        },
-      }}
-      variant="outlined"
-      onClick={addRow}
-    >
-      + Add More Subject
-    </Button>
-  </DialogContent>
-
-  <DialogActions
-    sx={{
-      px: 3,
-      pb: 3,
-      flexDirection: {
-        xs: "column-reverse",
-        sm: "row",
-      },
-      gap: 1.5,
-    }}
-  >
-    <Button
-      fullWidth={{ xs: true }}
-      onClick={() => setOpen(false)}
-      sx={{
-        width: {
-          xs: "100%",
-          sm: "auto",
-        },
-      }}
-    >
-      Cancel
-    </Button>
-
-    <Button
-      variant="contained"
-      onClick={handleSubmit}
-      disabled={loading}
-      sx={{
-        width: {
-          xs: "100%",
-          sm: "auto",
-        },
-      }}
-    >
-      {loading ? "Creating..." : "Create Subjects"}
-    </Button>
-  </DialogActions>
-</Dialog>
+            {loading ? "Creating..." : "Create Subjects"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
