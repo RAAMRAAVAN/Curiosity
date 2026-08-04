@@ -1,19 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Divider,
   Stack,
   Typography,
 } from '@mui/material';
 import { Quiz } from '@mui/icons-material';
-import { usePathname, useSearchParams } from 'next/navigation';
-import { useRouter } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { selectAuthUser } from '@/redux/features/authSlice';
 import { useSelector } from 'react-redux';
 
@@ -26,37 +26,39 @@ const StudentAssessmentView = ({ subjectId }) => {
   const [loading, setLoading] = useState(false);
 
   const fetchAssessments = async () => {
-  if (!subjectId || !user?.id) return;
+    if (!subjectId || !user?.id) return;
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const params = new URLSearchParams({
-      userId: user.id,
-    });
+      const params = new URLSearchParams({
+        userId: user.id,
+      });
 
-    const res = await fetch(
-      `/api/subjects/${subjectId}/assessments?${params.toString()}`
-    );
+      const res = await fetch(
+        `/api/subjects/${subjectId}/assessments?${params.toString()}`
+      );
 
-    const resultData = await res.json();
+      const resultData = await res.json();
 
-    if (!resultData.success) {
-      throw new Error(resultData.message || "Unable to load assessments");
+      if (!resultData.success) {
+        throw new Error(resultData.message || 'Unable to load assessments');
+      }
+
+      setAssessments(resultData.data || []);
+    } catch (error) {
+      console.error(error);
+      setAssessments([]);
+    } finally {
+      setLoading(false);
     }
-
-    setAssessments(resultData.data || []);
-  } catch (error) {
-    console.error(error);
-    setAssessments([]);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     fetchAssessments();
-  }, [subjectId]);
+  }, [subjectId, user?.id]);
+
+  const availableAssessments = useMemo(() => assessments || [], [assessments]);
 
   const handleStartAssessment = (assessment) => {
     const returnTo = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
@@ -70,43 +72,85 @@ const StudentAssessmentView = ({ subjectId }) => {
   };
 
   if (loading) {
-    return <Typography color="text.secondary">Loading assessments...</Typography>;
+    return (
+      <Box
+        sx={{
+          width: '100%',
+          py: 4,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 2,
+        }}
+      >
+        <CircularProgress size={24} />
+        <Typography color="text.secondary">Loading assessments...</Typography>
+      </Box>
+    );
   }
 
-  if (!assessments.length) {
-    return <Typography color="text.secondary">No assessments available for this chapter yet.</Typography>;
+  if (!availableAssessments.length) {
+    return (
+      <Card variant="outlined">
+        <CardContent>
+          <Typography color="text.secondary">
+            No assessments available for this chapter yet.
+          </Typography>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
     <Box sx={{ mt: 4, width: '100%' }}>
-      {/* <Typography fontWeight="bold" fontSize={18} sx={{ mb: 2 }}>
+      <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
         Chapter Assessments
-      </Typography> */}
+      </Typography>
       <Stack spacing={2}>
-        {assessments.map((assessment) => (
+        {availableAssessments.map((assessment) => (
           <Card key={assessment.id} variant="outlined">
             <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-                <Box>
-                  <Typography fontWeight="bold">{assessment.title}</Typography>
-                  <Typography variant="body2" color="text.secondary">{assessment.description || 'No description'}</Typography>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: 2,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography fontWeight={700}>{assessment.title}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {assessment.description || 'No description'}
+                  </Typography>
                 </Box>
                 <Chip icon={<Quiz />} label={assessment.type} color="primary" variant="outlined" />
               </Box>
-              <Divider sx={{ my: 1.5 }} />
-              {assessment.appeared_status === 'Y' ? (
-                <Chip label="Already Appeared" color="success" variant="outlined" />
-              ) : (
-                <Button variant="contained" onClick={() => handleStartAssessment(assessment)}>
-                Start
-              </Button>
-              )}
-              
+
+              <Divider sx={{ my: 2 }} />
+
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 2,
+                }}
+              >
+                {assessment.appeared_status === 'Y' ? (
+                  <Chip label="Already Appeared" color="success" variant="outlined" />
+                ) : (
+                  <Button variant="contained" onClick={() => handleStartAssessment(assessment)}>
+                    Start Assessment
+                  </Button>
+                )}
+              </Box>
             </CardContent>
           </Card>
         ))}
       </Stack>
-
     </Box>
   );
 };
