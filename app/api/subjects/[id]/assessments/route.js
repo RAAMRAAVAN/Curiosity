@@ -11,8 +11,19 @@ const buildAssessmentWithStats = async (assessment, subjectId) => {
         role: 'STUDENT',
         status: true,
         OR: [
-          { subjectAccesses: { some: { subjectId, status: true } } },
-          { classAccesses: { some: { classId: assessment.classId, status: true } } },
+          {
+            classAccesses: {
+              some: {
+                classId: assessment.classId,
+                status: true,
+              },
+            },
+          },
+          {
+            studyingClass: {
+              equals: null,
+            },
+          },
         ],
       },
     }),

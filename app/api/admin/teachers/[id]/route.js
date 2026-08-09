@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/utils/apiResponse";
 import { getUserFromRequest } from "@/server/auth";
+import { canAccessAdminArea } from "@/lib/roleAccess";
 
 export async function DELETE(req, { params }) {
     try {
         const authUser = getUserFromRequest(req);
 
-        if (!authUser || authUser.role !== "ADMIN") {
+        if (!authUser || !canAccessAdminArea(authUser)) {
             return ApiResponse.error("Unauthorized", 401);
         }
 

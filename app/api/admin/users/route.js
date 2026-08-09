@@ -3,6 +3,7 @@ import { ApiResponse } from "@/utils/apiResponse";
 import { getUserFromRequest } from "@/server/auth";
 import { prisma } from "@/server/prisma";
 import { validateSignup } from "@/features/auth/auth.validation";
+import { canAccessAdminArea } from "@/lib/roleAccess";
 
 const roleMap = {
   student: "STUDENT",
@@ -13,7 +14,7 @@ const roleMap = {
 
 export async function GET(req) {
   const authUser = getUserFromRequest(req);
-  if (!authUser || authUser.role !== "ADMIN") {
+  if (!authUser || !canAccessAdminArea(authUser)) {
     return ApiResponse.error("Unauthorized", 401);
   }
 
@@ -40,7 +41,7 @@ export async function GET(req) {
 
 export async function POST(req) {
   const authUser = getUserFromRequest(req);
-  if (!authUser || authUser.role !== "ADMIN") {
+  if (!authUser || !canAccessAdminArea(authUser)) {
     return ApiResponse.error("Unauthorized", 401);
   }
 

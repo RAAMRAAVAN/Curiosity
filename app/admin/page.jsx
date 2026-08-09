@@ -1,33 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Box,
   Button,
-  Drawer,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  InputLabel,
-  MenuItem,
   Paper,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
   Typography,
   IconButton,
 } from "@mui/material";
 import AdminDrawyer from "./AdminDrawyer";
 import ManageUsersPage from "./ManageUsers/ManageUsers";
-import LoginPage from "./LoginPage";
 import ManageClasses from "./ManageClasses/ManageClasses";
 import { Menu } from "@mui/icons-material";
 import ManageTeachersPage from "./ManageTeachers/ManageTeachers";
@@ -37,19 +21,59 @@ export default function AdminPage() {
   const [users, setUsers] = useState([]);
   const [admin, setAdmin] = useState(null);
   const [authorized, setAuthorized] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-
-
+  const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [adminView, setAdminView] = useState("users");
-
-
   const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      setLoading(true);
+      setMessage(null);
+
+      try {
+        const response = await fetch("/api/admin/me", {
+          credentials: "include",
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          sessionStorage.setItem(
+            "authDetails",
+            JSON.stringify({
+              loggedIn: true,
+              user: data.data,
+            })
+          );
+
+          setAdmin(data.data);
+          setAuthorized(true);
+          await refreshUsers();
+        } else {
+          sessionStorage.removeItem("authDetails");
+          setAdmin(null);
+          setAuthorized(false);
+          setMessage("Please sign in from the main site login first.");
+        }
+      } catch (error) {
+        console.error(error);
+        sessionStorage.removeItem("authDetails");
+        setAdmin(null);
+        setAuthorized(false);
+        setMessage("Please sign in from the main site login first.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    restoreSession();
+  }, []);
 
   const refreshUsers = async () => {
     try {
-      const response = await fetch("/api/admin/users");
+      const response = await fetch("/api/admin/users", {
+        credentials: "include",
+      });
       const data = await response.json();
       if (data.success) {
         setUsers(data.data);
@@ -62,21 +86,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleLoginChange = (event) => {
-    setLoginForm({
-      ...loginForm,
-      [event.target.name]: event.target.value,
-    });
-  };
 
-
-
-  const handleFilterChange = (event) => {
-    setFilters({
-      ...filters,
-      [event.target.name]: event.target.value,
-    });
-  };
 
   if (loading) {
     return (
@@ -97,9 +107,42 @@ export default function AdminPage() {
 
   if (!authorized) {
     return (
-      <LoginPage
-        loginForm={loginForm} loading={loading} setLoading={setLoading} setLoginForm={setLoginForm} setAdmin={setAdmin} setAuthorized={setAuthorized}
-        handleLoginChange={handleLoginChange} message={message} setMessage={setMessage} refreshUsers={refreshUsers} />
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: "#eef4fb",
+          p: 3,
+        }}
+      >
+        <Paper
+          sx={{
+            width: "100%",
+            maxWidth: 520,
+            p: 4,
+            borderRadius: 4,
+            boxShadow: "0 28px 70px rgba(15, 23, 42, 0.12)",
+            border: "1px solid rgba(15, 23, 42, 0.08)",
+          }}
+        >
+          <Typography variant="h4" fontWeight={700} mb={1}>
+            Admin access
+          </Typography>
+          <Typography color="text.secondary" mb={3}>
+            Please sign in with the main site login using an admin account to access this panel.
+          </Typography>
+          {message ? (
+            <Typography color="error" mb={3}>
+              {message}
+            </Typography>
+          ) : null}
+          <Button variant="contained" size="large" fullWidth onClick={() => router.push("/")}>
+            Go to home
+          </Button>
+        </Paper>
+      </Box>
     );
   }
 

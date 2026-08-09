@@ -84,9 +84,15 @@ const LoginModal = ({ open, onClose, onSignupClick }) => {
 
         onClose();
 
-        router.push(
-          `/courses/${authData.user.studyingClass || 1}/home`
-        );
+        const userRole = (authData.user?.role || authData.user?.userType || "")
+          .toString()
+          .toUpperCase();
+        const redirectPath =
+          userRole === "TEACHER" || userRole === "ADMIN"
+            ? "/admin"
+            : `/courses/${authData.user.studyingClass || 1}/home`;
+
+        router.push(redirectPath);
       } else {
         alert(data.message || "Login failed.");
       }

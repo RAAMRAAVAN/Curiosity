@@ -18,6 +18,10 @@ import {
   IconButton,
   InputAdornment,
   InputLabel,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
   MenuItem,
   Select,
   Stack,
@@ -27,6 +31,33 @@ import {
 import { AddCircleOutline, CheckCircleOutline, DeleteOutline, RadioButtonUnchecked, Quiz, SaveOutlined } from '@mui/icons-material';
 
 const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessments, loading, addQuestion, subjectId, classId, chapterId, title, setTitle, description, setDescription, type, setType, questions, setQuestions, feedback, setFeedback, editingAssessment, setEditingAssessment, open, setOpen, saving, setSaving }) => {
+  const [pendingDialogOpen, setPendingDialogOpen] = useState(false);
+  const [pendingStudents, setPendingStudents] = useState([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [appearedDialogOpen, setAppearedDialogOpen] = useState(false);
+  const [appearedStudents, setAppearedStudents] = useState([]);
+  const [appearedLoading, setAppearedLoading] = useState(false);
+  const [selectedAssessment, setSelectedAssessment] = useState(null);
+  const [studentAssessmentOpen, setStudentAssessmentOpen] = useState(false);
+  const [studentAssessmentContext, setStudentAssessmentContext] = useState(null);
+
+  useEffect(() => {
+    const handleAssessmentMessage = (event) => {
+      if (!event?.data || typeof event.data !== 'object') return;
+
+      if (event.data.type === 'assessment:completed' || event.data.type === 'assessment:closed') {
+        setStudentAssessmentOpen(false);
+        setStudentAssessmentContext(null);
+
+        if (event.data.type === 'assessment:completed' && typeof fetchAssessments === 'function') {
+          fetchAssessments();
+        }
+      }
+    };
+
+    window.addEventListener('message', handleAssessmentMessage);
+    return () => window.removeEventListener('message', handleAssessmentMessage);
+  }, [fetchAssessments]);
 
   const removeQuestion = (index) => {
     setQuestions((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
@@ -65,6 +96,86 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
     setType(assessment.type || 'ASSESSMENT');
     setQuestions(normalizedQuestions.length ? normalizedQuestions : [emptyQuestion()]);
     setOpen(true);
+  };
+
+  const handleOpenPendingDialog = async (assessment) => {
+    if (!assessment?.id) return;
+
+    try {
+      setPendingLoading(true);
+      const res = await fetch(`/api/assessments/${assessment.id}/pending-students`, {
+        credentials: 'include',
+      });
+      const result = await res.json();
+
+      if (!result.success) {
+        throw new Error(result.message || 'Unable to load pending students');
+      }
+
+      setPendingStudents(result.data || []);
+      setSelectedAssessment(assessment);
+      setPendingDialogOpen(true);
+    } catch (error) {
+      console.error(error);
+      setFeedback({ severity: 'error', message: error.message || 'Unable to load pending students' });
+    } finally {
+      setPendingLoading(false);
+    }
+  };
+
+  const handleOpenPendingStudentAttempt = (student) => {
+    if (!student?.id || !selectedAssessment?.id) return;
+
+    setPendingDialogOpen(false);
+    setStudentAssessmentContext({
+      assessmentId: selectedAssessment.id,
+      subjectId: subjectId || '',
+      studentId: student.id,
+      editMode: false,
+      studentName: student.name,
+      studentEmail: student.email,
+    });
+    setStudentAssessmentOpen(true);
+  };
+
+  const handleOpenAppearedStudentAttempt = (student) => {
+    if (!student?.id || !selectedAssessment?.id) return;
+
+    setAppearedDialogOpen(false);
+    setStudentAssessmentContext({
+      assessmentId: selectedAssessment.id,
+      subjectId: subjectId || '',
+      studentId: student.id,
+      editMode: true,
+      studentName: student.name,
+      studentEmail: student.email,
+    });
+    setStudentAssessmentOpen(true);
+  };
+
+  const handleOpenAppearedDialog = async (assessment) => {
+    if (!assessment?.id) return;
+
+    try {
+      setAppearedLoading(true);
+      const res = await fetch(`/api/assessments/${assessment.id}/appeared-students`, {
+        credentials: 'include',
+      });
+      const result = await res.json();
+
+      if (!result.success) {
+        throw new Error(result.message || 'Unable to load appeared students');
+      }
+
+      setAppearedStudents(result.data || []);
+      setSelectedAssessment(assessment);
+      setAppearedDialogOpen(true);
+    } catch (error) {
+      console.error(error);
+      setFeedback({ severity: 'error', message: error.message || 'Unable to load appeared students' });
+    } finally {
+      setAppearedLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -177,8 +288,24 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                 <Divider sx={{ my: 1.5 }} />
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1 }}>
                   <Chip label={`Questions: ${assessment.questions?.length || 0}`} variant="outlined" />
-                  <Chip label={`Appeared: ${assessment.attempts || 0}`} color="success" variant="outlined" />
-                  <Chip label={`Pending: ${assessment.pending || 0}`} color="warning" variant="outlined" />
+                  {/* <Chip label={`Appeared: ${assessment.attempts || 0}`} color="success" variant="outlined" /> */}
+                  <Chip
+                    label={`Pending: ${assessment.pending || 0}`}
+                    color="warning"
+                    variant="outlined"
+                    onClick={() => handleOpenPendingDialog(assessment)}
+                    sx={{ cursor: 'pointer', fontWeight: 600 }}
+                  />
+                  <Chip
+                    label={`Appeared: ${assessment.attempts || 0}`}
+                    color="success"
+                    // disabled
+                    variant="outlined"
+                    onClick={() => {
+                      // handleOpenAppearedDialog(assessment)
+                    }}
+                    sx={{ cursor: 'pointer', fontWeight: 600 }}
+                  />
                 </Stack>
                 {/* <Button size="small" onClick={() => openEditDialog(assessment)}>
                   Edit
@@ -189,6 +316,100 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         </Stack>
       </>
       )}
+
+      <Dialog open={pendingDialogOpen} onClose={() => setPendingDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Pending Students</DialogTitle>
+        <DialogContent dividers>
+          {pendingLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : pendingStudents.length === 0 ? (
+            <Typography color="text.secondary">No pending students found for this assessment.</Typography>
+          ) : (
+            <Stack spacing={2}>
+              {pendingStudents.map((group) => (
+                <Box key={group.className}>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                    Class {group.className}
+                  </Typography>
+                  <List dense disablePadding>
+                    {group.students.map((student) => (
+                      <ListItem key={student.id} disablePadding>
+                        <ListItemButton onClick={() => handleOpenPendingStudentAttempt(student)}>
+                          <ListItemText primary={student.name} secondary={student.email} />
+                        </ListItemButton>
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={appearedDialogOpen} onClose={() => setAppearedDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Appeared Students</DialogTitle>
+        <DialogContent dividers>
+          {appearedLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : appearedStudents.length === 0 ? (
+            <Typography color="text.secondary">No appeared students found for this assessment.</Typography>
+          ) : (
+            <Stack spacing={2}>
+              {appearedStudents.map((group) => (
+                <Box key={group.className}>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                    Class {group.className}
+                  </Typography>
+                  <List dense disablePadding>
+                    {group.students.map((student) => (
+                      <ListItem key={student.id} disablePadding>
+                        <ListItemButton onClick={() => handleOpenAppearedStudentAttempt(student)}>
+                          <ListItemText primary={student.name} secondary={student.email} />
+                        </ListItemButton>
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAppearedDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={studentAssessmentOpen} onClose={() => setStudentAssessmentOpen(false)} maxWidth="lg" fullWidth>
+        <DialogTitle>Student Assessment</DialogTitle>
+        <DialogContent dividers>
+          {studentAssessmentContext ? (
+            <Box sx={{ py: 1 }}>
+              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                {studentAssessmentContext.studentName || 'Student assessment'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {studentAssessmentContext.studentEmail || 'Opening assessment for this student.'}
+              </Typography>
+              <iframe
+                src={`/assessment?assessmentId=${studentAssessmentContext.assessmentId}&subjectId=${studentAssessmentContext.subjectId || ''}&studentId=${studentAssessmentContext.studentId}&editMode=${studentAssessmentContext.editMode}&returnTo=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
+                title="Student assessment"
+                style={{ width: '100%', minHeight: '70vh', border: '1px solid #d0d7de', borderRadius: 8 }}
+              />
+            </Box>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStudentAssessmentOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={open}

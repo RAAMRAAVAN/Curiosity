@@ -1,11 +1,12 @@
 import { ApiResponse } from "@/utils/apiResponse";
 import { getUserFromRequest } from "@/server/auth";
 import { prisma } from "@/server/prisma";
+import { canAccessAdminArea } from "@/lib/roleAccess";
 
 export async function GET(req) {
   const authUser = getUserFromRequest(req);
 
-  if (!authUser || authUser.role !== "ADMIN") {
+  if (!authUser || !canAccessAdminArea(authUser)) {
     return ApiResponse.error("Unauthorized", 401);
   }
 

@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { ApiResponse } from "@/utils/apiResponse";
 import { getUserFromRequest } from "@/server/auth";
 import { prisma } from "@/server/prisma";
+import { canAccessAdminArea } from "@/lib/roleAccess";
 
 const roleMap = {
   student: "STUDENT",
@@ -14,7 +15,7 @@ const validRoles = ["student", "teacher", "admin", "parent"];
 
 export async function GET(req, { params }) {
   const authUser = getUserFromRequest(req);
-  if (!authUser || authUser.role !== "ADMIN") {
+  if (!authUser || !canAccessAdminArea(authUser)) {
     return ApiResponse.error("Unauthorized", 401);
   }
 
@@ -45,7 +46,7 @@ export async function GET(req, { params }) {
 
 export async function PATCH(req, { params }) {
   const authUser = getUserFromRequest(req);
-  if (!authUser || authUser.role !== "ADMIN") {
+  if (!authUser || !canAccessAdminArea(authUser)) {
     return ApiResponse.error("Unauthorized", 401);
   }
 
@@ -105,7 +106,7 @@ export async function PATCH(req, { params }) {
 
 export async function DELETE(req, { params }) {
   const authUser = getUserFromRequest(req);
-  if (!authUser || authUser.role !== "ADMIN") {
+  if (!authUser || !canAccessAdminArea(authUser)) {
     return ApiResponse.error("Unauthorized", 401);
   }
 

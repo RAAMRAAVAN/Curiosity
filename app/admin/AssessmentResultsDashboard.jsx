@@ -3,9 +3,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
+  Button,
   Card,
   CardContent,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  List,
+  ListItem,
+  ListItemText,
   Paper,
   Stack,
   Table,
@@ -21,12 +29,45 @@ import { Assessment, BarChart, TrendingUp } from '@mui/icons-material';
 const AssessmentResultsDashboard = ({ assessmentId }) => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [pendingDialogOpen, setPendingDialogOpen] = useState(false);
+  const [pendingStudents, setPendingStudents] = useState([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingCounts, setPendingCounts] = useState({});
+  const [pendingCountsLoading, setPendingCountsLoading] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [detailResults, setDetailResults] = useState([]);
+  const [detailAssessmentTitle, setDetailAssessmentTitle] = useState('');
+
+  const detailStats = useMemo(() => {
+    if (!detailResults.length) {
+      return { attempts: 0, avg: 0, top: 0 };
+    }
+
+    const attempts = detailResults.length;
+    const totalPercentage = detailResults.reduce((sum, item) => sum + (Number(item.percentage) || 0), 0);
+    const avg = Math.round((totalPercentage / attempts) * 100) / 100;
+    const top = Math.max(...detailResults.map((item) => Number(item.score) || 0));
+    return { attempts, avg, top };
+  }, [detailResults]);
+
+  const getResultRowStyles = (percentage) => {
+    const value = Number(percentage) || 0;
+    if (value >= 33) {
+      return { bgcolor: 'rgba(56, 142, 60, 0.08)' };
+    }
+    if (value >= 30) {
+      return { bgcolor: 'rgba(245, 124, 0, 0.14)' };
+    }
+    return { bgcolor: 'rgba(211, 47, 47, 0.12)' };
+  };
 
   const fetchResults = async () => {
     try {
       setLoading(true);
       const query = assessmentId ? `?assessmentId=${assessmentId}` : '';
-      const res = await fetch(`/api/assessments/results${query}`);
+      const res = await fetch(`/api/assessments/results${query}`, {
+        credentials: 'include',
+      });
       const response = await res.json();
       if (!response.success) throw new Error(response.message || 'Unable to load results');
       setResults(response.data || []);
@@ -38,8 +79,40 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
     }
   };
 
+  const fetchPendingCount = async (id) => {
+    if (!id) return 0;
+    try {
+      const res = await fetch(`/api/assessments/${id}/pending-students`, {
+        credentials: 'include',
+      });
+      const response = await res.json();
+      if (!response.success) throw new Error(response.message || 'Unable to load pending counts');
+      const count = Array.isArray(response.data)
+        ? response.data.reduce((sum, group) => sum + (group.students?.length || 0), 0)
+        : 0;
+      setPendingCounts((prev) => ({ ...prev, [id]: count }));
+      return count;
+    } catch (error) {
+      console.error(error);
+      setPendingCounts((prev) => ({ ...prev, [id]: 0 }));
+      return 0;
+    }
+  };
+
   useEffect(() => {
     fetchResults();
+  }, [assessmentId]);
+
+  useEffect(() => {
+    if (!assessmentId) return;
+
+    const loadCount = async () => {
+      setPendingCountsLoading(true);
+      await fetchPendingCount(assessmentId);
+      setPendingCountsLoading(false);
+    };
+
+    loadCount();
   }, [assessmentId]);
 
   const stats = useMemo(() => {
@@ -47,9 +120,15 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
       return { attempts: 0, avg: 0, top: 0 };
     }
 
-    const total = results.reduce((sum, item) => sum + (item.score || 0), 0);
-    const avg = Math.round((total / results.length) * 100) / 100;
-    const top = Math.max(...results.map((item) => item.score || 0));
+    const totalPercentage = results.reduce((sum, item) => {
+      const score = Number(item.score) || 0;
+      const totalQuestions = Number(item.totalQuestions) || 0;
+      const percent = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
+      return sum + percent;
+    }, 0);
+
+    const avg = Math.round((totalPercentage / results.length) * 100) / 100;
+    const top = Math.max(...results.map((item) => Number(item.score) || 0));
     return { attempts: results.length, avg, top };
   }, [results]);
 
@@ -69,22 +148,150 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
           className: result.assessment?.class?.className || '-',
           attempts: 0,
           totalScore: 0,
+          totalPercent: 0,
           maxScore: 0,
         });
       }
 
       const summary = grouped.get(key);
+      const score = Number(result.score) || 0;
+      const totalQuestions = Number(result.totalQuestions) || 0;
+      const percent = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
+
       summary.attempts += 1;
-      summary.totalScore += result.score || 0;
-      summary.maxScore = Math.max(summary.maxScore, result.score || 0);
+      summary.totalScore += score;
+      summary.totalPercent += percent;
+      summary.maxScore = Math.max(summary.maxScore, score);
     });
 
-    return Array.from(grouped.values()).sort((a, b) => b.attempts - a.attempts);
+    return Array.from(grouped.values())
+      .map((summary) => ({
+        ...summary,
+        averageScore:
+          summary.attempts > 0
+            ? Math.round((summary.totalPercent / summary.attempts) * 100) / 100
+            : 0,
+      }))
+      .sort((a, b) => b.attempts - a.attempts);
   }, [results, assessmentId]);
+
+  useEffect(() => {
+    if (assessmentId || !assessmentSummaries.length) return;
+
+    const loadSummaryCounts = async () => {
+      setPendingCountsLoading(true);
+      try {
+        await Promise.all(
+          assessmentSummaries.map((summary) => {
+            if (!summary.id) return Promise.resolve();
+            return fetchPendingCount(summary.id);
+          })
+        );
+      } catch (error) {
+        console.error('Failed to load summary pending counts', error);
+      } finally {
+        setPendingCountsLoading(false);
+      }
+    };
+
+    loadSummaryCounts();
+  }, [assessmentSummaries, assessmentId]);
 
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>;
   }
+
+  const pendingCount = assessmentId ? pendingCounts[assessmentId] || 0 : 0;
+
+  const handleOpenPendingDialog = async (id) => {
+    if (!id) return;
+
+    try {
+      setPendingLoading(true);
+      const res = await fetch(`/api/assessments/${id}/pending-students`, {
+        credentials: 'include',
+      });
+      const response = await res.json();
+      if (!response.success) throw new Error(response.message || 'Unable to load pending students');
+      setPendingStudents(response.data || []);
+      setPendingDialogOpen(true);
+    } catch (error) {
+      console.error(error);
+      setPendingStudents([]);
+      setPendingDialogOpen(true);
+    } finally {
+      setPendingLoading(false);
+    }
+  };
+
+  const handleOpenAssessmentDetailDialog = (summary) => {
+    if (!summary?.id) return;
+    const filtered = results
+      .filter((item) => item.assessmentId === summary.id)
+      .slice()
+      .sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+    setDetailResults(filtered);
+    setDetailAssessmentTitle(summary.title || 'Assessment Results');
+    setDetailDialogOpen(true);
+  };
+
+  const downloadDetailResults = () => {
+    if (!detailResults.length) return;
+
+    const headers = [
+      'S.No',
+      'Student',
+      'Class',
+      'Subject',
+      'Correct Attempts',
+      'Wrong Attempts',
+      'Marks Obtained',
+      'Total Marks',
+      'Percentage',
+    ];
+
+    const rows = detailResults.map((result, index) => [
+      index + 1,
+      result.user?.name || '',
+      result.studentClassName || '',
+      result.assessment?.subject?.subjectName || '',
+      result.correctAttempts ?? 0,
+      result.wrongAttempts ?? 0,
+      result.score ?? 0,
+      result.totalQuestions ?? 0,
+      `${result.percentage ?? 0}%`,
+    ]);
+
+    const escapeValue = (value) => String(value).replace(/"/g, '""');
+
+    const headerRow = headers
+      .map((header) => `<th style="border:1px solid #666; padding:8px; font-weight:bold; background:#f0f0f0;">${escapeValue(header)}</th>`)
+      .join('');
+
+    const bodyRows = rows
+      .map(
+        (row) =>
+          `<tr>${row
+            .map(
+              (cell) =>
+                `<td style="border:1px solid #666; padding:8px; text-align:left;">${escapeValue(cell)}</td>`
+            )
+            .join('')}</tr>`
+      )
+      .join('');
+
+    const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><table style="border-collapse:collapse; width:100%;"> <thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table></body></html>`;
+
+    const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${detailAssessmentTitle.replace(/[^a-z0-9-_ ]/gi, '') || 'assessment-results'}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <Box sx={{ mt: 4 }}>
@@ -106,9 +313,9 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <TrendingUp color="success" />
-              <Typography fontWeight={700}>Average Score</Typography>
+              <Typography fontWeight={700}>Average Score (%)</Typography>
             </Box>
-            <Typography variant="h4" fontWeight={700} sx={{ mt: 1 }}>{stats.avg}</Typography>
+            <Typography variant="h4" fontWeight={700} sx={{ mt: 1 }}>{stats.avg}%</Typography>
           </CardContent>
         </Card>
         <Card sx={{ flex: 1 }} variant="outlined">
@@ -136,7 +343,8 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
                   <TableCell>Subject</TableCell>
                   <TableCell>Appeared</TableCell>
                   <TableCell>Pending</TableCell>
-                  <TableCell>Best Score</TableCell>
+                  <TableCell>Average Score</TableCell>
+                  <TableCell>Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -146,8 +354,26 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
                     <TableCell>{summary.className}</TableCell>
                     <TableCell>{summary.subject}</TableCell>
                     <TableCell>{summary.attempts}</TableCell>
-                    <TableCell>{Math.max(0, 0 - summary.attempts)}</TableCell>
-                    <TableCell>{summary.maxScore}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="text"
+                        size="small"
+                        onClick={() => handleOpenPendingDialog(summary.id)}
+                        disabled={pendingCountsLoading || !(pendingCounts[summary.id] > 0)}
+                      >
+                        {pendingCountsLoading ? 'Loading...' : pendingCounts[summary.id] ?? 0}
+                      </Button>
+                    </TableCell>
+                    <TableCell>{summary.averageScore}%</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={() => handleOpenAssessmentDetailDialog(summary)}
+                      >
+                        View Results
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -156,31 +382,152 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
         </Box>
       ) : null}
 
-      <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
-        {assessmentId ? 'Student Submissions' : 'Recent Submissions'}
-      </Typography>
-      <TableContainer component={Paper} variant="outlined">
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>{assessmentId ? 'Student' : 'Assessment'}</TableCell>
-              <TableCell>{assessmentId ? 'Email' : 'Student'}</TableCell>
-              <TableCell>Score</TableCell>
-              <TableCell>Submitted At</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {results.map((result) => (
-              <TableRow key={result.id}>
-                <TableCell>{assessmentId ? result.user?.name || 'Unknown' : result.assessment?.title || 'Unknown'}</TableCell>
-                <TableCell>{assessmentId ? result.user?.email || '-' : result.user?.name || '-'}</TableCell>
-                <TableCell>{result.score}/{result.totalQuestions}</TableCell>
-                <TableCell>{new Date(result.createdAt).toLocaleString()}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {assessmentId ? (
+        <>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+            Student Submissions
+          </Typography>
+          <TableContainer component={Paper} variant="outlined">
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Student</TableCell>
+                  <TableCell>Email</TableCell>
+                  <TableCell>Score</TableCell>
+                  <TableCell>Submitted At</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {results.map((result) => (
+                  <TableRow key={result.id}>
+                    <TableCell>{result.user?.name || 'Unknown'}</TableCell>
+                    <TableCell>{result.user?.email || '-'}</TableCell>
+                    <TableCell>{result.score}/{result.totalQuestions}</TableCell>
+                    <TableCell>{new Date(result.createdAt).toLocaleString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              variant="outlined"
+              onClick={() => handleOpenPendingDialog(assessmentId)}
+              disabled={pendingLoading || pendingCount === 0}
+            >
+              Pending Students ({pendingCountsLoading ? 'Loading...' : pendingCount})
+            </Button>
+          </Box>
+        </>
+      ) : null}
+
+      <Dialog open={pendingDialogOpen} onClose={() => setPendingDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Pending Students</DialogTitle>
+        <DialogContent>
+          {pendingLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+          ) : pendingStudents.length === 0 ? (
+            <Typography color="text.secondary">No pending students found for this assessment.</Typography>
+          ) : (
+            <List>
+              {pendingStudents.map((group) => (
+                <Box key={group.className} sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+                    {group.className}
+                  </Typography>
+                  {group.students?.map((student) => (
+                    <ListItem key={student.id} disablePadding>
+                      <ListItemText
+                        primary={student.name || 'Unnamed student'}
+                        secondary={student.email || 'No email'}
+                      />
+                    </ListItem>
+                  ))}
+                </Box>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={detailDialogOpen} onClose={() => setDetailDialogOpen(false)} fullWidth maxWidth="lg">
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {detailAssessmentTitle}
+          <Button variant="contained" size="small" onClick={downloadDetailResults}>
+            Download Excel
+          </Button>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mb: 3 }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <Card sx={{ flex: 1, bgcolor: '#f5f7ff', borderRadius: 3 }} variant="outlined">
+                <CardContent>
+                  <Typography variant="subtitle2" color="text.secondary">Attempts</Typography>
+                  <Typography variant="h5" fontWeight={700}>{detailStats.attempts}</Typography>
+                </CardContent>
+              </Card>
+              <Card sx={{ flex: 1, bgcolor: '#eef7ed', borderRadius: 3 }} variant="outlined">
+                <CardContent>
+                  <Typography variant="subtitle2" color="text.secondary">Average Score</Typography>
+                  <Typography variant="h5" fontWeight={700}>{detailStats.avg}%</Typography>
+                </CardContent>
+              </Card>
+              <Card sx={{ flex: 1, bgcolor: '#fff4e5', borderRadius: 3 }} variant="outlined">
+                <CardContent>
+                  <Typography variant="subtitle2" color="text.secondary">Top Score</Typography>
+                  <Typography variant="h5" fontWeight={700}>{detailStats.top}</Typography>
+                </CardContent>
+              </Card>
+            </Stack>
+          </Box>
+          <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: '#f3f4f6' }}>
+                  <TableCell sx={{ fontWeight: 700 }}>S.No</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Student</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Class</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Subject</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Correct</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Wrong</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Marks Obtained</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Total Marks</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Percentage</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {detailResults.map((result, index) => (
+                  <TableRow key={result.id} sx={getResultRowStyles(result.percentage)}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>{result.user?.name || 'Unknown'}</TableCell>
+                    <TableCell>{result.studentClassName || result.user?.studyingClass || 'N/A'}</TableCell>
+                    <TableCell>{result.assessment?.subject?.subjectName || 'N/A'}</TableCell>
+                    <TableCell>{result.correctAttempts ?? 0}</TableCell>
+                    <TableCell>{result.wrongAttempts ?? 0}</TableCell>
+                    <TableCell>{result.score ?? 0}</TableCell>
+                    <TableCell>{result.totalQuestions ?? 0}</TableCell>
+                    <TableCell>{result.percentage ?? 0}%</TableCell>
+                  </TableRow>
+                ))}
+                {detailResults.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} align="center">
+                      <Typography color="text.secondary">No student results available.</Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDetailDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

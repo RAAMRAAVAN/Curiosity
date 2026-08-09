@@ -94,7 +94,7 @@ export default function Layout({ children }) {
         sessionStorage.removeItem("authDetails");
         sessionStorage.clear();
         setAuthDetails(null);
-        router.push("/admin");
+        router.push("/");
       }
     } catch (error) {
       console.error("Logout failed", error);

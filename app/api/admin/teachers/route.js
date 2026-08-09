@@ -3,11 +3,12 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/utils/apiResponse";
 import { formatDate } from "@/lib/date";
+import { canAccessAdminArea } from "@/lib/roleAccess";
 
 export async function GET(req) {
     const authUser = getUserFromRequest(req);
 
-    if (!authUser || authUser.role !== "ADMIN") {
+    if (!authUser || !canAccessAdminArea(authUser)) {
         return ApiResponse.error("Unauthorized", 401);
     }
 
@@ -53,7 +54,7 @@ export async function POST(req) {
     try {
         const authUser = getUserFromRequest(req);
 
-        if (!authUser || authUser.role !== "ADMIN") {
+        if (!authUser || !canAccessAdminArea(authUser)) {
             return ApiResponse.error("Unauthorized", 401);
         }
 

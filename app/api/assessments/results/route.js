@@ -21,7 +21,7 @@ export async function POST(req) {
       );
     }
 
-    const studentId = user?.userId || user?.id || userId;
+    const studentId = userId || user?.userId || user?.id;
 
     if (!studentId) {
       return ApiResponse.error("User is required", 400);
@@ -207,11 +207,15 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const assessmentId = searchParams.get('assessmentId');
+    const userId = searchParams.get('userId');
 
     const results = await prisma.assessmentResult.findMany({
-      where: assessmentId ? { assessmentId } : {},
+      where: {
+        ...(assessmentId ? { assessmentId } : {}),
+        ...(userId ? { userId } : {}),
+      },
       include: {
-        user: { select: { id: true, name: true, email: true } },
+        user: { select: { id: true, name: true, email: true, studyingClass: true } },
         assessment: {
           select: {
             id: true,
@@ -225,7 +229,65 @@ export async function GET(req) {
       orderBy: { createdAt: 'desc' },
     });
 
-    return ApiResponse.success(results);
+    const classIds = Array.from(
+      new Set(
+        results
+          .map((result) => result.user?.studyingClass)
+          .filter((id) => typeof id === 'string' && id.trim())
+      )
+    );
+
+    const classRecords = classIds.length
+      ? await prisma.class.findMany({
+          where: {
+            id: { in: classIds },
+          },
+          select: {
+            id: true,
+            className: true,
+          },
+        })
+      : [];
+
+    const classMap = classRecords.reduce((acc, cls) => {
+      acc[cls.id] = cls.className;
+      return acc;
+    }, {});
+
+    const mappedResults = results.map((result) => {
+      let parsedAnswers = [];
+
+      if (typeof result.answers === 'string') {
+        try {
+          parsedAnswers = JSON.parse(result.answers || '[]');
+        } catch (error) {
+          parsedAnswers = [];
+        }
+      }
+
+      const correctAttempts = Array.isArray(parsedAnswers)
+        ? parsedAnswers.filter((item) => item?.isCorrect).length
+        : Number(result.score) || 0;
+
+      const wrongAttempts = Array.isArray(parsedAnswers)
+        ? parsedAnswers.filter((item) => item?.isCorrect === false).length
+        : Math.max(0, (Number(result.totalQuestions) || 0) - (Number(result.score) || 0));
+
+      const percentage = result.totalQuestions
+        ? Math.round((Number(result.score) / Number(result.totalQuestions)) * 100)
+        : 0;
+
+      return {
+        ...result,
+        studentClassName:
+          classMap[result.user?.studyingClass] || result.user?.studyingClass || 'N/A',
+        correctAttempts,
+        wrongAttempts,
+        percentage,
+      };
+    });
+
+    return ApiResponse.success(mappedResults);
   } catch (error) {
     console.error(error);
     return ApiResponse.error('Unable to load results', 500, error);

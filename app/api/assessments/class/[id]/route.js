@@ -2,27 +2,40 @@ import { prisma } from '@/server/prisma'; // Update if your prisma import is dif
 import { ApiResponse } from '@/utils/apiResponse';
 // import { buildAssessmentWithStats } from "@/lib/assessment"; // Update path if needed
 
-const buildAssessmentWithStats = async (assessment, subjectId) => {
-    const [attempts, eligibleStudents] = await Promise.all([
+const buildAssessmentWithStats = async (assessment, eligibleStudentIds) => {
+    const [attempts, attemptUsers] = await Promise.all([
         prisma.assessmentResult.count({
             where: { assessmentId: assessment.id, status: true },
         }),
-        prisma.user.count({
-            where: {
-                role: 'STUDENT',
-                status: true,
-                OR: [
-                    { subjectAccesses: { some: { subjectId, status: true } } },
-                    { classAccesses: { some: { classId: assessment.classId, status: true } } },
-                ],
-            },
+        prisma.assessmentResult.findMany({
+            where: { assessmentId: assessment.id, status: true },
+            select: { userId: true },
+            orderBy: { createdAt: 'asc' },
         }),
     ]);
+
+    const attemptUserIds = attemptUsers.map((item) => item.userId);
+    const matchedIds = eligibleStudentIds.filter((id) => attemptUserIds.includes(id));
+    const missingIds = eligibleStudentIds.filter((id) => !attemptUserIds.includes(id));
+
+    const pending = Math.max(missingIds.length, 0);
+
+    console.log('[assessments-class] assessment stats', {
+        assessmentId: assessment.id,
+        assessmentTitle: assessment.title,
+        eligibleStudentCount: eligibleStudentIds.length,
+        attempts,
+        pending,
+        eligibleStudentIds,
+        attemptUserIds,
+        matchedIds,
+        missingIds,
+    });
 
     return {
         ...assessment,
         attempts,
-        pending: Math.max(eligibleStudents - attempts, 0),
+        pending,
     };
 };
 
@@ -36,6 +49,32 @@ export async function GET(req, { params }) {
         if (!classId) {
             return ApiResponse.error("Class ID is required", 400);
         }
+
+        const eligibleStudents = await prisma.user.findMany({
+            where: {
+                role: 'STUDENT',
+                status: true,
+                studyingClass: classId,
+            },
+            select: {
+                id: true,
+                name: true,
+                studyingClass: true,
+                role: true,
+                status: true,
+            },
+            take: 10,
+        });
+
+        const eligibleStudentIds = eligibleStudents.map((student) => student.id);
+        const eligibleStudentCount = eligibleStudentIds.length;
+
+        console.log('[assessments-class] class lookup', {
+            classId,
+            eligibleStudentCount,
+            eligibleStudentIds,
+            sampleEligibleStudents: eligibleStudents,
+        });
 
         const assessments = await prisma.assessment.findMany({
             where: {
@@ -76,9 +115,15 @@ export async function GET(req, { params }) {
             },
         });
 
+        console.log('[assessments-class] assessments fetched', {
+            classId,
+            assessmentCount: assessments.length,
+            assessmentIds: assessments.map((assessment) => assessment.id),
+        });
+
         const assessmentsWithStats = await Promise.all(
             assessments.map((assessment) =>
-                buildAssessmentWithStats(assessment, assessment.subjectId)
+                buildAssessmentWithStats(assessment, eligibleStudentIds)
             )
         );
 

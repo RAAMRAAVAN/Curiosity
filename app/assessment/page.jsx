@@ -24,6 +24,8 @@ const AssessmentPage = () => {
   const user = useSelector(selectAuthUser);
   const assessmentId = searchParams.get('assessmentId');
   const subjectId = searchParams.get('subjectId');
+  const studentId = searchParams.get('studentId');
+  const editMode = searchParams.get('editMode') === 'true';
   const returnTo = searchParams.get('returnTo');
 
   const [assessment, setAssessment] = useState(null);
@@ -33,13 +35,17 @@ const AssessmentPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [existingResult, setExistingResult] = useState(null);
 
   const fetchAssessment = async () => {
-    if (!assessmentId || !subjectId) return;
+    if (!assessmentId) return;
 
     try {
       setLoading(true);
-      const res = await fetch(`/api/subjects/${subjectId}/assessments/${assessmentId}`);
+      const endpoint = subjectId
+        ? `/api/subjects/${subjectId}/assessments/${assessmentId}`
+        : `/api/assessments/${assessmentId}`;
+      const res = await fetch(endpoint);
       const response = await res.json();
       if (!response.success) throw new Error(response.message || 'Unable to load assessment');
       setAssessment(response.data);
@@ -54,6 +60,39 @@ const AssessmentPage = () => {
   useEffect(() => {
     fetchAssessment();
   }, [assessmentId, subjectId]);
+
+  useEffect(() => {
+    const loadExistingResult = async () => {
+      if (!assessmentId || !studentId || !editMode) return;
+
+      try {
+        const res = await fetch(`/api/assessments/results?assessmentId=${assessmentId}&userId=${studentId}`);
+        const response = await res.json();
+
+        if (response.success && response.data?.length) {
+          const latestResult = response.data[0];
+          setExistingResult(latestResult);
+
+          if (latestResult.answers) {
+            try {
+              const parsedAnswers = JSON.parse(latestResult.answers);
+              const nextAnswers = {};
+              parsedAnswers.forEach((answer, index) => {
+                nextAnswers[index] = { selectedOptionIndex: answer.selectedOptionIndex };
+              });
+              setAnswers(nextAnswers);
+            } catch (error) {
+              console.error(error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    loadExistingResult();
+  }, [assessmentId, studentId, editMode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -77,7 +116,9 @@ const AssessmentPage = () => {
 
   const handleSubmit = async () => {
     const activeUser = user || sessionUser;
-    if (!assessment || !activeUser?.id) {
+    const targetUserId = studentId || activeUser?.id;
+
+    if (!assessment || !targetUserId) {
       setFeedback({ severity: 'error', message: 'Please log in again to submit this assessment.' });
       return;
     }
@@ -86,11 +127,12 @@ const AssessmentPage = () => {
       setSubmitting(true);
       const payload = {
         assessmentId: assessment.id,
-        userId: activeUser.id,
+        userId: targetUserId,
         answers: assessment.questions.map((question, index) => ({
           questionId: question.id,
           selectedOptionIndex: answers[index]?.selectedOptionIndex,
         })),
+        allowReattempt: Boolean(editMode && existingResult),
       };
 
       const res = await fetch('/api/assessments/results', {
@@ -114,6 +156,8 @@ const AssessmentPage = () => {
         severity: 'success',
         message: `Assessment submitted successfully. Score: ${response.data.score}/${response.data.totalQuestions} (${response.data.percentage}%)`,
       });
+      setExistingResult(response.data);
+      notifyParent('assessment:completed');
     } catch (error) {
       console.error(error);
       setFeedback({ severity: 'error', message: error.message || 'Unable to submit assessment' });
@@ -122,7 +166,19 @@ const AssessmentPage = () => {
     }
   };
 
+  const notifyParent = (type) => {
+    if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+      window.parent.postMessage({ type, assessmentId, studentId, returnTo }, '*');
+    }
+  };
+
   const handleCancelAssessment = () => {
+    notifyParent('assessment:closed');
+
+    if (window.parent && window.parent !== window) {
+      return;
+    }
+
     if (returnTo) {
       const target = decodeURIComponent(returnTo);
       window.location.href = target;
