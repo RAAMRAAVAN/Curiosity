@@ -24,6 +24,8 @@ import {
 } from "@mui/material";
 import { Delete, Edit, Add } from "@mui/icons-material";
 
+const ALL_CENTERS = "ALL";
+
 export default function ManageStudents({ setMessage }) {
   const [students, setStudents] = useState([]);
   const [centers, setCenters] = useState([]);
@@ -33,6 +35,7 @@ export default function ManageStudents({ setMessage }) {
   const [editingStudent, setEditingStudent] = useState(null);
   const [authUser, setAuthUser] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -303,6 +306,29 @@ export default function ManageStudents({ setMessage }) {
   );
 
   const teacherLocked = authUser?.role === "TEACHER";
+  const canUseCenterFilter = authUser?.role === "ADMIN" || authUser?.role === "MANAGEMENT";
+
+  const centerFilterOptions = useMemo(() => {
+    const knownCenters = centers
+      .filter((center) => center?.id)
+      .map((center) => ({ id: center.id, name: center.name || center.id }));
+
+    const knownCenterIds = new Set(knownCenters.map((center) => center.id));
+    const dynamicCenters = students
+      .filter((student) => student?.centerId && !knownCenterIds.has(student.centerId))
+      .map((student) => ({ id: student.centerId, name: student.centerName || student.centerId }));
+
+    return [{ id: ALL_CENTERS, name: "All" }, ...knownCenters, ...dynamicCenters];
+  }, [centers, students]);
+
+  const filteredStudents = useMemo(() => {
+    if (!canUseCenterFilter || selectedCenter === ALL_CENTERS) {
+      return students;
+    }
+
+    return students.filter((student) => (student.centerId || "") === selectedCenter);
+  }, [students, canUseCenterFilter, selectedCenter]);
+
   const centerOptions = useMemo(() => {
     if (!teacherLocked) return centers;
     return centers.filter((center) => center.id === authUser?.centerId);
@@ -313,6 +339,18 @@ export default function ManageStudents({ setMessage }) {
       setForm((prev) => ({ ...prev, centerId: authUser.centerId }));
     }
   }, [teacherLocked, authUser]);
+
+  useEffect(() => {
+    if (!canUseCenterFilter) {
+      setSelectedCenter(ALL_CENTERS);
+      return;
+    }
+
+    const availableCenterIds = new Set(centerFilterOptions.map((center) => center.id));
+    if (!availableCenterIds.has(selectedCenter)) {
+      setSelectedCenter(ALL_CENTERS);
+    }
+  }, [canUseCenterFilter, centerFilterOptions, selectedCenter]);
 
   useEffect(() => {
     if (!dialogOpen || !classes.length || !form.studyingClass) {
@@ -333,6 +371,23 @@ export default function ManageStudents({ setMessage }) {
           <Typography color="text.secondary">Create and manage student accounts with center and class selection.</Typography>
         </Box>
         <Stack direction="row" spacing={1}>
+          {canUseCenterFilter ? (
+            <TextField
+              select
+              size="small"
+              label="Filter By Center"
+              value={selectedCenter}
+              onChange={(event) => setSelectedCenter(event.target.value)}
+              sx={{ minWidth: 220 }}
+              InputLabelProps={{ shrink: true }}
+            >
+              {centerFilterOptions.map((center) => (
+                <MenuItem key={center.id} value={center.id}>
+                  {center.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          ) : null}
           <Button variant="outlined" onClick={handleDownloadStudents} disabled={exporting || loading}>
             {exporting ? "Exporting..." : "Download Excel"}
           </Button>
@@ -361,14 +416,14 @@ export default function ManageStudents({ setMessage }) {
                   Loading students...
                 </TableCell>
               </TableRow>
-            ) : students.length === 0 ? (
+            ) : filteredStudents.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                  No students found.
+                  {students.length === 0 ? "No students found." : "No students found for the selected center."}
                 </TableCell>
               </TableRow>
             ) : (
-              students.map((student) => (
+              filteredStudents.map((student) => (
                 <TableRow key={student.id} hover>
                   <TableCell>{student.name}</TableCell>
                   <TableCell>{student.email}</TableCell>

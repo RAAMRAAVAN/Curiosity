@@ -88,7 +88,7 @@ const LoginModal = ({ open, onClose, onSignupClick }) => {
           .toString()
           .toUpperCase();
         const redirectPath =
-          userRole === "TEACHER" || userRole === "ADMIN"
+          userRole === "TEACHER" || userRole === "ADMIN" || userRole === "MANAGEMENT"
             ? "/admin"
             : `/courses/${authData.user.studyingClass || 1}/home`;
 

@@ -25,6 +25,8 @@ import { useEffect, useMemo, useState } from "react";
 import DisplayTeachers from "./DisplayTeachers";
 import TeacherSubjectDialog from "./TeacherSubjectDialog";
 
+const ALL_CENTERS = "ALL";
+
 const emptyForm = {
     name: "",
     email: "",
@@ -48,6 +50,7 @@ const ManageTeachersPage = ({ users }) => {
     const [selectedTeacherId, setSelectedTeacherId] = useState(null);
     const [authUser, setAuthUser] = useState(null);
     const [exporting, setExporting] = useState(false);
+    const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
 
     const ensureCentersLoaded = async () => {
         if (centers.length > 0) return;
@@ -277,6 +280,7 @@ const ManageTeachersPage = ({ users }) => {
     }, [authUser]);
 
     const teacherLocked = authUser?.role === "TEACHER";
+    const canUseCenterFilter = authUser?.role === "ADMIN" || authUser?.role === "MANAGEMENT";
     const lockedCenterId = authUser?.centerId || "";
     const centerOptions = useMemo(() => {
         const available = teacherLocked
@@ -290,12 +294,61 @@ const ManageTeachersPage = ({ users }) => {
 
         return [...available, { id: form.centerId, name: editingTeacher?.centerName || form.centerId }];
     }, [centers, teacherLocked, lockedCenterId, form.centerId, editingTeacher]);
+
+    const centerFilterOptions = useMemo(() => {
+        const knownCenters = centers
+            .filter((center) => center?.id)
+            .map((center) => ({ id: center.id, name: center.name || center.id }));
+
+        const knownCenterIds = new Set(knownCenters.map((center) => center.id));
+        const dynamicCenters = teachers
+            .filter((teacher) => teacher?.centerId && !knownCenterIds.has(teacher.centerId))
+            .map((teacher) => ({ id: teacher.centerId, name: teacher.centerName || teacher.centerId }));
+
+        return [{ id: ALL_CENTERS, name: "All" }, ...knownCenters, ...dynamicCenters];
+    }, [centers, teachers]);
+
+    const filteredTeachers = useMemo(() => {
+        if (!canUseCenterFilter || selectedCenter === ALL_CENTERS) {
+            return teachers;
+        }
+
+        return teachers.filter((teacher) => (teacher.centerId || "") === selectedCenter);
+    }, [teachers, canUseCenterFilter, selectedCenter]);
+
+    useEffect(() => {
+        if (!canUseCenterFilter) {
+            setSelectedCenter(ALL_CENTERS);
+            return;
+        }
+
+        const availableCenterIds = new Set(centerFilterOptions.map((center) => center.id));
+        if (!availableCenterIds.has(selectedCenter)) {
+            setSelectedCenter(ALL_CENTERS);
+        }
+    }, [canUseCenterFilter, centerFilterOptions, selectedCenter]);
+
     return (
         <Box display='flex' width='100%' padding={3}>
             <Box display='flex' flexDirection='column' width='100%' padding={3} borderRadius={3} backgroundColor='white' boxShadow={3}>
                 <Box display='flex' width='100%' justifyContent='space-between' alignItems='center'>
                     <Typography fontWeight='bold'>Teachers</Typography>
                     <Stack direction="row" spacing={1}>
+                        {canUseCenterFilter ? (
+                            <TextField
+                                select
+                                size="small"
+                                label="Filter By Center"
+                                value={selectedCenter}
+                                onChange={(event) => setSelectedCenter(event.target.value)}
+                                sx={{ minWidth: 220 }}
+                                InputLabelProps={{ shrink: true }}
+                            >
+                                {centerFilterOptions.map((center) => (
+                                    <MenuItem key={center.id} value={center.id}>{center.name}</MenuItem>
+                                ))}
+                            </TextField>
+                        ) : null}
                         <Button variant='outlined' onClick={handleDownloadTeachers} disabled={exporting || pageLoading}>
                             {exporting ? "Exporting..." : "Download Excel"}
                         </Button>
@@ -319,7 +372,7 @@ const ManageTeachersPage = ({ users }) => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                <DisplayTeachers teachers={teachers} setPageLoading={setPageLoading} FetchTeachers={FetchTeachers} onEditTeacher={openEditDialog} />
+                                <DisplayTeachers teachers={filteredTeachers} setPageLoading={setPageLoading} FetchTeachers={FetchTeachers} onEditTeacher={openEditDialog} />
                             </TableBody>
                         </Table>
                     </TableContainer>

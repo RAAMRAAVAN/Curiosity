@@ -92,8 +92,8 @@ const LoginPage = ({
         return;
       }
 
-      if (data.data.role !== "ADMIN") {
-        setMessage("Only admin users can access this panel.");
+      if (!["ADMIN", "MANAGEMENT"].includes(String(data.data?.role || "").toUpperCase())) {
+        setMessage("Only admin or management users can access this panel.");
         setAuthorized(false);
         return;
       }
@@ -166,7 +166,7 @@ const LoginPage = ({
         </Typography>
 
         <Typography color="text.secondary" mb={4}>
-          Access the user management console with your admin account.
+          Access the user management console with your admin or management account.
         </Typography>
 
         <TextField
