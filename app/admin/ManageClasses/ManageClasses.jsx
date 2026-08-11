@@ -14,6 +14,21 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
     const [openClassModal, setOpenClassModal] = useState(false);
     const [classForm, setClassForm] = useState({ className: "", icon: "" });
     const [editingClassId, setEditingClassId] = useState(null);
+    const [authUser, setAuthUser] = useState(null);
+
+    const isAdminRole = String(authUser?.role || "").toUpperCase() === "ADMIN";
+
+    const loadCurrentUser = async () => {
+        try {
+            const res = await fetch("/api/admin/me", { credentials: "include" });
+            const data = await res.json();
+            if (data.success) {
+                setAuthUser(data.data || null);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     const refreshClasses = async () => {
         try {
@@ -26,6 +41,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
     };
     useEffect(() => {
         refreshClasses();
+        loadCurrentUser();
     }, [])
 
     const startNewClass = () => {
@@ -129,7 +145,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
         <Paper sx={{ p: 3, mb: 4, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                 <Typography variant="h6" fontWeight={700}>Classes</Typography>
-                <Box>
+                {isAdminRole ? <Box>
                     <Button variant="outlined" sx={{ mr: 1 }} onClick={async () => {
                         if (!confirm("Seed classes 1-12?")) return;
                         setLoading(true);
@@ -147,7 +163,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                         const name = prompt("Class name (e.g. Class 1, BSc Computer Science, 4th sem):");
                         if (name) handleCreateClass(name);
                     }}>Create Class</Button>
-                </Box>
+                </Box> : null}
             </Box>
             <TableContainer>
                 <Table>

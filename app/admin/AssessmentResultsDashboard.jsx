@@ -14,6 +14,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  MenuItem,
   Paper,
   Stack,
   Table,
@@ -22,11 +23,13 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from '@mui/material';
 import { Assessment, BarChart, TrendingUp } from '@mui/icons-material';
 
 const AssessmentResultsDashboard = ({ assessmentId }) => {
+  const ALL_CENTERS = 'ALL';
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [pendingDialogOpen, setPendingDialogOpen] = useState(false);
@@ -37,18 +40,55 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailResults, setDetailResults] = useState([]);
   const [detailAssessmentTitle, setDetailAssessmentTitle] = useState('');
+  const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
+  const [canUseCenterFilter, setCanUseCenterFilter] = useState(false);
+
+  useEffect(() => {
+    const loadAuthRole = async () => {
+      try {
+        const res = await fetch('/api/admin/me', { credentials: 'include' });
+        const response = await res.json();
+        if (!response.success) return;
+
+        const role = String(response.data?.role || '').toUpperCase();
+        setCanUseCenterFilter(role === 'ADMIN' || role === 'MANAGEMENT');
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    loadAuthRole();
+  }, []);
+
+  const centerOptions = useMemo(() => {
+    const values = Array.from(
+      new Set(
+        detailResults
+          .map((item) => item.studentCenterName || 'N/A')
+          .filter((item) => String(item).trim())
+      )
+    ).sort((a, b) => String(a).localeCompare(String(b)));
+
+    return [ALL_CENTERS, ...values];
+  }, [detailResults]);
+
+  const filteredDetailResults = useMemo(() => {
+    if (!canUseCenterFilter) return detailResults;
+    if (selectedCenter === ALL_CENTERS) return detailResults;
+    return detailResults.filter((item) => (item.studentCenterName || 'N/A') === selectedCenter);
+  }, [detailResults, selectedCenter, canUseCenterFilter]);
 
   const detailStats = useMemo(() => {
-    if (!detailResults.length) {
+    if (!filteredDetailResults.length) {
       return { attempts: 0, avg: 0, top: 0 };
     }
 
-    const attempts = detailResults.length;
-    const totalPercentage = detailResults.reduce((sum, item) => sum + (Number(item.percentage) || 0), 0);
+    const attempts = filteredDetailResults.length;
+    const totalPercentage = filteredDetailResults.reduce((sum, item) => sum + (Number(item.percentage) || 0), 0);
     const avg = Math.round((totalPercentage / attempts) * 100) / 100;
-    const top = Math.max(...detailResults.map((item) => Number(item.score) || 0));
+    const top = Math.max(...filteredDetailResults.map((item) => Number(item.score) || 0));
     return { attempts, avg, top };
-  }, [detailResults]);
+  }, [filteredDetailResults]);
 
   const getResultRowStyles = (percentage) => {
     const value = Number(percentage) || 0;
@@ -232,15 +272,17 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
       .sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
     setDetailResults(filtered);
     setDetailAssessmentTitle(summary.title || 'Assessment Results');
+    setSelectedCenter(ALL_CENTERS);
     setDetailDialogOpen(true);
   };
 
   const downloadDetailResults = () => {
-    if (!detailResults.length) return;
+    if (!filteredDetailResults.length) return;
 
     const headers = [
       'S.No',
       'Student',
+      'Center Name',
       'Class',
       'Subject',
       'Correct Attempts',
@@ -250,9 +292,10 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
       'Percentage',
     ];
 
-    const rows = detailResults.map((result, index) => [
+    const rows = filteredDetailResults.map((result, index) => [
       index + 1,
       result.user?.name || '',
+      result.studentCenterName || '',
       result.studentClassName || '',
       result.assessment?.subject?.subjectName || '',
       result.correctAttempts ?? 0,
@@ -455,13 +498,44 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
       </Dialog>
 
       <Dialog open={detailDialogOpen} onClose={() => setDetailDialogOpen(false)} fullWidth maxWidth="lg">
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {detailAssessmentTitle}
-          <Button variant="contained" size="small" onClick={downloadDetailResults}>
-            Download Excel
-          </Button>
-        </DialogTitle>
+        <DialogTitle>{detailAssessmentTitle}</DialogTitle>
         <DialogContent>
+          <Box
+            sx={{
+              mt: 1,
+              mb: 2.5,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 2,
+              flexWrap: 'wrap',
+            }}
+          >
+            {canUseCenterFilter ? (
+              <TextField
+                select
+                size="small"
+                label="Filter By Center"
+                value={selectedCenter}
+                onChange={(event) => setSelectedCenter(event.target.value)}
+                sx={{ minWidth: 280 }}
+                InputLabelProps={{ shrink: true }}
+              >
+                {centerOptions.map((centerName) => (
+                  <MenuItem key={centerName} value={centerName}>
+                    {centerName === ALL_CENTERS ? 'All' : centerName}
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : (
+              <Box />
+            )}
+
+            <Button variant="contained" size="small" onClick={downloadDetailResults}>
+              Download Excel
+            </Button>
+          </Box>
+
           <Box sx={{ mb: 3 }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <Card sx={{ flex: 1, bgcolor: '#f5f7ff', borderRadius: 3 }} variant="outlined">
@@ -490,6 +564,7 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
                 <TableRow sx={{ backgroundColor: '#f3f4f6' }}>
                   <TableCell sx={{ fontWeight: 700 }}>S.No</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Student</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Center Name</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Class</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Subject</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Correct</TableCell>
@@ -500,10 +575,11 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {detailResults.map((result, index) => (
+                {filteredDetailResults.map((result, index) => (
                   <TableRow key={result.id} sx={getResultRowStyles(result.percentage)}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{result.user?.name || 'Unknown'}</TableCell>
+                    <TableCell>{result.studentCenterName || 'N/A'}</TableCell>
                     <TableCell>{result.studentClassName || result.user?.studyingClass || 'N/A'}</TableCell>
                     <TableCell>{result.assessment?.subject?.subjectName || 'N/A'}</TableCell>
                     <TableCell>{result.correctAttempts ?? 0}</TableCell>
@@ -513,10 +589,10 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
                     <TableCell>{result.percentage ?? 0}%</TableCell>
                   </TableRow>
                 ))}
-                {detailResults.length === 0 ? (
+                {filteredDetailResults.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} align="center">
-                      <Typography color="text.secondary">No student results available.</Typography>
+                    <TableCell colSpan={10} align="center">
+                      <Typography color="text.secondary">No student results available for the selected center.</Typography>
                     </TableCell>
                   </TableRow>
                 ) : null}

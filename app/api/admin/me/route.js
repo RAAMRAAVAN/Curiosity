@@ -3,6 +3,17 @@ import { getUserFromRequest } from "@/server/auth";
 import { prisma } from "@/server/prisma";
 import { canAccessAdminArea } from "@/lib/roleAccess";
 
+function getProfile(user) {
+  return (
+    user.teacher ||
+    user.student ||
+    user.admin ||
+    user.management ||
+    user.parent ||
+    {}
+  );
+}
+
 export async function GET(req) {
   const authUser = getUserFromRequest(req);
 
@@ -12,19 +23,33 @@ export async function GET(req) {
 
   const user = await prisma.user.findUnique({
     where: { id: authUser.userId },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      dob: true,
-      gender: true,
-      phone: true,
-      address: true,
-      schoolName: true,
-      studyingClass: true,
-      createdAt: true,
-      updatedAt: true,
+    include: {
+      center: true,
+      teacher: {
+        include: {
+          center: true,
+        },
+      },
+      student: {
+        include: {
+          center: true,
+        },
+      },
+      admin: {
+        include: {
+          center: true,
+        },
+      },
+      management: {
+        include: {
+          center: true,
+        },
+      },
+      parent: {
+        include: {
+          center: true,
+        },
+      },
     },
   });
 
@@ -32,5 +57,27 @@ export async function GET(req) {
     return ApiResponse.error("Unauthorized", 401);
   }
 
-  return ApiResponse.success(user, "Admin authenticated");
+  const profile = getProfile(user);
+  const resolvedCenterId = profile.centerId || user.centerId || null;
+  const resolvedCenterName = profile.center?.name || user.center?.name || null;
+
+  return ApiResponse.success(
+    {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      centerId: resolvedCenterId,
+      centerName: resolvedCenterName,
+      dob: profile.dob,
+      gender: profile.gender,
+      phone: profile.phone,
+      address: profile.address,
+      schoolName: profile.schoolName,
+      studyingClass: profile.studyingClass,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    },
+    "Admin authenticated"
+  );
 }

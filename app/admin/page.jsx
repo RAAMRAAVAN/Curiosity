@@ -16,6 +16,8 @@ import ManageClasses from "./ManageClasses/ManageClasses";
 import { Menu } from "@mui/icons-material";
 import ManageTeachersPage from "./ManageTeachers/ManageTeachers";
 import AssessmentResultsDashboard from "./AssessmentResultsDashboard";
+import ManageCenters from "./ManageCenters/ManageCenters";
+import ManageStudents from "./ManageStudents/ManageStudents";
 
 export default function AdminPage() {
   const [users, setUsers] = useState([]);
@@ -48,7 +50,12 @@ export default function AdminPage() {
 
           setAdmin(data.data);
           setAuthorized(true);
-          await refreshUsers();
+          if (["ADMIN", "MANAGEMENT"].includes(String(data.data?.role || "").toUpperCase())) {
+            await refreshUsers();
+          } else {
+            setUsers([]);
+            setAdminView("teachers");
+          }
         } else {
           sessionStorage.removeItem("authDetails");
           setAdmin(null);
@@ -148,7 +155,7 @@ export default function AdminPage() {
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f5f8ff", py: 4, px: 3 }}>
-      {drawerOpen ? <><AdminDrawyer drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} adminView={adminView} setAdminView={setAdminView} />
+      {drawerOpen ? <><AdminDrawyer drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} adminView={adminView} setAdminView={setAdminView} role={admin?.role} />
       </> : <>
       
         <IconButton
@@ -187,6 +194,18 @@ export default function AdminPage() {
             ) : null}
                   <ManageTeachersPage loading={loading} setLoading={setLoading} message={message} setMessage={setMessage} setAdminView={setAdminView} users={users}/></>
         </>): null}
+
+        {adminView === "centers" ? (
+          <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+            <ManageCenters setMessage={setMessage} />
+          </Paper>
+        ) : null}
+
+        {adminView === "students" ? (
+          <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+            <ManageStudents setMessage={setMessage} />
+          </Paper>
+        ) : null}
 
         {adminView === "results" ? (
           <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>

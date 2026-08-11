@@ -20,6 +20,7 @@ enum Role {
   STUDENT
   TEACHER
   ADMIN
+  MANAGEMENT
   PARENT
 }
 
@@ -27,6 +28,30 @@ enum TeacherRole {
   OWNER
   EDITOR
   VIEWER
+}
+
+//
+// CENTER
+//
+
+model Center {
+  id String @id @default(cuid())
+
+  name String @unique
+  slug String @unique
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+  classes Class[]
+  subjects Subject[]
+  teachers Teacher[]
+  students Student[]
+  admins Admin[]
+  managements Management[]
+  parents Parent[]
 }
 
 //
@@ -40,27 +65,22 @@ model User {
   email    String @unique
   password String
 
-  dob     DateTime?
-  gender  String?
-  phone   String?
-  address String?
-
-  schoolName    String?
-  studyingClass String?
-
-  profilePic String?
-
   role Role @default(STUDENT)
+
+  centerId String? @map("center_id")
+  center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
 
   status Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Teacher profile
-  teacher Teacher?
+  teacher    Teacher?
+  student    Student?
+  admin      Admin?
+  management Management?
+  parent     Parent?
 
-  // Student permissions
   classAccesses          UserClassAccess[]
   subjectAccesses        UserSubjectAccess[]
   teacherSubjectAccesses UserTeacherSubjectAccess[]
@@ -77,6 +97,9 @@ model Class {
 
   className String  @unique @map("class_name")
   icon      String?
+
+  centerId String? @map("center_id")
+  center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
 
   status Boolean @default(true)
 
@@ -104,6 +127,9 @@ model Subject {
   classId String @map("class_id")
   class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
 
+  centerId String? @map("center_id")
+  center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
+
   status Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -129,8 +155,11 @@ model Teacher {
   userId String @unique @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  centerId String? @map("center_id")
+  center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
+
   name    String
-  phone   String    @unique
+  phone   String? @unique
   address String?
   gender  String?
   dob     DateTime?
@@ -142,6 +171,94 @@ model Teacher {
 
   // Relations
   teacherSubjects TeacherSubject[]
+}
+
+model Student {
+  id String @id @default(cuid())
+
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  centerId String? @map("center_id")
+  center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
+
+  dob     DateTime?
+  gender  String?
+  phone   String?
+  address String?
+  schoolName    String?
+  studyingClass String?
+
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Admin {
+  id String @id @default(cuid())
+
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  centerId String? @map("center_id")
+  center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
+
+  dob     DateTime?
+  gender  String?
+  phone   String?
+  address String?
+  schoolName    String?
+  studyingClass String?
+
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Management {
+  id String @id @default(cuid())
+
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  centerId String? @map("center_id")
+  center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
+
+  dob     DateTime?
+  gender  String?
+  phone   String?
+  address String?
+  schoolName    String?
+  studyingClass String?
+
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Parent {
+  id String @id @default(cuid())
+
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  centerId String? @map("center_id")
+  center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
+
+  dob     DateTime?
+  gender  String?
+  phone   String?
+  address String?
+  schoolName    String?
+  studyingClass String?
+
+  status Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 //

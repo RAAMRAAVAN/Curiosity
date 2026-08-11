@@ -10,8 +10,11 @@ export async function POST(req) {
   try {
     const body = await req.json();
 
+    // Force public signup to student role only.
+    body.userType = "student";
+
     // Validate request
-    validateSignup(body);
+    await validateSignup(body, { allowRoles: ["student"] });
 
     // Create user
     const { user, token } = await signupService(body);

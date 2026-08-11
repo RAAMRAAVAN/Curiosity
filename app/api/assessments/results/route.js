@@ -1,6 +1,7 @@
 import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { getUserFromRequest } from '@/server/auth';
+import { canAccessAdminArea, isTeacher } from '@/lib/roleAccess';
 
 export async function POST(req) {
   try {
@@ -205,17 +206,61 @@ export async function POST(req) {
 
 export async function GET(req) {
   try {
+    const authUser = getUserFromRequest(req);
+    if (!authUser || !canAccessAdminArea(authUser)) {
+      return ApiResponse.error('Unauthorized', 401);
+    }
+
     const { searchParams } = new URL(req.url);
     const assessmentId = searchParams.get('assessmentId');
     const userId = searchParams.get('userId');
+
+    let scopedCenterId = null;
+    if (isTeacher(authUser)) {
+      const teacherProfile = await prisma.teacher.findUnique({
+        where: { userId: authUser.id },
+        select: { centerId: true },
+      });
+
+      if (!teacherProfile?.centerId) {
+        return ApiResponse.error('Teacher account is not mapped to any center.', 400);
+      }
+
+      scopedCenterId = teacherProfile.centerId;
+    }
 
     const results = await prisma.assessmentResult.findMany({
       where: {
         ...(assessmentId ? { assessmentId } : {}),
         ...(userId ? { userId } : {}),
+        ...(scopedCenterId
+          ? {
+              user: {
+                student: {
+                  centerId: scopedCenterId,
+                },
+              },
+            }
+          : {}),
       },
       include: {
-        user: { select: { id: true, name: true, email: true, studyingClass: true } },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            student: {
+              select: {
+                studyingClass: true,
+                center: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         assessment: {
           select: {
             id: true,
@@ -232,7 +277,7 @@ export async function GET(req) {
     const classIds = Array.from(
       new Set(
         results
-          .map((result) => result.user?.studyingClass)
+          .map((result) => result.user?.student?.studyingClass)
           .filter((id) => typeof id === 'string' && id.trim())
       )
     );
@@ -240,7 +285,10 @@ export async function GET(req) {
     const classRecords = classIds.length
       ? await prisma.class.findMany({
           where: {
-            id: { in: classIds },
+            OR: [
+              { id: { in: classIds } },
+              { className: { in: classIds } },
+            ],
           },
           select: {
             id: true,
@@ -251,6 +299,7 @@ export async function GET(req) {
 
     const classMap = classRecords.reduce((acc, cls) => {
       acc[cls.id] = cls.className;
+      acc[cls.className] = cls.className;
       return acc;
     }, {});
 
@@ -280,7 +329,11 @@ export async function GET(req) {
       return {
         ...result,
         studentClassName:
-          classMap[result.user?.studyingClass] || result.user?.studyingClass || 'N/A',
+          result.assessment?.class?.className ||
+          classMap[result.user?.student?.studyingClass] ||
+          result.user?.student?.studyingClass ||
+          'N/A',
+        studentCenterName: result.user?.student?.center?.name || 'N/A',
         correctAttempts,
         wrongAttempts,
         percentage,

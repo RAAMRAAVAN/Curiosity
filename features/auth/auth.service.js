@@ -3,6 +3,34 @@ import { hashPassword, comparePassword } from "@/lib/hash";
 import { signToken } from "@/server/jwt";
 import { toUserDto } from "./auth.dto";
 
+function buildProfileData(data, role) {
+  const profileData = {};
+
+  if (data.dob !== undefined) {
+    profileData.dob = data.dob ? new Date(data.dob) : null;
+  }
+  if (data.gender !== undefined) {
+    profileData.gender = data.gender;
+  }
+  if (data.phone !== undefined) {
+    profileData.phone = data.phone;
+  }
+  if (data.address !== undefined) {
+    profileData.address = data.address;
+  }
+
+  if (role !== "TEACHER") {
+    if (data.schoolName !== undefined) {
+      profileData.schoolName = data.schoolName;
+    }
+    if (data.studyingClass !== undefined) {
+      profileData.studyingClass = data.studyingClass;
+    }
+  }
+
+  return profileData;
+}
+
 export async function signupService(data) {
   const existing = await authRepository.findByEmail(data.email);
 
@@ -11,23 +39,30 @@ export async function signupService(data) {
   }
 
   const hashedPassword = await hashPassword(data.password);
+  const role = data.userType?.toUpperCase() || "STUDENT";
 
   const user = await authRepository.createUser({
     name: data.name,
     email: data.email,
     password: hashedPassword,
-    dob: new Date(data.dob),
-    gender: data.gender,
-    phone: data.phone,
-    address: data.address,
-    schoolName: data.schoolName,
-    studyingClass: data.studyingClass,
-    role: data.userType?.toUpperCase() || "STUDENT",
+    role,
+    centerId: data.centerId || null,
   });
 
+  const profileData = buildProfileData(data, role);
+  if (Object.keys(profileData).length > 0 || role === "TEACHER") {
+    await authRepository.createRoleProfile(user.id, role, {
+      ...profileData,
+      centerId: data.centerId || null,
+      ...(role === "TEACHER" ? { name: user.name } : {}),
+    });
+  }
+
+  const userWithProfile = await authRepository.findById(user.id);
+
   return {
-    token: signToken(user),
-    user: toUserDto(user),
+    token: signToken(userWithProfile),
+    user: toUserDto(userWithProfile),
   };
 }
 

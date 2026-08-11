@@ -21,6 +21,9 @@ import {
   School,
   Person,
   Assessment,
+  Apartment,
+  SchoolOutlined,
+  Logout,
 } from "@mui/icons-material";
 
 const drawerWidth = 260;
@@ -30,8 +33,11 @@ const AdminDrawer = ({
   adminView,
   setAdminView,
   setDrawerOpen,
+  role,
 }) => {
   const pathname = usePathname();
+
+  const isTeacherRole = String(role || "").toUpperCase() === "TEACHER";
 
   const menuItems = [
     {
@@ -50,11 +56,25 @@ const AdminDrawer = ({
       icon: <Person />,
     },
     {
+      title: "Manage Centers",
+      value: "centers",
+      icon: <Apartment />,
+    },
+    {
+      title: "Manage Students",
+      value: "students",
+      icon: <SchoolOutlined />,
+    },
+    {
       title: "Assessment Results",
       value: "results",
       icon: <Assessment />,
     },
   ];
+
+  const visibleMenuItems = isTeacherRole
+    ? menuItems.filter((item) => ["classes", "teachers", "students", "results"].includes(item.value))
+    : menuItems;
 
   return (
     <Drawer
@@ -88,7 +108,7 @@ const AdminDrawer = ({
       <Divider />
 
       <List>
-        {menuItems.map((item) => (
+        {visibleMenuItems.map((item) => (
           <ListItem key={item.value} disablePadding>
             <ListItemButton
               selected={adminView === item.value}
@@ -132,6 +152,24 @@ const AdminDrawer = ({
           </ListItem>
         ))}
       </List>
+
+      <Box sx={{ mt: "auto", p: 2 }}>
+        <ListItem disablePadding>
+          <ListItemButton
+            onClick={() => {
+              sessionStorage.removeItem("authDetails");
+              document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+              window.location.href = "/";
+            }}
+            sx={{ mx: 1, borderRadius: 2 }}
+          >
+            <ListItemIcon sx={{ minWidth: 42, color: "text.secondary" }}>
+              <Logout />
+            </ListItemIcon>
+            <ListItemText primary="Logout" />
+          </ListItemButton>
+        </ListItem>
+      </Box>
     </Drawer>
   );
 };

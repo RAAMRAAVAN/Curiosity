@@ -299,11 +299,8 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                   <Chip
                     label={`Appeared: ${assessment.attempts || 0}`}
                     color="success"
-                    // disabled
                     variant="outlined"
-                    onClick={() => {
-                      // handleOpenAppearedDialog(assessment)
-                    }}
+                    onClick={() => handleOpenAppearedDialog(assessment)}
                     sx={{ cursor: 'pointer', fontWeight: 600 }}
                   />
                 </Stack>

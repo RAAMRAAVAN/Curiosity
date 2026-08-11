@@ -1,18 +1,12 @@
 import { getUserFromRequest } from "@/server/auth";
+import { ApiResponse } from "@/utils/apiResponse";
 
 export async function GET(req) {
   const user = getUserFromRequest(req);
 
   if (!user) {
-    return Response.json(
-      { success: false, message: "Unauthorized" },
-      { status: 401 }
-    );
+    return ApiResponse.error("Unauthorized", 401);
   }
 
-  return Response.json({
-    success: true,
-    message: "Authenticated user",
-    user,
-  });
+  return ApiResponse.success(user, "Authenticated user");
 }

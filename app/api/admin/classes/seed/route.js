@@ -1,12 +1,16 @@
 import { ApiResponse } from "@/utils/apiResponse";
 import { getUserFromRequest } from "@/server/auth";
 import { prisma } from "@/server/prisma";
-import { canAccessAdminArea } from "@/lib/roleAccess";
+import { canAccessAdminArea, hasAnyRole } from "@/lib/roleAccess";
 
 export async function POST(req) {
   const authUser = getUserFromRequest(req);
   if (!authUser || !canAccessAdminArea(authUser)) {
     return ApiResponse.error("Unauthorized", 401);
+  }
+
+  if (!hasAnyRole(authUser, ["ADMIN"])) {
+    return ApiResponse.error("Forbidden", 403);
   }
 
   const classNumbers = Array.from({ length: 12 }, (_, i) => String(i + 1));

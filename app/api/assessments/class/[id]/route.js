@@ -1,14 +1,40 @@
 import { prisma } from '@/server/prisma'; // Update if your prisma import is different
 import { ApiResponse } from '@/utils/apiResponse';
+import { getUserFromRequest } from '@/server/auth';
+import { canAccessAdminArea, isTeacher } from '@/lib/roleAccess';
 // import { buildAssessmentWithStats } from "@/lib/assessment"; // Update path if needed
 
-const buildAssessmentWithStats = async (assessment, eligibleStudentIds) => {
+const buildAssessmentWithStats = async (assessment, eligibleStudentIds, scopedCenterId = null) => {
     const [attempts, attemptUsers] = await Promise.all([
         prisma.assessmentResult.count({
-            where: { assessmentId: assessment.id, status: true },
+            where: {
+                assessmentId: assessment.id,
+                status: true,
+                ...(scopedCenterId
+                    ? {
+                        user: {
+                            student: {
+                                centerId: scopedCenterId,
+                            },
+                        },
+                    }
+                    : {}),
+            },
         }),
         prisma.assessmentResult.findMany({
-            where: { assessmentId: assessment.id, status: true },
+            where: {
+                assessmentId: assessment.id,
+                status: true,
+                ...(scopedCenterId
+                    ? {
+                        user: {
+                            student: {
+                                centerId: scopedCenterId,
+                            },
+                        },
+                    }
+                    : {}),
+            },
             select: { userId: true },
             orderBy: { createdAt: 'asc' },
         }),
@@ -41,30 +67,66 @@ const buildAssessmentWithStats = async (assessment, eligibleStudentIds) => {
 
 export async function GET(req, { params }) {
     try {
+        const authUser = getUserFromRequest(req);
+        if (!authUser || !canAccessAdminArea(authUser)) {
+            return ApiResponse.error('Unauthorized', 401);
+        }
+
         const { id: classId } = await params;
         const searchParams = new URL(req.url).searchParams;
         const subjectId = searchParams.get('subjectId');
         const chapterId = searchParams.get('chapterId');
 
+        let scopedCenterId = null;
+        if (isTeacher(authUser)) {
+            const teacherProfile = await prisma.teacher.findUnique({
+                where: { userId: authUser.id },
+                select: { centerId: true },
+            });
+
+            if (!teacherProfile?.centerId) {
+                return ApiResponse.error('Teacher account is not mapped to any center.', 400);
+            }
+
+            scopedCenterId = teacherProfile.centerId;
+        }
+
         if (!classId) {
             return ApiResponse.error("Class ID is required", 400);
         }
 
-        const eligibleStudents = await prisma.user.findMany({
-            where: {
-                role: 'STUDENT',
-                status: true,
-                studyingClass: classId,
-            },
-            select: {
-                id: true,
-                name: true,
-                studyingClass: true,
-                role: true,
-                status: true,
-            },
-            take: 10,
-        });
+            // Load class record to also match students who have stored className in their profile
+            const classRecord = await prisma.class.findUnique({
+                where: { id: classId },
+                select: { id: true, className: true, centerId: true },
+            });
+
+            if (scopedCenterId && classRecord?.centerId && classRecord.centerId !== scopedCenterId) {
+                return ApiResponse.error('Forbidden', 403);
+            }
+
+            const studyingClassValues = classRecord
+                ? [classId, classRecord.className]
+                : [classId];
+
+            const eligibleStudents = await prisma.user.findMany({
+                where: {
+                    role: 'STUDENT',
+                    status: true,
+                    student: {
+                        studyingClass: { in: studyingClassValues },
+                        ...(scopedCenterId ? { centerId: scopedCenterId } : {}),
+                    },
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    student: { select: { studyingClass: true } },
+                    role: true,
+                    status: true,
+                },
+                take: 1000,
+            });
 
         const eligibleStudentIds = eligibleStudents.map((student) => student.id);
         const eligibleStudentCount = eligibleStudentIds.length;
@@ -123,7 +185,7 @@ export async function GET(req, { params }) {
 
         const assessmentsWithStats = await Promise.all(
             assessments.map((assessment) =>
-                buildAssessmentWithStats(assessment, eligibleStudentIds)
+                buildAssessmentWithStats(assessment, eligibleStudentIds, scopedCenterId)
             )
         );
 

@@ -1,7 +1,7 @@
 import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { getUserFromRequest } from '@/server/auth';
-import { canAccessAdminArea } from '@/lib/roleAccess';
+import { canAccessAdminArea, isTeacher } from '@/lib/roleAccess';
 
 export async function GET(req, { params }) {
   try {
@@ -13,6 +13,20 @@ export async function GET(req, { params }) {
 
     const { assessmentId } = await params;
 
+    let scopedCenterId = null;
+    if (isTeacher(authUser)) {
+      const teacherProfile = await prisma.teacher.findUnique({
+        where: { userId: authUser.id },
+        select: { centerId: true },
+      });
+
+      if (!teacherProfile?.centerId) {
+        return ApiResponse.error('Teacher account is not mapped to any center.', 400);
+      }
+
+      scopedCenterId = teacherProfile.centerId;
+    }
+
     if (!assessmentId) {
       return ApiResponse.error('Assessment ID is required', 400);
     }
@@ -22,6 +36,7 @@ export async function GET(req, { params }) {
       select: {
         id: true,
         classId: true,
+        class: { select: { centerId: true } },
       },
     });
 
@@ -29,25 +44,41 @@ export async function GET(req, { params }) {
       return ApiResponse.error('Assessment not found', 404);
     }
 
+    if (scopedCenterId && assessment.class?.centerId && assessment.class.centerId !== scopedCenterId) {
+      return ApiResponse.error('Forbidden', 403);
+    }
+
     const [eligibleStudents, attemptedResults] = await Promise.all([
       prisma.user.findMany({
         where: {
           role: 'STUDENT',
           status: true,
-          studyingClass: assessment.classId,
+          student: {
+            studyingClass: assessment.classId,
+            ...(scopedCenterId ? { centerId: scopedCenterId } : {}),
+          },
         },
         select: {
           id: true,
           name: true,
           email: true,
-          studyingClass: true,
+          student: { select: { studyingClass: true } },
         },
-        orderBy: [{ studyingClass: 'asc' }, { name: 'asc' }],
+        orderBy: [{ student: { studyingClass: 'asc' } }, { name: 'asc' }],
       }),
       prisma.assessmentResult.findMany({
         where: {
           assessmentId,
           status: true,
+          ...(scopedCenterId
+            ? {
+                user: {
+                  student: {
+                    centerId: scopedCenterId,
+                  },
+                },
+              }
+            : {}),
         },
         select: {
           userId: true,
@@ -58,8 +89,40 @@ export async function GET(req, { params }) {
     const attemptedUserIds = new Set(attemptedResults.map((result) => result.userId));
     const pendingStudents = eligibleStudents.filter((student) => !attemptedUserIds.has(student.id));
 
+    const studyingClassValues = Array.from(
+      new Set(
+        pendingStudents
+          .map((student) => student.student?.studyingClass)
+          .filter((value) => typeof value === 'string' && value.trim())
+      )
+    );
+
+    const classRecords = studyingClassValues.length
+      ? await prisma.class.findMany({
+          where: {
+            OR: [
+              { id: { in: studyingClassValues } },
+              { className: { in: studyingClassValues } },
+            ],
+          },
+          select: {
+            id: true,
+            className: true,
+          },
+        })
+      : [];
+
+    const classNameMap = classRecords.reduce((acc, item) => {
+      acc[item.id] = item.className;
+      acc[item.className] = item.className;
+      return acc;
+    }, {});
+
     const groupedStudents = pendingStudents.reduce((acc, student) => {
-      const classLabel = student.studyingClass?.trim() || 'Unassigned';
+      const studyingClass = student.student?.studyingClass?.trim();
+      const classLabel = studyingClass
+        ? classNameMap[studyingClass] || studyingClass
+        : 'Unassigned';
       const existingGroup = acc.find((group) => group.className === classLabel);
 
       if (existingGroup) {

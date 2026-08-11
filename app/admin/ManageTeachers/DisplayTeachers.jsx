@@ -1,8 +1,9 @@
-import { Button, CircularProgress, TableCell, TableRow } from "@mui/material";
+import { Delete, Edit } from "@mui/icons-material";
+import { Button, CircularProgress, IconButton, Stack, TableCell, TableRow } from "@mui/material";
 import { useEffect, useState } from "react";
 import TeacherSubjectDialog from "./TeacherSubjectDialog";
 
-const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers }) => {
+const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeacher }) => {
 
     const [subjects, setSubjects] = useState([]);
     const [subjectLoading, setSubjectsLoading] = useState(false);
@@ -111,11 +112,15 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers }) => {
 
                     <TableCell>{teacher.email}</TableCell>
 
-                    <TableCell>{teacher.gender}</TableCell>
+                    <TableCell>{teacher.centerName || "—"}</TableCell>
 
-                    <TableCell>{teacher.phone}</TableCell>
+                    <TableCell>{teacher.classNames?.join(", ") || "—"}</TableCell>
 
-                    <TableCell>{teacher.dob}</TableCell>
+                    <TableCell>{teacher.gender || "—"}</TableCell>
+
+                    <TableCell>{teacher.phone || "—"}</TableCell>
+
+                    <TableCell>{teacher.dob || "—"}</TableCell>
 
 
                     <TableCell>
@@ -146,15 +151,14 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers }) => {
 
 
                     <TableCell>
-
-                        <Button
-                            size="small"
-                            color="error"
-                            onClick={() => handleDeleteTeacher(teacher.id)}
-                        >
-                            Delete
-                        </Button>
-
+                        <Stack direction="row" spacing={1} alignItems="center">
+                            <IconButton color="primary" onClick={() => onEditTeacher(teacher)}>
+                                <Edit />
+                            </IconButton>
+                            <Button size="small" color="error" onClick={() => handleDeleteTeacher(teacher.id)}>
+                                Delete
+                            </Button>
+                        </Stack>
                     </TableCell>
 
 
@@ -169,7 +173,7 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers }) => {
                 <TableRow>
 
                     <TableCell
-                        colSpan={8}
+                        colSpan={9}
                         align="center"
                         sx={{ py: 4 }}
                     >
