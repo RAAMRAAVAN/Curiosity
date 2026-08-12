@@ -1,5 +1,6 @@
 import { ApiResponse } from "@/utils/apiResponse";
 import { prisma } from "@/server/prisma";
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 
 
@@ -105,6 +106,11 @@ export async function GET(req, { params }) {
 // Update Previous Paper
 
 export async function PUT(req, { params }) {
+
+    const auth = await requireAdminPermission(req, 'class_content.edit');
+    if (!auth.ok) {
+        return ApiResponse.error(auth.message, auth.status);
+    }
 
 
     try {
@@ -362,6 +368,11 @@ export async function PUT(req, { params }) {
 // Delete Previous Paper
 
 export async function DELETE(req, { params }) {
+
+    const auth = await requireAdminPermission(req, 'class_content.edit');
+    if (!auth.ok) {
+        return ApiResponse.error(auth.message, auth.status);
+    }
 
 
     try {

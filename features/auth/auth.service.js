@@ -1,6 +1,7 @@
 import { authRepository } from "./auth.repository";
 import { hashPassword, comparePassword } from "@/lib/hash";
 import { signToken } from "@/server/jwt";
+import { prisma } from "@/server/prisma";
 import { toUserDto } from "./auth.dto";
 
 function buildProfileData(data, role) {
@@ -82,8 +83,17 @@ export async function loginService(data) {
     throw new Error("Invalid email or password.");
   }
 
+  const setting = await prisma.appSetting.findUnique({
+    where: { key: "admin.classNavigationPreference" },
+  });
+
+  const userDto = toUserDto(user);
+
   return {
     token: signToken(user),
-    user: toUserDto(user),
+    user: {
+      ...userDto,
+      classNavigationPreference: setting?.value || "contents",
+    },
   };
 }

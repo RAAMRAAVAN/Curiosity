@@ -1,18 +1,21 @@
 import { ApiResponse } from "@/utils/apiResponse";
-import { getUserFromRequest } from "@/server/auth";
 import { prisma } from "@/server/prisma";
-import { canAccessAdminArea } from "@/lib/roleAccess";
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 export async function GET(req) {
-  const authUser = getUserFromRequest(req);
-  if (!authUser || !canAccessAdminArea(authUser)) {
-    return ApiResponse.error("Unauthorized", 401);
+  const auth = await requireAdminPermission(req, 'centers.view');
+  if (!auth.ok) {
+    return ApiResponse.error(auth.message, auth.status);
   }
 
   try {
-    const centers = await prisma.center.findMany({
+    let centers = await prisma.center.findMany({
       orderBy: { createdAt: "asc" },
     });
+
+    if (!auth.actor.isAdmin) {
+      centers = centers.filter((center) => auth.actor.canAccessCenter(center.id));
+    }
 
     return ApiResponse.success(centers);
   } catch (error) {
@@ -22,9 +25,9 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  const authUser = getUserFromRequest(req);
-  if (!authUser || !canAccessAdminArea(authUser)) {
-    return ApiResponse.error("Unauthorized", 401);
+  const auth = await requireAdminPermission(req, 'centers.create');
+  if (!auth.ok) {
+    return ApiResponse.error(auth.message, auth.status);
   }
 
   try {

@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/server/prisma";
 import { ApiResponse } from "@/utils/apiResponse";
 import { formatDate } from "@/lib/date";
-import { canAccessAdminArea, isTeacher } from "@/lib/roleAccess";
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 function formatTeacherResponse(teacher, classIds = [], classNames = []) {
     return {
@@ -27,25 +27,24 @@ function formatTeacherResponse(teacher, classIds = [], classNames = []) {
 }
 
 export async function GET(req) {
-    const authUser = getUserFromRequest(req);
-
-    if (!authUser || !canAccessAdminArea(authUser)) {
-        return ApiResponse.error("Unauthorized", 401);
+    const auth = await requireAdminPermission(req, 'teachers.view');
+    if (!auth.ok) {
+        return ApiResponse.error(auth.message, auth.status);
     }
 
-    const teacherRole = isTeacher(authUser);
+    const teacherRole = auth.actor.isTeacher;
     let scopedCenterId = null;
 
     if (teacherRole) {
         const teacherProfile = await prisma.teacher.findUnique({
-            where: { userId: authUser.id },
+            where: { userId: auth.actor.userId },
             select: { centerId: true },
         });
 
         scopedCenterId = teacherProfile?.centerId || null;
     }
 
-    const teachers = await prisma.teacher.findMany({
+    let teachers = await prisma.teacher.findMany({
         where: teacherRole
             ? { centerId: scopedCenterId || "__NO_CENTER__" }
             : undefined,
@@ -64,6 +63,10 @@ export async function GET(req) {
             center: true,
         },
     });
+
+    if (!teacherRole && !auth.actor.isAdmin) {
+        teachers = teachers.filter((teacher) => auth.actor.canAccessCenter(teacher.centerId));
+    }
 
     const userIds = teachers.map((teacher) => teacher.userId).filter(Boolean);
     const classAccesses = userIds.length
@@ -94,10 +97,9 @@ export async function GET(req) {
 
 export async function POST(req) {
     try {
-        const authUser = getUserFromRequest(req);
-
-        if (!authUser || !canAccessAdminArea(authUser)) {
-            return ApiResponse.error("Unauthorized", 401);
+        const auth = await requireAdminPermission(req, 'teachers.create');
+        if (!auth.ok) {
+            return ApiResponse.error(auth.message, auth.status);
         }
 
         const body = await req.json();
@@ -107,9 +109,9 @@ export async function POST(req) {
         }
 
         let finalCenterId = body.centerId || null;
-        if (isTeacher(authUser)) {
+        if (auth.actor.isTeacher) {
             const teacherProfile = await prisma.teacher.findUnique({
-                where: { userId: authUser.id },
+                where: { userId: auth.actor.userId },
                 select: { centerId: true },
             });
 
@@ -118,6 +120,10 @@ export async function POST(req) {
             }
 
             finalCenterId = teacherProfile.centerId;
+        }
+
+        if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(finalCenterId)) {
+            return ApiResponse.error('Forbidden: center is not assigned to this user.', 403);
         }
 
         const baseName = body.name.trim().toLowerCase().split(/\s+/)[0] || "teacher";
@@ -146,7 +152,7 @@ export async function POST(req) {
                 connect: { id: user.id },
             },
             name: user.name,
-            phone: body.phone || "",
+            phone: body.phone ? String(body.phone).trim() : null,
         };
 
         if (finalCenterId) {
@@ -154,9 +160,6 @@ export async function POST(req) {
         }
         if (body.gender) {
             teacherCreateData.gender = body.gender;
-        }
-        if (body.phone) {
-            teacherCreateData.phone = body.phone;
         }
         if (body.address) {
             teacherCreateData.address = body.address;

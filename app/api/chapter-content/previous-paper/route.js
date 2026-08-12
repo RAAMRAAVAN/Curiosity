@@ -1,10 +1,16 @@
 import { ApiResponse } from "@/utils/apiResponse";
 import { prisma } from "@/server/prisma";
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 // ===================== POST =====================
 // Create Previous Paper
 
 export async function POST(req) {
+
+    const auth = await requireAdminPermission(req, 'class_content.edit');
+    if (!auth.ok) {
+        return ApiResponse.error(auth.message, auth.status);
+    }
 
     try {
 

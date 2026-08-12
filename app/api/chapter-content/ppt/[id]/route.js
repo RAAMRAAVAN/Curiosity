@@ -1,5 +1,6 @@
 import { ApiResponse } from "@/utils/apiResponse";
 import { prisma } from "@/server/prisma";
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 import fs from "fs/promises";
 import path from "path";
@@ -97,6 +98,11 @@ export async function GET(req, { params }) {
 // Update PPT
 
 export async function PUT(req, { params }) {
+
+    const auth = await requireAdminPermission(req, 'class_content.edit');
+    if (!auth.ok) {
+        return ApiResponse.error(auth.message, auth.status);
+    }
 
     try {
 
@@ -379,6 +385,11 @@ export async function PUT(req, { params }) {
 // Delete PPT
 
 export async function DELETE(req, { params }) {
+
+    const auth = await requireAdminPermission(req, 'class_content.edit');
+    if (!auth.ok) {
+        return ApiResponse.error(auth.message, auth.status);
+    }
 
     try {
 

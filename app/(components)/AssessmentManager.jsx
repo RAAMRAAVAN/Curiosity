@@ -31,6 +31,12 @@ import {
 import { AddCircleOutline, CheckCircleOutline, DeleteOutline, RadioButtonUnchecked, Quiz, SaveOutlined } from '@mui/icons-material';
 
 const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessments, loading, addQuestion, subjectId, classId, chapterId, title, setTitle, description, setDescription, type, setType, questions, setQuestions, feedback, setFeedback, editingAssessment, setEditingAssessment, open, setOpen, saving, setSaving }) => {
+  const defaultGradeBands = [
+    { label: 'A', minPercentage: 80 },
+    { label: 'B', minPercentage: 60 },
+    { label: 'C', minPercentage: 40 },
+    { label: 'D', minPercentage: 0 },
+  ];
   const [pendingDialogOpen, setPendingDialogOpen] = useState(false);
   const [pendingStudents, setPendingStudents] = useState([]);
   const [pendingLoading, setPendingLoading] = useState(false);
@@ -40,6 +46,49 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
   const [selectedAssessment, setSelectedAssessment] = useState(null);
   const [studentAssessmentOpen, setStudentAssessmentOpen] = useState(false);
   const [studentAssessmentContext, setStudentAssessmentContext] = useState(null);
+  const [totalMarks, setTotalMarks] = useState(0);
+  const [gradeBands, setGradeBands] = useState([
+    { label: 'A', minPercentage: 80 },
+    { label: 'B', minPercentage: 60 },
+    { label: 'C', minPercentage: 40 },
+    { label: 'D', minPercentage: 0 },
+  ]);
+  const [canManageAssessments, setCanManageAssessments] = useState(true);
+  const [permissionChecked, setPermissionChecked] = useState(false);
+  const [assessmentUpdateStatus, setAssessmentUpdateStatus] = useState(null);
+  const [statusOperationId, setStatusOperationId] = useState(null);
+  const computedTotalMarks = questions.reduce((sum, question) => sum + Number(question.marks || 1), 0);
+
+  useEffect(() => {
+    const loadAccess = async () => {
+      try {
+        const res = await fetch('/api/admin/me', { credentials: 'include' });
+        const response = await res.json();
+        if (!response.success) {
+          setCanManageAssessments(false);
+          setPermissionChecked(true);
+          return;
+        }
+
+        const role = String(response.data?.role || '').toUpperCase();
+        setCanManageAssessments(role === 'ADMIN' || role === 'MANAGEMENT');
+        setPermissionChecked(true);
+      } catch (error) {
+        console.error(error);
+        setCanManageAssessments(false);
+        setPermissionChecked(true);
+      }
+    };
+
+    loadAccess();
+  }, []);
+
+  useEffect(() => {
+    if (!editingAssessment) {
+      setTotalMarks(0);
+      setGradeBands(defaultGradeBands);
+    }
+  }, [editingAssessment]);
 
   useEffect(() => {
     const handleAssessmentMessage = (event) => {
@@ -59,6 +108,41 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
     return () => window.removeEventListener('message', handleAssessmentMessage);
   }, [fetchAssessments]);
 
+  useEffect(() => {
+    if (!statusOperationId) return undefined;
+
+    let cancelled = false;
+
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch(`/api/assessments/update-status?operationId=${encodeURIComponent(statusOperationId)}`, {
+          credentials: 'include',
+        });
+        const response = await res.json();
+        if (!response.success || !response.data || cancelled) return;
+
+        setAssessmentUpdateStatus(response.data);
+
+        const state = String(response.data.state || '').toUpperCase();
+        if (state === 'COMPLETED' || state === 'FAILED') {
+          setStatusOperationId(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error(error);
+        }
+      }
+    };
+
+    fetchStatus();
+    const intervalId = window.setInterval(fetchStatus, 1200);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [statusOperationId]);
+
   const removeQuestion = (index) => {
     setQuestions((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
   };
@@ -67,6 +151,10 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
     setQuestions((prev) =>
       prev.map((question, itemIndex) => (itemIndex === index ? { ...question, [field]: value } : question))
     );
+  };
+
+  const updateGradeBand = (index, field, value) => {
+    setGradeBands((prev) => prev.map((band, bandIndex) => (bandIndex === index ? { ...band, [field]: value } : band)));
   };
 
   const updateOption = (questionIndex, optionIndex, value) => {
@@ -81,19 +169,40 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
   };
 
   const openEditDialog = (assessment) => {
+    if (!canManageAssessments) {
+      setFeedback({ severity: 'warning', message: 'Only admin and management users can edit assessments.' });
+      return;
+    }
+
     const normalizedQuestions = (assessment.questions || []).map((question) => {
       const correctOptionIndex = question.options?.findIndex((option) => option.isCorrect) ?? 0;
       return {
+        id: question.id || null,
         questionText: question.questionText || '',
+        marks: Number(question.marks) || 1,
         correctOptionIndex: correctOptionIndex >= 0 ? correctOptionIndex : 0,
         options: (question.options || []).map((option) => option.optionText || ''),
       };
     });
 
+    let normalizedGradeBands = defaultGradeBands;
+    if (Array.isArray(assessment?.gradeBands)) {
+      normalizedGradeBands = assessment.gradeBands;
+    } else if (typeof assessment?.gradeBands === 'string') {
+      try {
+        const parsed = JSON.parse(assessment.gradeBands);
+        normalizedGradeBands = Array.isArray(parsed) && parsed.length ? parsed : defaultGradeBands;
+      } catch {
+        normalizedGradeBands = defaultGradeBands;
+      }
+    }
+
     setEditingAssessment(assessment);
     setTitle(assessment.title || '');
     setDescription(assessment.description || '');
     setType(assessment.type || 'ASSESSMENT');
+    setTotalMarks(Number(assessment.totalMarks) || 0);
+    setGradeBands(normalizedGradeBands.length ? normalizedGradeBands : defaultGradeBands);
     setQuestions(normalizedQuestions.length ? normalizedQuestions : [emptyQuestion()]);
     setOpen(true);
   };
@@ -179,6 +288,11 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
   };
 
   const handleSubmit = async () => {
+    if (!canManageAssessments) {
+      setFeedback({ severity: 'warning', message: 'Only admin and management users can create or edit assessments.' });
+      return;
+    }
+
     if (!subjectId && !classId) {
       alert('Class or subject is required to save assessment.');
       return;
@@ -187,7 +301,9 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
     const validQuestions = questions
       .filter((question) => question.questionText.trim())
       .map((question) => ({
+        id: question.id || undefined,
         questionText: question.questionText.trim(),
+        marks: Number(question.marks) || 1,
         correctOptionIndex: Number(question.correctOptionIndex) || 0,
         options: question.options.map((option, index) => ({
           optionText: option.trim(),
@@ -212,6 +328,23 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
 
     try {
       setSaving(true);
+      const operationId = editingAssessment
+        ? (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `assessment-update-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+        : null;
+
+      if (operationId) {
+        setAssessmentUpdateStatus({
+          state: 'IN_PROGRESS',
+          stage: 'REQUEST_STARTED',
+          message: 'Submitting assessment update request...',
+        });
+        setStatusOperationId(operationId);
+      } else {
+        setAssessmentUpdateStatus(null);
+      }
+
       const endpoint = classId ? '/api/assessments' : `/api/subjects/${subjectId}/assessments`;
       const res = await fetch(endpoint, {
         method: editingAssessment ? 'PUT' : 'POST',
@@ -225,6 +358,9 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
           description: description.trim() || null,
           type,
           resolvedSubjectId: subjectId || null,
+          totalMarks: computedTotalMarks,
+          gradeBands: gradeBands.filter((band) => band?.label?.trim()),
+          operationId: operationId || undefined,
           questions: validQuestions,
         }),
       });
@@ -236,19 +372,80 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         severity: 'success',
         message: editingAssessment ? 'Assessment updated successfully.' : 'Assessment created successfully.',
       });
+      if (editingAssessment) {
+        const recalculatedResults = Number(result?.data?.recalculatedResults || 0);
+        setAssessmentUpdateStatus({
+          state: 'COMPLETED',
+          stage: 'DONE',
+          message: `Assessment updated. Recalculated ${recalculatedResults} submitted result(s).`,
+        });
+      }
       resetForm();
       setOpen(false);
       await fetchAssessments();
     } catch (error) {
       console.error(error);
       setFeedback({ severity: 'error', message: error.message || 'Unable to save assessment' });
+      if (editingAssessment) {
+        setAssessmentUpdateStatus({
+          state: 'FAILED',
+          stage: 'FAILED',
+          message: error.message || 'Unable to update assessment',
+        });
+      }
     } finally {
+      setStatusOperationId(null);
       setSaving(false);
     }
   };
 
   return (
     <Box sx={{ mt: 4, px: { xs: 2, sm: 3, md: 4 }, width: '100%', maxWidth: 1400, mx: 'auto' }}>
+      {saving && editingAssessment ? (
+        <Box
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 2500,
+            bgcolor: 'rgba(15, 23, 42, 0.55)',
+            backdropFilter: 'blur(2px)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            px: 2,
+          }}
+        >
+          <Box
+            sx={{
+              width: '100%',
+              maxWidth: 560,
+              bgcolor: '#ffffff',
+              borderRadius: 3,
+              border: '1px solid #e5e7eb',
+              boxShadow: '0 16px 40px rgba(2, 6, 23, 0.35)',
+              p: { xs: 3, sm: 4 },
+              textAlign: 'center',
+            }}
+          >
+            <CircularProgress size={48} sx={{ mb: 2 }} />
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
+              Updating Assessment
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 1.5 }}>
+              {assessmentUpdateStatus?.message || 'Please wait while backend updates the assessment and recalculates results.'}
+            </Typography>
+            {assessmentUpdateStatus?.progress?.total > 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                Progress: {assessmentUpdateStatus.progress.processed || 0}/{assessmentUpdateStatus.progress.total}
+              </Typography>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                Stage: {assessmentUpdateStatus?.stage || 'INITIALIZING'}
+              </Typography>
+            )}
+          </Box>
+        </Box>
+      ) : null}
 
       {feedback ? (
         <Alert severity={feedback.severity} sx={{ mb: 2 }} onClose={() => setFeedback(null)}>
@@ -275,6 +472,11 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         </Box>
       ) : (<>
         <Stack spacing={2}>
+          {!canManageAssessments ? (
+            <Typography variant="body2" color="text.secondary">
+              You can view submissions, but only admin and management users can create or edit assessments.
+            </Typography>
+          ) : null}
           {assessments.map((assessment) => (
             <Card key={assessment.id} variant="outlined" border='1px solid black' sx={{ backgroundColor: '#f9f9f9' }}>
               <CardContent>
@@ -283,7 +485,14 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                     <Typography fontWeight="bold">{assessment.title}</Typography>
                     <Typography variant="body2" color="text.secondary">{assessment.description || 'No description'}</Typography>
                   </Box>
-                  <Chip label={`View ${assessment.type}`} color="primary" variant="outlined" onClick={() => openEditDialog(assessment)} sx={{ fontWeight: 600 }} />
+                  <Chip
+                    label={`View ${assessment.type}`}
+                    color="primary"
+                    variant="outlined"
+                    onClick={() => openEditDialog(assessment)}
+                    disabled={!canManageAssessments}
+                    sx={{ fontWeight: 600 }}
+                  />
                 </Box>
                 <Divider sx={{ my: 1.5 }} />
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1 }}>
@@ -443,6 +652,43 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
               </Select>
             </FormControl>
 
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+              <TextField
+                label="Total Marks"
+                type="number"
+                fullWidth
+                value={computedTotalMarks}
+                inputProps={{ min: 0, readOnly: true }}
+                helperText="Auto-calculated from per-question marks"
+              />
+              <Typography variant="body2" color="text.secondary" sx={{ alignSelf: 'center' }}>
+                {computedTotalMarks} marks from questions
+              </Typography>
+            </Stack>
+
+            <Box sx={{ border: '1px solid #e5e7eb', borderRadius: 3, p: 2 }}>
+              <Typography fontWeight={700} sx={{ mb: 1.5 }}>Grade Bands</Typography>
+              <Stack spacing={1.5}>
+                {gradeBands.map((band, bandIndex) => (
+                  <Stack key={`${band.label}-${bandIndex}`} direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                    <TextField
+                      label="Label"
+                      value={band.label || ''}
+                      onChange={(event) => updateGradeBand(bandIndex, 'label', event.target.value)}
+                      sx={{ minWidth: 120 }}
+                    />
+                    <TextField
+                      label="Min %"
+                      type="number"
+                      value={band.minPercentage ?? 0}
+                      onChange={(event) => updateGradeBand(bandIndex, 'minPercentage', Number(event.target.value) || 0)}
+                      inputProps={{ min: 0, max: 100 }}
+                    />
+                  </Stack>
+                ))}
+              </Stack>
+            </Box>
+
             {questions.map((question, questionIndex) => (
               <Box
                 key={questionIndex}
@@ -494,11 +740,20 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                     updateQuestion(questionIndex, "questionText", e.target.value)
                   }
                   sx={{
-                    mb: 3,
+                    mb: 2,
                     "& .MuiOutlinedInput-root": {
                       borderRadius: 3,
                     },
                   }}
+                />
+
+                <TextField
+                  label="Marks"
+                  type="number"
+                  value={question.marks ?? 1}
+                  onChange={(e) => updateQuestion(questionIndex, 'marks', Number(e.target.value) || 0)}
+                  inputProps={{ min: 0 }}
+                  sx={{ mb: 3, maxWidth: 180 }}
                 />
 
                 <Divider sx={{ mb: 3 }} />
@@ -571,7 +826,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             variant="contained"
             startIcon={<SaveOutlined />}
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={saving || (permissionChecked && !canManageAssessments)}
             sx={{ textTransform: 'none', width: { xs: '100%', sm: 'auto' }, minWidth: 140, borderRadius: 3 }}
           >
             {saving ? (editingAssessment ? 'Updating...' : 'Creating...') : 'Save'}

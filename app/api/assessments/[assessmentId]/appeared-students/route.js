@@ -1,22 +1,20 @@
 import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
-import { getUserFromRequest } from '@/server/auth';
-import { canAccessAdminArea, isTeacher } from '@/lib/roleAccess';
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 export async function GET(req, { params }) {
   try {
-    const authUser = getUserFromRequest(req);
-
-    if (!authUser || !canAccessAdminArea(authUser)) {
-      return ApiResponse.error('Unauthorized', 401);
+    const auth = await requireAdminPermission(req, 'assessments.appeared.view');
+    if (!auth.ok) {
+      return ApiResponse.error(auth.message, auth.status);
     }
 
     const { assessmentId } = await params;
 
     let scopedCenterId = null;
-    if (isTeacher(authUser)) {
+    if (auth.actor.isTeacher) {
       const teacherProfile = await prisma.teacher.findUnique({
-        where: { userId: authUser.id },
+        where: { userId: auth.actor.userId },
         select: { centerId: true },
       });
 
@@ -41,6 +39,10 @@ export async function GET(req, { params }) {
     }
 
     if (scopedCenterId && assessment.class?.centerId && assessment.class.centerId !== scopedCenterId) {
+      return ApiResponse.error('Forbidden', 403);
+    }
+
+    if (!auth.actor.isAdmin && !scopedCenterId && !auth.actor.canAccessCenter(assessment.class?.centerId || null)) {
       return ApiResponse.error('Forbidden', 403);
     }
 

@@ -1,7 +1,18 @@
 import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
+import { requireAdminPermission } from '@/lib/adminRbac';
+import { getUserFromRequest } from '@/server/auth';
 
 export async function GET(req, { params }) {
+  const authUser = getUserFromRequest(req);
+  const role = String(authUser?.role || '').toUpperCase();
+  if (authUser && ['ADMIN', 'MANAGEMENT', 'TEACHER'].includes(role)) {
+    const auth = await requireAdminPermission(req, 'assessments.view');
+    if (!auth.ok) {
+      return ApiResponse.error(auth.message, auth.status);
+    }
+  }
+
   try {
     const { id, assessmentId } = await params;
 

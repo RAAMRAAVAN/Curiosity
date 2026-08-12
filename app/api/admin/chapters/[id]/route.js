@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/prisma";
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 // ===================== UPDATE CHAPTER =====================
 
 export async function PATCH(request, { params }) {
+    const auth = await requireAdminPermission(request, 'class_content.edit');
+    if (!auth.ok) {
+        return NextResponse.json({ success: false, message: auth.message }, { status: auth.status });
+    }
+
     try {
         const { id } = await params;
 

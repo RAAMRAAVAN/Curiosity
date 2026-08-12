@@ -1,5 +1,5 @@
 'use client'
-import { Paper, Typography, Box, Button, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from "@mui/material";
+import { Paper, Typography, Box, Button, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { setDefaultClass } from "@/redux/features/classSlice";
@@ -15,6 +15,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
     const [classForm, setClassForm] = useState({ className: "", icon: "" });
     const [editingClassId, setEditingClassId] = useState(null);
     const [authUser, setAuthUser] = useState(null);
+    const [navigationPreference, setNavigationPreference] = useState("contents");
 
     const isAdminRole = String(authUser?.role || "").toUpperCase() === "ADMIN";
 
@@ -23,7 +24,9 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
             const res = await fetch("/api/admin/me", { credentials: "include" });
             const data = await res.json();
             if (data.success) {
-                setAuthUser(data.data || null);
+                const currentUser = data.data || null;
+                setAuthUser(currentUser);
+                setNavigationPreference(currentUser?.classNavigationPreference || "contents");
             }
         } catch (e) {
             console.error(e);
@@ -40,9 +43,23 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
         }
     };
     useEffect(() => {
+        if (typeof window !== "undefined") {
+            const savedAuth = sessionStorage.getItem("authDetails");
+            if (savedAuth) {
+                try {
+                    const parsed = JSON.parse(savedAuth);
+                    const savedPreference = parsed?.user?.classNavigationPreference || "contents";
+                    setNavigationPreference(savedPreference);
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+        }
+
         refreshClasses();
         loadCurrentUser();
     }, [])
+
 
     const startNewClass = () => {
         setMessage(null);
@@ -133,19 +150,60 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
 
     const handleNavigation = (url, c) => {
         if (url.startsWith("http")) {
-            // console.log("SetDefault Class=", c);
-
             window.open(url, "_blank");
         } else {
             router.push(url);
         }
     };
 
+    const handlePreferenceChange = async (event) => {
+        const value = event.target.value;
+        setNavigationPreference(value);
+
+        try {
+            await fetch("/api/admin/navigation-preference", {
+                method: "PATCH",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ preference: value }),
+            });
+
+            if (typeof window !== "undefined") {
+                const storedAuth = sessionStorage.getItem("authDetails");
+                if (storedAuth) {
+                    const parsed = JSON.parse(storedAuth);
+                    sessionStorage.setItem("authDetails", JSON.stringify({
+                        ...parsed,
+                        user: {
+                            ...(parsed.user || {}),
+                            classNavigationPreference: value,
+                        },
+                    }));
+                }
+            }
+        } catch (error) {
+            console.error(error);
+            setMessage("Unable to save the selected view.");
+        }
+    };
+
+    const handleClassAction = async (c) => {
+        dispatch(setDefaultClass(c.className));
+        router.push(`/admin/ManageClasses/ManageSubjects/${c.id}/home`);
+    };
+
     return (<>
         <Paper sx={{ p: 3, mb: 4, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                 <Typography variant="h6" fontWeight={700}>Classes</Typography>
-                {isAdminRole ? <Box>
+                {isAdminRole ? <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                    <FormControl size="small" sx={{ minWidth: 220 }}>
+                        <InputLabel>Default View</InputLabel>
+                        <Select label="Default View" value={navigationPreference} onChange={handlePreferenceChange}>
+                            <MenuItem value="contents">Class Content</MenuItem>
+                            <MenuItem value="assessments">Assessments</MenuItem>
+                        </Select>
+                    </FormControl>
                     <Button variant="outlined" sx={{ mr: 1 }} onClick={async () => {
                         if (!confirm("Seed classes 1-12?")) return;
                         setLoading(true);
@@ -173,7 +231,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                             <TableCell>Icon</TableCell>
                             <TableCell>Edit</TableCell>
                             <TableCell>Delete</TableCell>
-                            <TableCell>View Class Contents</TableCell>
+                            <TableCell>Open</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -186,7 +244,11 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
 
                                 </TableCell>
                                 <TableCell><Button size="small" color="error" onClick={() => handleDeleteClass(c.id)}>Delete</Button></TableCell>
-                                <TableCell><Button onClick={() => { dispatch(setDefaultClass(c.className)); handleNavigation(`ManageClasses/ManageSubjects/${c.id}/home`) }}>View Class Contents</Button></TableCell>
+                                <TableCell>
+                                    <Button size="small" onClick={() => handleClassAction(c)}>
+                                        View Class Contents
+                                    </Button>
+                                </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

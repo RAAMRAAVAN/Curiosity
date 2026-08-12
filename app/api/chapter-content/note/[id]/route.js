@@ -1,5 +1,6 @@
 import { ApiResponse } from "@/utils/apiResponse";
 import { prisma } from "@/server/prisma";
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 
 // ===================== GET =====================
@@ -94,6 +95,11 @@ export async function GET(req, { params }) {
 // Update note
 
 export async function PATCH(req, { params }) {
+    const auth = await requireAdminPermission(req, 'class_content.edit');
+    if (!auth.ok) {
+        return ApiResponse.error(auth.message, auth.status);
+    }
+
     try {
         const { id } = await params;
         if (!id) {
@@ -237,6 +243,11 @@ export async function PATCH(req, { params }) {
 // Delete note
 
 export async function DELETE(req, { params }) {
+
+    const auth = await requireAdminPermission(req, 'class_content.edit');
+    if (!auth.ok) {
+        return ApiResponse.error(auth.message, auth.status);
+    }
 
 
     try {

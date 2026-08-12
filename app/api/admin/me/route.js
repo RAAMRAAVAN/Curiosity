@@ -2,6 +2,7 @@ import { ApiResponse } from "@/utils/apiResponse";
 import { getUserFromRequest } from "@/server/auth";
 import { prisma } from "@/server/prisma";
 import { canAccessAdminArea } from "@/lib/roleAccess";
+import { buildAdminActorContext } from '@/lib/adminRbac';
 
 function getProfile(user) {
   return (
@@ -57,9 +58,15 @@ export async function GET(req) {
     return ApiResponse.error("Unauthorized", 401);
   }
 
+  const actorContext = await buildAdminActorContext(authUser);
+
   const profile = getProfile(user);
   const resolvedCenterId = profile.centerId || user.centerId || null;
   const resolvedCenterName = profile.center?.name || user.center?.name || null;
+
+  const navigationSetting = await prisma.appSetting.findUnique({
+    where: { key: "admin.classNavigationPreference" },
+  });
 
   return ApiResponse.success(
     {
@@ -67,6 +74,9 @@ export async function GET(req) {
       name: user.name,
       email: user.email,
       role: user.role,
+      customRole: actorContext?.customRole || null,
+      permissions: actorContext?.grantedPermissions || [],
+      assignedCenterIds: actorContext?.assignedCenterIds || [],
       centerId: resolvedCenterId,
       centerName: resolvedCenterName,
       dob: profile.dob,
@@ -75,6 +85,7 @@ export async function GET(req) {
       address: profile.address,
       schoolName: profile.schoolName,
       studyingClass: profile.studyingClass,
+      classNavigationPreference: navigationSetting?.value || "contents",
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     },

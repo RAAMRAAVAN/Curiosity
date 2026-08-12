@@ -1,7 +1,6 @@
 import { prisma } from '@/server/prisma'; // Update if your prisma import is different
 import { ApiResponse } from '@/utils/apiResponse';
-import { getUserFromRequest } from '@/server/auth';
-import { canAccessAdminArea, isTeacher } from '@/lib/roleAccess';
+import { requireAdminPermission } from '@/lib/adminRbac';
 // import { buildAssessmentWithStats } from "@/lib/assessment"; // Update path if needed
 
 const buildAssessmentWithStats = async (assessment, eligibleStudentIds, scopedCenterId = null) => {
@@ -67,9 +66,9 @@ const buildAssessmentWithStats = async (assessment, eligibleStudentIds, scopedCe
 
 export async function GET(req, { params }) {
     try {
-        const authUser = getUserFromRequest(req);
-        if (!authUser || !canAccessAdminArea(authUser)) {
-            return ApiResponse.error('Unauthorized', 401);
+        const auth = await requireAdminPermission(req, 'assessments.view');
+        if (!auth.ok) {
+            return ApiResponse.error(auth.message, auth.status);
         }
 
         const { id: classId } = await params;
@@ -78,9 +77,9 @@ export async function GET(req, { params }) {
         const chapterId = searchParams.get('chapterId');
 
         let scopedCenterId = null;
-        if (isTeacher(authUser)) {
+        if (auth.actor.isTeacher) {
             const teacherProfile = await prisma.teacher.findUnique({
-                where: { userId: authUser.id },
+                where: { userId: auth.actor.userId },
                 select: { centerId: true },
             });
 

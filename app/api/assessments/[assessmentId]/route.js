@@ -1,5 +1,6 @@
 import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
+import { getAssessmentMetadata } from '@/lib/assessmentCompatibility';
 
 export async function GET(req, { params }) {
   try {
@@ -32,7 +33,14 @@ export async function GET(req, { params }) {
       return ApiResponse.error('Assessment not found', 404);
     }
 
-    return ApiResponse.success(assessment);
+    const metadata = await getAssessmentMetadata(prisma, assessment.id);
+    const derivedTotalMarks = (assessment.questions || []).reduce((sum, question) => sum + (Number(question?.marks) || 0), 0);
+
+    return ApiResponse.success({
+      ...assessment,
+      totalMarks: Number(metadata.totalMarks || assessment.totalMarks || derivedTotalMarks || 0),
+      gradeBands: metadata.gradeBands || assessment.gradeBands || null,
+    });
   } catch (error) {
     console.error(error);
     return ApiResponse.error('Unable to load assessment', 500, error);

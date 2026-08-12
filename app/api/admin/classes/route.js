@@ -1,19 +1,21 @@
 import { ApiResponse } from "@/utils/apiResponse";
-import { getUserFromRequest } from "@/server/auth";
 import { prisma } from "@/server/prisma";
-import { canAccessAdminArea, hasAnyRole } from "@/lib/roleAccess";
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 export async function GET(req) {
-  const authUser = getUserFromRequest(req);
-  if (!authUser || !canAccessAdminArea(authUser)) {
-    return ApiResponse.error("Unauthorized", 401);
+  const auth = await requireAdminPermission(req, 'classes.view');
+  if (!auth.ok) {
+    return ApiResponse.error(auth.message, auth.status);
   }
 
   try {
     if (!prisma["class"]) {
       return ApiResponse.error("Prisma model 'Class' not available. Run `npx prisma generate` and apply migrations.", 500);
     }
-    const classes = await prisma["class"].findMany({ orderBy: { createdAt: "asc" } });
+    let classes = await prisma["class"].findMany({ orderBy: { createdAt: "asc" } });
+    if (!auth.actor.isAdmin) {
+      classes = classes.filter((item) => !item.centerId || auth.actor.canAccessCenter(item.centerId));
+    }
     return ApiResponse.success(classes);
   } catch (err) {
     console.error(err);
@@ -22,23 +24,23 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  const authUser = getUserFromRequest(req);
-  if (!authUser || !canAccessAdminArea(authUser)) {
-    return ApiResponse.error("Unauthorized", 401);
-  }
-
-  if (!hasAnyRole(authUser, ["ADMIN"])) {
-    return ApiResponse.error("Forbidden", 403);
+  const auth = await requireAdminPermission(req, 'classes.create');
+  if (!auth.ok) {
+    return ApiResponse.error(auth.message, auth.status);
   }
 
   const body = await req.json();
   if (!body.className) return ApiResponse.error("className is required", 400);
 
+  if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(body.centerId)) {
+    return ApiResponse.error('Forbidden: center is not assigned to this user.', 403);
+  }
+
   try {
     if (!prisma["class"]) {
       return ApiResponse.error("Prisma model 'Class' not available. Run `npx prisma generate` and apply migrations.", 500);
     }
-    const created = await prisma["class"].create({ data: { className: body.className, icon: body.icon || null } });
+    const created = await prisma["class"].create({ data: { className: body.className, icon: body.icon || null, centerId: body.centerId || null } });
     return ApiResponse.success(created, "Class created");
   } catch (err) {
     console.error(err);

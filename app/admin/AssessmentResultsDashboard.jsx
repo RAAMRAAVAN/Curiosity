@@ -160,12 +160,7 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
       return { attempts: 0, avg: 0, top: 0 };
     }
 
-    const totalPercentage = results.reduce((sum, item) => {
-      const score = Number(item.score) || 0;
-      const totalQuestions = Number(item.totalQuestions) || 0;
-      const percent = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
-      return sum + percent;
-    }, 0);
+    const totalPercentage = results.reduce((sum, item) => sum + (Number(item.percentage) || 0), 0);
 
     const avg = Math.round((totalPercentage / results.length) * 100) / 100;
     const top = Math.max(...results.map((item) => Number(item.score) || 0));
@@ -195,8 +190,7 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
 
       const summary = grouped.get(key);
       const score = Number(result.score) || 0;
-      const totalQuestions = Number(result.totalQuestions) || 0;
-      const percent = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
+      const percent = Number(result.percentage) || 0;
 
       summary.attempts += 1;
       summary.totalScore += score;
@@ -290,6 +284,7 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
       'Marks Obtained',
       'Total Marks',
       'Percentage',
+      'Grade',
     ];
 
     const rows = filteredDetailResults.map((result, index) => [
@@ -301,8 +296,9 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
       result.correctAttempts ?? 0,
       result.wrongAttempts ?? 0,
       result.score ?? 0,
-      result.totalQuestions ?? 0,
+      result.totalMarks ?? result.totalQuestions ?? 0,
       `${result.percentage ?? 0}%`,
+      result.grade || '-',
     ]);
 
     const escapeValue = (value) => String(value).replace(/"/g, '""');
@@ -445,7 +441,7 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
                   <TableRow key={result.id}>
                     <TableCell>{result.user?.name || 'Unknown'}</TableCell>
                     <TableCell>{result.user?.email || '-'}</TableCell>
-                    <TableCell>{result.score}/{result.totalQuestions}</TableCell>
+                    <TableCell>{result.score}/{result.totalMarks || result.totalQuestions || 0}</TableCell>
                     <TableCell>{new Date(result.createdAt).toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
@@ -572,6 +568,7 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
                   <TableCell sx={{ fontWeight: 700 }}>Marks Obtained</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Total Marks</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Percentage</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Grade</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -585,13 +582,14 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
                     <TableCell>{result.correctAttempts ?? 0}</TableCell>
                     <TableCell>{result.wrongAttempts ?? 0}</TableCell>
                     <TableCell>{result.score ?? 0}</TableCell>
-                    <TableCell>{result.totalQuestions ?? 0}</TableCell>
+                    <TableCell>{result.totalMarks ?? result.totalQuestions ?? 0}</TableCell>
                     <TableCell>{result.percentage ?? 0}%</TableCell>
+                    <TableCell>{result.grade || '—'}</TableCell>
                   </TableRow>
                 ))}
                 {filteredDetailResults.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} align="center">
+                    <TableCell colSpan={11} align="center">
                       <Typography color="text.secondary">No student results available for the selected center.</Typography>
                     </TableCell>
                   </TableRow>

@@ -1,11 +1,17 @@
 import { ApiResponse } from "@/utils/apiResponse";
 import { prisma } from "@/server/prisma";
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 
 // ===================== PUT =====================
 // Reorder Chapter Contents: /api/chapter-content/reorder
 
 export async function PUT(req) {
+
+    const auth = await requireAdminPermission(req, 'class_content.edit');
+    if (!auth.ok) {
+        return ApiResponse.error(auth.message, auth.status);
+    }
 
 
     try {

@@ -1,12 +1,11 @@
 import { ApiResponse } from "@/utils/apiResponse";
-import { getUserFromRequest } from "@/server/auth";
 import { prisma } from "@/server/prisma";
-import { canAccessAdminArea } from "@/lib/roleAccess";
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 export async function DELETE(req, { params }) {
-  const authUser = getUserFromRequest(req);
-  if (!authUser || !canAccessAdminArea(authUser)) {
-    return ApiResponse.error("Unauthorized", 401);
+  const auth = await requireAdminPermission(req, 'classes.delete');
+  if (!auth.ok) {
+    return ApiResponse.error(auth.message, auth.status);
   }
 
   const { id } = await params;
@@ -14,6 +13,13 @@ export async function DELETE(req, { params }) {
   try {
     if (!prisma["class"]) {
       return ApiResponse.error("Prisma model 'Class' not available. Run `npx prisma generate` and apply migrations.", 500);
+    }
+    const classRecord = await prisma['class'].findUnique({ where: { id } });
+    if (!classRecord) {
+      return ApiResponse.error('Class not found', 404);
+    }
+    if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(classRecord.centerId)) {
+      return ApiResponse.error('Forbidden', 403);
     }
     await prisma["class"].delete({ where: { id } });
     return ApiResponse.success(null, "Class deleted");
@@ -24,9 +30,9 @@ export async function DELETE(req, { params }) {
 }
 
 export async function PATCH(req, { params }) {
-  const authUser = getUserFromRequest(req);
-  if (!authUser || !canAccessAdminArea(authUser)) {
-    return ApiResponse.error("Unauthorized", 401);
+  const auth = await requireAdminPermission(req, 'classes.edit');
+  if (!auth.ok) {
+    return ApiResponse.error(auth.message, auth.status);
   }
 
   const { id } = await params;
@@ -36,7 +42,17 @@ export async function PATCH(req, { params }) {
     if (!prisma["class"]) {
       return ApiResponse.error("Prisma model 'Class' not available. Run `npx prisma generate` and apply migrations.", 500);
     }
-    const updated = await prisma["class"].update({ where: { id }, data: { className: body.className, icon: body.icon || null } });
+    const classRecord = await prisma['class'].findUnique({ where: { id } });
+    if (!classRecord) {
+      return ApiResponse.error('Class not found', 404);
+    }
+
+    const nextCenterId = body.centerId !== undefined ? body.centerId : classRecord.centerId;
+    if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(nextCenterId)) {
+      return ApiResponse.error('Forbidden: center is not assigned to this user.', 403);
+    }
+
+    const updated = await prisma["class"].update({ where: { id }, data: { className: body.className, icon: body.icon || null, centerId: body.centerId !== undefined ? (body.centerId || null) : undefined } });
     return ApiResponse.success(updated, "Class updated");
   } catch (err) {
     console.error(err);

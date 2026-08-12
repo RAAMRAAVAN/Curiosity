@@ -21,6 +21,7 @@ const Assessments = () => {
 
     const [subject, setSubject] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [canCreateAssessment, setCanCreateAssessment] = useState(false);
 
     const emptyQuestion = () => ({
         questionText: '',
@@ -38,6 +39,42 @@ const Assessments = () => {
     const [saving, setSaving] = useState(false);
     const [assessments, setAssessments] = useState([]);
     // const [loading, setLoading] = useState(false);
+
+    const hasPermission = (permissions, permission, role) => {
+        if (String(role || '').toUpperCase() === 'ADMIN') return true;
+        if (!permission) return true;
+
+        const normalizedPermissions = Array.isArray(permissions)
+            ? permissions.map((item) => String(item || '').toLowerCase())
+            : [];
+
+        const normalizedPermission = String(permission || '').toLowerCase();
+
+        return normalizedPermissions.includes('*')
+            || normalizedPermissions.includes(normalizedPermission)
+            || normalizedPermissions.some(
+                (item) => item.endsWith('.*') && normalizedPermission.startsWith(`${item.slice(0, -2)}.`)
+            );
+    };
+
+    const loadCreatePermissions = async () => {
+        try {
+            const res = await fetch('/api/admin/me', { credentials: 'include' });
+            const result = await res.json();
+
+            if (!result?.success) {
+                setCanCreateAssessment(false);
+                return;
+            }
+
+            const role = result?.data?.role;
+            const permissions = result?.data?.permissions || [];
+            setCanCreateAssessment(hasPermission(permissions, 'assessments.create', role));
+        } catch (error) {
+            console.error('Failed to load create permissions', error);
+            setCanCreateAssessment(false);
+        }
+    };
 
     const addQuestion = () => {
         setQuestions((prev) => [...prev, emptyQuestion()]);
@@ -141,6 +178,10 @@ const Assessments = () => {
     ]);
 
     useEffect(() => {
+        loadCreatePermissions();
+    }, []);
+
+    useEffect(() => {
         if (classId) {
             fetchAssessments();
         }
@@ -230,19 +271,21 @@ const Assessments = () => {
                         </Typography>
                     </Box>
 
-                    <Box
-                        position="absolute"
-                        right={10}
-                        bottom={10}
-                    >
-                        <Fab
-                            variant="extended"
-                            onClick={openCreateDialog}
+                    {canCreateAssessment && (
+                        <Box
+                            position="absolute"
+                            right={10}
+                            bottom={10}
                         >
-                            <Add sx={{ mr: 1 }} />
-                            Add New Assessment
-                        </Fab>
-                    </Box>
+                            <Fab
+                                variant="extended"
+                                onClick={openCreateDialog}
+                            >
+                                <Add sx={{ mr: 1 }} />
+                                Add New Assessment
+                            </Fab>
+                        </Box>
+                    )}
 
                 </Box>
 

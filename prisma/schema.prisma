@@ -88,6 +88,16 @@ model User {
   assessmentReattemptRequests AssessmentReattemptRequest[]
 }
 
+model AppSetting {
+  id String @id @default(cuid())
+
+  key String @unique
+  value String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 //
 // CLASS
 //
@@ -159,7 +169,7 @@ model Teacher {
   center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
 
   name    String
-  phone   String? @unique
+  phone   String?
   address String?
   gender  String?
   dob     DateTime?
@@ -400,6 +410,8 @@ model Assessment {
   title String
   description String? @db.Text
   type AssessmentType @default(ASSESSMENT)
+  totalMarks Int @default(0) @map("total_marks")
+  gradeBands String? @db.Text @map("grade_bands")
 
   status Boolean @default(true)
 
@@ -424,6 +436,7 @@ model AssessmentQuestion {
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 
   questionText String @map("question_text") @db.Text
+  marks Int @default(1)
   displayOrder Int @default(1) @map("display_order")
   status Boolean @default(true)
 
@@ -465,6 +478,9 @@ model AssessmentResult {
 
   score Int @default(0)
   totalQuestions Int @default(0) @map("total_questions")
+  totalMarks Int @default(0) @map("total_marks")
+  percentage Int @default(0)
+  grade String?
   answers String? @db.Text
 
   status Boolean @default(true)

@@ -29,6 +29,7 @@ const Cources = ({ defaultClass }) => {
   const [subjects, setSubjects] = useState([]);
   const [className, setClassName] = useState("");
   const [classId, setClassId] = useState(defaultClass);
+  const [canCreateSubject, setCanCreateSubject] = useState(false);
 
   const dispatch = useDispatch();
   const router = useRouter();
@@ -46,6 +47,42 @@ const Cources = ({ defaultClass }) => {
   ]);
 
   // const defaultClass = useSelector(selectDefaultClass);
+
+  const hasPermission = (permissions, permission, role) => {
+    if (String(role || '').toUpperCase() === 'ADMIN') return true;
+    if (!permission) return true;
+
+    const normalizedPermissions = Array.isArray(permissions)
+      ? permissions.map((item) => String(item || '').toLowerCase())
+      : [];
+
+    const normalizedPermission = String(permission || '').toLowerCase();
+
+    return normalizedPermissions.includes('*')
+      || normalizedPermissions.includes(normalizedPermission)
+      || normalizedPermissions.some(
+        (item) => item.endsWith('.*') && normalizedPermission.startsWith(`${item.slice(0, -2)}.`)
+      );
+  };
+
+  const loadCreatePermissions = async () => {
+    try {
+      const res = await fetch('/api/admin/me', { credentials: 'include' });
+      const result = await res.json();
+
+      if (!result?.success) {
+        setCanCreateSubject(false);
+        return;
+      }
+
+      const role = result?.data?.role;
+      const permissions = result?.data?.permissions || [];
+      setCanCreateSubject(hasPermission(permissions, 'subjects.create', role));
+    } catch (error) {
+      console.error('Failed to load create permissions', error);
+      setCanCreateSubject(false);
+    }
+  };
 
   const loadSubjects = async (classIdToLoad) => {
     if (!classIdToLoad) return;
@@ -81,6 +118,10 @@ const Cources = ({ defaultClass }) => {
       setClassId(defaultClass);
     }
   };
+
+  useEffect(() => {
+    loadCreatePermissions();
+  }, []);
 
   useEffect(() => {
     if (classSlug) {
@@ -175,15 +216,23 @@ const Cources = ({ defaultClass }) => {
     }
   };
 
-  const handleSubjectClick = (subject) => {
+  const handleSubjectClick = async (subject) => {
+    dispatch(setSelectedSubject(subject));
 
-    dispatch(
-      setSelectedSubject(subject)
-    );
+    try {
+      const res = await fetch("/api/admin/navigation-preference", { credentials: "include" });
+      const data = await res.json();
+      const preference = data?.data?.preference || "contents";
 
-    // router.push("./Cources/Subject");
+      if (preference === "assessments") {
+        router.push(`./Cources/${subject.id}/Assessments/${classSlug || classId}`);
+        return;
+      }
+    } catch (error) {
+      console.error(error);
+    }
+
     router.push(`./Cources/${subject.id}`);
-
   };
 
   return (
@@ -216,36 +265,38 @@ const Cources = ({ defaultClass }) => {
             </Grid>
           ))}
 
-          <Grid item lg={3} md={4} sm={6} xs={6} marginBottom={2}>
-            <Box
-              display="flex"
-              flexDirection="column"
-              boxShadow={2}
-              width="100%"
-              height="100%"
-              minHeight={300}
-              borderRadius={3}
-              justifyContent="center"
-              alignItems="center"
-            >
-              <IconButton
-                onClick={() => setOpen(true)}
-                sx={{
-                  width: 150,
-                  height: 150,
-                }}
+          {canCreateSubject && (
+            <Grid item lg={3} md={4} sm={6} xs={6} marginBottom={2}>
+              <Box
+                display="flex"
+                flexDirection="column"
+                boxShadow={2}
+                width="100%"
+                height="100%"
+                minHeight={300}
+                borderRadius={3}
+                justifyContent="center"
+                alignItems="center"
               >
-                <AddCircle sx={{ fontSize: { xs: 100, sm: 120 } }} />
-              </IconButton>
+                <IconButton
+                  onClick={() => setOpen(true)}
+                  sx={{
+                    width: 150,
+                    height: 150,
+                  }}
+                >
+                  <AddCircle sx={{ fontSize: { xs: 100, sm: 120 } }} />
+                </IconButton>
 
-              <Typography
-                fontWeight="bold"
-                color="gray"
-              >
-                Add Subject
-              </Typography>
-            </Box>
-          </Grid>
+                <Typography
+                  fontWeight="bold"
+                  color="gray"
+                >
+                  Add Subject
+                </Typography>
+              </Box>
+            </Grid>
+          )}
         </Grid>
       </Box>
 

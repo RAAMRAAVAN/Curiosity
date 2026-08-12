@@ -1,12 +1,11 @@
 import { ApiResponse } from "@/utils/apiResponse";
-import { getUserFromRequest } from "@/server/auth";
 import { prisma } from "@/server/prisma";
-import { canAccessAdminArea } from "@/lib/roleAccess";
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 export async function PATCH(req, { params }) {
-  const authUser = getUserFromRequest(req);
-  if (!authUser || !canAccessAdminArea(authUser)) {
-    return ApiResponse.error("Unauthorized", 401);
+  const auth = await requireAdminPermission(req, 'centers.edit');
+  if (!auth.ok) {
+    return ApiResponse.error(auth.message, auth.status);
   }
 
   try {
@@ -16,6 +15,15 @@ export async function PATCH(req, { params }) {
     if (body.name !== undefined) updateData.name = body.name;
     if (body.slug !== undefined) updateData.slug = body.slug;
     if (body.status !== undefined) updateData.status = Boolean(body.status);
+
+    const existingCenter = await prisma.center.findUnique({ where: { id: params.id } });
+    if (!existingCenter) {
+      return ApiResponse.error('Center not found', 404);
+    }
+
+    if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(existingCenter.id)) {
+      return ApiResponse.error('Forbidden', 403);
+    }
 
     const center = await prisma.center.update({
       where: { id: params.id },
@@ -30,12 +38,21 @@ export async function PATCH(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
-  const authUser = getUserFromRequest(req);
-  if (!authUser || !canAccessAdminArea(authUser)) {
-    return ApiResponse.error("Unauthorized", 401);
+  const auth = await requireAdminPermission(req, 'centers.delete');
+  if (!auth.ok) {
+    return ApiResponse.error(auth.message, auth.status);
   }
 
   try {
+    const existingCenter = await prisma.center.findUnique({ where: { id: params.id } });
+    if (!existingCenter) {
+      return ApiResponse.error('Center not found', 404);
+    }
+
+    if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(existingCenter.id)) {
+      return ApiResponse.error('Forbidden', 403);
+    }
+
     await prisma.center.delete({ where: { id: params.id } });
     return ApiResponse.success(null, "Center deleted successfully.");
   } catch (error) {

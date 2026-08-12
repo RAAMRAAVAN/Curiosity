@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 export async function POST(request) {
+    const auth = await requireAdminPermission(request, 'class_content.edit');
+    if (!auth.ok) {
+        return NextResponse.json({ success: false, message: auth.message }, { status: auth.status });
+    }
+
     try {
         const body = await request.json();
 
@@ -107,6 +113,11 @@ export async function POST(request) {
 // GET ALL CHAPTERS OF A SUBJECT
 // GET ALL CHAPTERS OF A SUBJECT
 export async function GET(request) {
+    const auth = await requireAdminPermission(request, 'classes.view');
+    if (!auth.ok) {
+        return NextResponse.json({ success: false, message: auth.message }, { status: auth.status });
+    }
+
     try {
         const { searchParams } = new URL(request.url);
 

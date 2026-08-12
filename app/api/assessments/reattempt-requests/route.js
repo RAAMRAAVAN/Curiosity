@@ -1,6 +1,7 @@
 import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { getUserFromRequest } from '@/server/auth';
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 export async function GET(req) {
   try {
@@ -78,10 +79,9 @@ export async function POST(req) {
 
 export async function PATCH(req) {
   try {
-    const user = getUserFromRequest(req);
-    const userId = user?.userId || user?.id;
-    if (!userId || user.role !== 'TEACHER') {
-      return ApiResponse.error('Teacher access required', 403);
+    const auth = await requireAdminPermission(req, 'assessments.appeared.reappear');
+    if (!auth.ok) {
+      return ApiResponse.error(auth.message, auth.status);
     }
 
     const body = await req.json();
@@ -96,7 +96,7 @@ export async function PATCH(req) {
       data: {
         status,
         reviewedAt: new Date(),
-        reviewedBy: userId,
+        reviewedBy: auth.actor.userId,
       },
     });
 

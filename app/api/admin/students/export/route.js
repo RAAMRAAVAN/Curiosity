@@ -1,8 +1,7 @@
 import * as XLSX from "xlsx";
 import { prisma } from "@/server/prisma";
-import { getUserFromRequest } from "@/server/auth";
 import { ApiResponse } from "@/utils/apiResponse";
-import { canAccessAdminArea, canManageAdminData, isTeacher } from "@/lib/roleAccess";
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 function formatDateForExport(value) {
   if (!value) return "";
@@ -12,19 +11,19 @@ function formatDateForExport(value) {
 }
 
 export async function GET(req) {
-  const authUser = getUserFromRequest(req);
-  if (!authUser || !canAccessAdminArea(authUser)) {
-    return ApiResponse.error("Unauthorized", 401);
+  const auth = await requireAdminPermission(req, 'students.export');
+  if (!auth.ok) {
+    return ApiResponse.error(auth.message, auth.status);
   }
 
   try {
-    const teacherRole = isTeacher(authUser);
-    const adminOrManagement = canManageAdminData(authUser);
+    const teacherRole = auth.actor.isTeacher;
+    const adminOrManagement = auth.actor.isAdmin || auth.actor.isManagement;
 
     let scopedCenterId = null;
     if (teacherRole) {
       const teacherProfile = await prisma.teacher.findUnique({
-        where: { userId: authUser.id },
+        where: { userId: auth.actor.userId },
         select: { centerId: true },
       });
 
@@ -35,7 +34,7 @@ export async function GET(req) {
       scopedCenterId = teacherProfile.centerId;
     }
 
-    const [users, classes] = await Promise.all([
+    let [users, classes] = await Promise.all([
       prisma.user.findMany({
         where: {
           role: "STUDENT",
@@ -55,8 +54,13 @@ export async function GET(req) {
           },
         },
       }),
-      prisma.class.findMany({ select: { id: true, className: true } }),
+      prisma.class.findMany({ select: { id: true, className: true, centerId: true } }),
     ]);
+
+    if (!teacherRole && !auth.actor.isAdmin) {
+      users = users.filter((user) => auth.actor.canAccessCenter(user.student?.centerId));
+      classes = classes.filter((item) => auth.actor.canAccessCenter(item.centerId));
+    }
 
     const classMap = Object.fromEntries(classes.map((item) => [item.id, item.className]));
 
@@ -71,6 +75,7 @@ export async function GET(req) {
         Email: user.email || "",
         "Center Name": profile.center?.name || "",
         "Class Name": className || "",
+        Grade: className || "",
         DOB: formatDateForExport(profile.dob),
         Gender: profile.gender || "",
         Phone: profile.phone || "",

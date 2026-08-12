@@ -1,8 +1,7 @@
 import bcrypt from "bcryptjs";
 import { ApiResponse } from "@/utils/apiResponse";
-import { getUserFromRequest } from "@/server/auth";
 import { prisma } from "@/server/prisma";
-import { canAccessAdminArea, canManageAdminData } from "@/lib/roleAccess";
+import { deleteUserAccessAssignment, getAllCustomRoles, getUserAccessAssignment, requireAdminPermission, setUserAccessAssignment } from '@/lib/adminRbac';
 
 const roleMap = {
   student: "STUDENT",
@@ -25,7 +24,7 @@ function getProfile(user) {
   );
 }
 
-function mapUser(user) {
+function mapUser(user, accessAssignment = null, customRole = null) {
   const profile = getProfile(user);
 
   return {
@@ -39,9 +38,17 @@ function mapUser(user) {
     address: profile.address,
     schoolName: profile.schoolName,
     studyingClass: profile.studyingClass,
+    customRoleId: accessAssignment?.roleId || null,
+    customRoleName: customRole?.name || null,
+    assignedCenterIds: accessAssignment?.centerIds || [],
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
+}
+
+function resolveUserCenterId(user) {
+  const profile = getProfile(user);
+  return profile.centerId || user.centerId || null;
 }
 
 function buildProfileData(body, role) {
@@ -125,13 +132,9 @@ async function upsertProfile(userId, role, profileData, userName) {
 }
 
 export async function GET(req, { params }) {
-  const authUser = getUserFromRequest(req);
-  if (!authUser || !canAccessAdminArea(authUser)) {
-    return ApiResponse.error("Unauthorized", 401);
-  }
-
-  if (!canManageAdminData(authUser)) {
-    return ApiResponse.error("Forbidden", 403);
+  const auth = await requireAdminPermission(req, 'users.view');
+  if (!auth.ok) {
+    return ApiResponse.error(auth.message, auth.status);
   }
 
   const user = await prisma.user.findUnique({
@@ -149,17 +152,23 @@ export async function GET(req, { params }) {
     return ApiResponse.error("User not found", 404);
   }
 
-  return ApiResponse.success(mapUser(user));
+  if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(resolveUserCenterId(user))) {
+    return ApiResponse.error('Forbidden', 403);
+  }
+
+  const [assignment, roles] = await Promise.all([
+    getUserAccessAssignment(user.id),
+    getAllCustomRoles(),
+  ]);
+  const customRole = roles.find((role) => role.id === assignment?.roleId) || null;
+
+  return ApiResponse.success(mapUser(user, assignment, customRole));
 }
 
 export async function PATCH(req, { params }) {
-  const authUser = getUserFromRequest(req);
-  if (!authUser || !canAccessAdminArea(authUser)) {
-    return ApiResponse.error("Unauthorized", 401);
-  }
-
-  if (!canManageAdminData(authUser)) {
-    return ApiResponse.error("Forbidden", 403);
+  const auth = await requireAdminPermission(req, 'users.edit');
+  if (!auth.ok) {
+    return ApiResponse.error(auth.message, auth.status);
   }
 
   const body = await req.json();
@@ -201,6 +210,10 @@ export async function PATCH(req, { params }) {
     return ApiResponse.error("User not found", 404);
   }
 
+  if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(resolveUserCenterId(existingUser))) {
+    return ApiResponse.error('Forbidden', 403);
+  }
+
   const user = await prisma.user.update({
     where: { id: params.id },
     data: updateData,
@@ -222,6 +235,29 @@ export async function PATCH(req, { params }) {
     await upsertProfile(params.id, role, profileData, name);
   }
 
+  if (role === 'MANAGEMENT') {
+    const centerIds = Array.isArray(body.assignedCenterIds) ? body.assignedCenterIds : [];
+
+    if (!auth.actor.isAdmin && centerIds.some((centerId) => !auth.actor.canAccessCenter(centerId))) {
+      return ApiResponse.error('Forbidden: one or more assigned centers are outside your scope.', 403);
+    }
+
+    if (body.customRoleId) {
+      const roles = await getAllCustomRoles();
+      const selectedRole = roles.find((item) => item.id === body.customRoleId && item.status !== false);
+      if (!selectedRole) {
+        return ApiResponse.error('Selected custom role is invalid.', 400);
+      }
+    }
+
+    await setUserAccessAssignment(params.id, {
+      roleId: body.customRoleId || null,
+      centerIds,
+    });
+  } else {
+    await deleteUserAccessAssignment(params.id);
+  }
+
   const updatedUser = await prisma.user.findUnique({
     where: { id: params.id },
     include: {
@@ -233,22 +269,48 @@ export async function PATCH(req, { params }) {
     },
   });
 
-  return ApiResponse.success(mapUser(updatedUser), "User updated successfully.");
+  const [assignment, roles] = await Promise.all([
+    getUserAccessAssignment(updatedUser.id),
+    getAllCustomRoles(),
+  ]);
+  const customRole = roles.find((item) => item.id === assignment?.roleId) || null;
+
+  return ApiResponse.success(
+    mapUser(updatedUser, assignment, customRole),
+    "User updated successfully."
+  );
 }
 
 export async function DELETE(req, { params }) {
-  const authUser = getUserFromRequest(req);
-  if (!authUser || !canAccessAdminArea(authUser)) {
-    return ApiResponse.error("Unauthorized", 401);
+  const auth = await requireAdminPermission(req, 'users.delete');
+  if (!auth.ok) {
+    return ApiResponse.error(auth.message, auth.status);
   }
 
-  if (!canManageAdminData(authUser)) {
-    return ApiResponse.error("Forbidden", 403);
+  const targetUser = await prisma.user.findUnique({
+    where: { id: params.id },
+    include: {
+      teacher: true,
+      student: true,
+      admin: true,
+      management: true,
+      parent: true,
+    },
+  });
+
+  if (!targetUser) {
+    return ApiResponse.error('User not found', 404);
+  }
+
+  if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(resolveUserCenterId(targetUser))) {
+    return ApiResponse.error('Forbidden', 403);
   }
 
   await prisma.user.delete({
     where: { id: params.id },
   });
+
+  await deleteUserAccessAssignment(params.id);
 
   return ApiResponse.success(null, "User deleted successfully.");
 }

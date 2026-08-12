@@ -4,6 +4,8 @@ import { promises as fs } from "fs";
 import { uploadFile } from "@/lib/uploadFile";
 import { buildClassSlug } from "@/lib/classSlug";
 import path from "path";
+import { getUserFromRequest } from '@/server/auth';
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 const uploadDir = path.join(process.cwd(), "public", "Subject");
 
@@ -25,6 +27,15 @@ function getFileName(originalName) {
 
 export async function GET(req) {
   try {
+    const authUser = getUserFromRequest(req);
+    const role = String(authUser?.role || '').toUpperCase();
+    if (authUser && ['ADMIN', 'MANAGEMENT', 'TEACHER'].includes(role)) {
+      const auth = await requireAdminPermission(req, 'subjects.view');
+      if (!auth.ok) {
+        return ApiResponse.error(auth.message, auth.status);
+      }
+    }
+
     const { searchParams } = new URL(req.url);
 
     const classID = searchParams.get("classID");
@@ -66,6 +77,11 @@ export async function GET(req) {
 // ===================== POST =====================
 
 export async function POST(req) {
+  const auth = await requireAdminPermission(req, 'subjects.create');
+  if (!auth.ok) {
+    return ApiResponse.error(auth.message, auth.status);
+  }
+
   try {
     const formData = await req.formData();
 

@@ -199,6 +199,10 @@ const AssessmentPage = () => {
     return <Typography sx={{ p: 4 }}>Assessment not found.</Typography>;
   }
 
+  const resolvedTotalMarks = (result?.totalMarks && Number(result.totalMarks) > 0)
+    ? Number(result.totalMarks)
+    : (assessment?.questions || []).reduce((sum, question) => sum + (Number(question?.marks) || 0), 0) || Number(result?.totalQuestions || 0);
+
   return (
     <Box
       sx={{
@@ -487,10 +491,10 @@ const AssessmentPage = () => {
                     fontWeight={700}
                     sx={{ fontSize: { xs: '2.5rem', sm: '3rem' } }}
                   >
-                    {result.score} / {result.totalQuestions}
+                    {result.score} / {resolvedTotalMarks}
                   </Typography>
                   <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: 15, sm: 16 } }}>
-                    {result.percentage}%
+                    {result.percentage}% • Grade {result.grade || '—'}
                   </Typography>
                 </Box>
 

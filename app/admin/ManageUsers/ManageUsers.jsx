@@ -1,6 +1,6 @@
 'use client'
 
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material"
+import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, ListItemText, MenuItem, OutlinedInput, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material"
 import { useEffect, useMemo, useState } from "react";
 
 const emptyUserForm = {
@@ -14,15 +14,19 @@ const emptyUserForm = {
     schoolName: "",
     studyingClass: "",
     userType: "student",
+    customRoleId: "",
+    assignedCenterIds: [],
 };
 
 const genderOptions = ["Male", "Female", "Other", "Prefer not to say"];
-const roleOptions = ["student", "teacher", "admin", "parent"];
+const roleOptions = ["student", "teacher", "admin", "management", "parent"];
 
 
 
 
 const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, loading, setLoading}) => {
+  const [roles, setRoles] = useState([]);
+  const [centers, setCenters] = useState([]);
     
     const [filters, setFilters] = useState({
         name: "",
@@ -40,6 +44,32 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
         setMessage(null);
         setOpenUserModal(true);
     };
+
+    const loadRolesAndCenters = async () => {
+      try {
+        const [rolesRes, centersRes] = await Promise.all([
+          fetch('/api/admin/roles', { credentials: 'include' }),
+          fetch('/api/admin/centers', { credentials: 'include' }),
+        ]);
+
+        const rolesData = await rolesRes.json();
+        const centersData = await centersRes.json();
+
+        if (rolesData.success) {
+          setRoles(Array.isArray(rolesData.data) ? rolesData.data.filter((item) => item.status !== false) : []);
+        }
+
+        if (centersData.success) {
+          setCenters(Array.isArray(centersData.data) ? centersData.data : []);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    useEffect(() => {
+      loadRolesAndCenters();
+    }, []);
 
     const handleUserFormChange = (event) => {
         setUserForm({
@@ -66,6 +96,8 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
       schoolName: user.schoolName || "",
       studyingClass: user.studyingClass || "",
       userType: user.role.toLowerCase(),
+      customRoleId: user.customRoleId || "",
+      assignedCenterIds: Array.isArray(user.assignedCenterIds) ? user.assignedCenterIds : [],
     });
     setMessage(null);
     setOpenUserModal(true);
@@ -76,7 +108,15 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
       ? `/api/admin/users/${selectedUserId}`
       : "/api/admin/users";
     const method = selectedUserId ? "PATCH" : "POST";
-    const payload = { ...userForm };
+    const payload = {
+      ...userForm,
+      assignedCenterIds: Array.isArray(userForm.assignedCenterIds) ? userForm.assignedCenterIds : [],
+    };
+
+    if (String(payload.userType || '').toLowerCase() !== 'management') {
+      payload.customRoleId = null;
+      payload.assignedCenterIds = [];
+    }
 
     if (selectedUserId && !payload.password) {
       delete payload.password;
@@ -144,20 +184,24 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
       setLoading(false);
     }
   };
+    const visibleUsers = useMemo(() => {
+        return users.filter((user) => String(user.role || "").toLowerCase() !== "student");
+    }, [users]);
+
     const filteredUsers = useMemo(() => {
-        return users.filter((user) => {
+        return visibleUsers.filter((user) => {
             return Object.entries(filters).every(([key, value]) => {
                 if (!value) return true;
                 const fieldValue = String(user[key] || "").toLowerCase();
                 return fieldValue.includes(value.toLowerCase());
             });
         });
-    }, [users, filters]);
+    }, [visibleUsers, filters]);
 
     
 
   const userStats = useMemo(() => {
-    return users.reduce(
+    return visibleUsers.reduce(
       (acc, user) => {
         const roleKey = user.role?.toLowerCase();
         if (roleKey && acc[roleKey] !== undefined) {
@@ -166,9 +210,17 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
         acc.total += 1;
         return acc;
       },
-      { total: 0, student: 0, teacher: 0, admin: 0, parent: 0 }
+      { total: 0, student: 0, teacher: 0, admin: 0, management: 0, parent: 0 }
     );
   }, [users]);
+
+  const centerNameById = useMemo(() => {
+    return Object.fromEntries(centers.map((center) => [center.id, center.name || center.id]));
+  }, [centers]);
+
+  const managementRoleOptions = useMemo(() => {
+    return roles.filter((item) => item.status !== false);
+  }, [roles]);
 
     return (<Box>
         <Paper sx={{ p: 3, mb: 4, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
@@ -188,6 +240,8 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
                             <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Name</TableCell>
                             <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Email</TableCell>
                             <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Role</TableCell>
+                            <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Custom Role</TableCell>
+                            <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Assigned Centers</TableCell>
                             <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Gender</TableCell>
                             <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Phone</TableCell>
                             <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>School</TableCell>
@@ -201,6 +255,12 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
                                 <TableCell>{user.name}</TableCell>
                                 <TableCell>{user.email}</TableCell>
                                 <TableCell>{user.role}</TableCell>
+                                <TableCell>{user.customRoleName || '-'}</TableCell>
+                                <TableCell>
+                                  {Array.isArray(user.assignedCenterIds) && user.assignedCenterIds.length
+                                    ? user.assignedCenterIds.map((centerId) => centerNameById[centerId] || centerId).join(', ')
+                                    : '-'}
+                                </TableCell>
                                 <TableCell>{user.gender}</TableCell>
                                 <TableCell>{user.phone}</TableCell>
                                 <TableCell>{user.schoolName}</TableCell>
@@ -217,7 +277,7 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
                         ))}
                         {filteredUsers.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
                                     No users match the current filters.
                                 </TableCell>
                             </TableRow>
@@ -283,6 +343,50 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
                             ))}
                         </Select>
                     </FormControl>
+
+                    {String(userForm.userType || '').toLowerCase() === 'management' ? (
+                      <>
+                        <FormControl fullWidth>
+                          <InputLabel>Custom Role</InputLabel>
+                          <Select
+                            label="Custom Role"
+                            name="customRoleId"
+                            value={userForm.customRoleId || ''}
+                            onChange={handleUserFormChange}
+                          >
+                            <MenuItem value="">None</MenuItem>
+                            {managementRoleOptions.map((role) => (
+                              <MenuItem key={role.id} value={role.id}>{role.name}</MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+
+                        <FormControl fullWidth>
+                          <InputLabel>Assigned Centers</InputLabel>
+                          <Select
+                            multiple
+                            name="assignedCenterIds"
+                            value={Array.isArray(userForm.assignedCenterIds) ? userForm.assignedCenterIds : []}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              setUserForm((prev) => ({
+                                ...prev,
+                                assignedCenterIds: typeof value === 'string' ? value.split(',') : value,
+                              }));
+                            }}
+                            input={<OutlinedInput label="Assigned Centers" />}
+                            renderValue={(selected) => selected.map((centerId) => centerNameById[centerId] || centerId).join(', ')}
+                          >
+                            {centers.map((center) => (
+                              <MenuItem key={center.id} value={center.id}>
+                                <Checkbox checked={Array.isArray(userForm.assignedCenterIds) && userForm.assignedCenterIds.indexOf(center.id) > -1} />
+                                <ListItemText primary={center.name || center.id} />
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </>
+                    ) : null}
                 </Box>
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 3 }}>

@@ -18,6 +18,20 @@ import ManageTeachersPage from "./ManageTeachers/ManageTeachers";
 import AssessmentResultsDashboard from "./AssessmentResultsDashboard";
 import ManageCenters from "./ManageCenters/ManageCenters";
 import ManageStudents from "./ManageStudents/ManageStudents";
+import ManageRoles from './ManageRoles/ManageRoles';
+
+const hasPermission = (permissions, permission, role) => {
+  if (String(role || '').toUpperCase() === 'ADMIN') return true;
+  if (!permission) return true;
+
+  const normalized = Array.isArray(permissions)
+    ? permissions.map((item) => String(item || '').toLowerCase())
+    : [];
+
+  return normalized.includes('*')
+    || normalized.includes(permission)
+    || normalized.some((item) => item.endsWith('.*') && permission.startsWith(`${item.slice(0, -2)}.`));
+};
 
 export default function AdminPage() {
   const [users, setUsers] = useState([]);
@@ -27,6 +41,7 @@ export default function AdminPage() {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [adminView, setAdminView] = useState("users");
   const [message, setMessage] = useState(null);
+  const [hasAnyAdminPermission, setHasAnyAdminPermission] = useState(true);
 
   useEffect(() => {
     const restoreSession = async () => {
@@ -50,11 +65,33 @@ export default function AdminPage() {
 
           setAdmin(data.data);
           setAuthorized(true);
-          if (["ADMIN", "MANAGEMENT"].includes(String(data.data?.role || "").toUpperCase())) {
+          const availableViews = [
+            hasPermission(data.data?.permissions, 'users.view', data.data?.role),
+            hasPermission(data.data?.permissions, 'classes.view', data.data?.role),
+            hasPermission(data.data?.permissions, 'teachers.view', data.data?.role),
+            hasPermission(data.data?.permissions, 'centers.view', data.data?.role),
+            hasPermission(data.data?.permissions, 'students.view', data.data?.role),
+            hasPermission(data.data?.permissions, 'roles.view', data.data?.role),
+            hasPermission(data.data?.permissions, 'results.view', data.data?.role),
+          ];
+          const anyPermission = availableViews.some(Boolean);
+          setHasAnyAdminPermission(anyPermission);
+
+          if (["ADMIN", "MANAGEMENT"].includes(String(data.data?.role || "").toUpperCase()) && hasPermission(data.data?.permissions, 'users.view', data.data?.role)) {
             await refreshUsers();
           } else {
             setUsers([]);
-            setAdminView("teachers");
+            if (hasPermission(data.data?.permissions, 'teachers.view', data.data?.role)) {
+              setAdminView("teachers");
+            } else if (hasPermission(data.data?.permissions, 'classes.view', data.data?.role)) {
+              setAdminView("classes");
+            } else if (hasPermission(data.data?.permissions, 'results.view', data.data?.role)) {
+              setAdminView("results");
+            } else if (hasPermission(data.data?.permissions, 'roles.view', data.data?.role)) {
+              setAdminView('roles');
+            } else {
+              setAdminView('none');
+            }
           }
         } else {
           sessionStorage.removeItem("authDetails");
@@ -155,7 +192,7 @@ export default function AdminPage() {
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f5f8ff", py: 4, px: 3 }}>
-      {drawerOpen ? <><AdminDrawyer drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} adminView={adminView} setAdminView={setAdminView} role={admin?.role} />
+      {drawerOpen ? <><AdminDrawyer drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} adminView={adminView} setAdminView={setAdminView} role={admin?.role} permissions={admin?.permissions || []} />
       </> : <>
       
         <IconButton
@@ -167,6 +204,15 @@ export default function AdminPage() {
         </IconButton>
       </>}
       <Box sx={{ maxWidth: 1400, mx: "auto", ml: drawerOpen ? "250px" : 0 }}>
+
+        {adminView === 'none' || !hasAnyAdminPermission ? (
+          <Paper sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(15, 23, 42, 0.08)' }}>
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>No Permissions Assigned</Typography>
+            <Typography color="text.secondary">
+              This account does not have any admin permissions yet. Ask an ADMIN to assign a custom role and centers.
+            </Typography>
+          </Paper>
+        ) : null}
 
         {adminView === "classes" ? (
           <><ManageClasses loading={loading} setLoading={setLoading} message={message} setMessage={setMessage} setAdminView={setAdminView} /></>
@@ -212,6 +258,12 @@ export default function AdminPage() {
             <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>Assessment Results</Typography>
             <Typography color="text.secondary" sx={{ mb: 3 }}>Review live submissions from students across subjects.</Typography>
             <AssessmentResultsDashboard assessmentId="" />
+          </Paper>
+        ) : null}
+
+        {adminView === 'roles' ? (
+          <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+            <ManageRoles setMessage={setMessage} />
           </Paper>
         ) : null}
       </Box>

@@ -1,7 +1,6 @@
 import { ApiResponse } from "@/utils/apiResponse";
-import { getUserFromRequest } from "@/server/auth";
 import { prisma } from "@/server/prisma";
-import { canAccessAdminArea, isTeacher } from "@/lib/roleAccess";
+import { requireAdminPermission } from '@/lib/adminRbac';
 import bcrypt from "bcryptjs";
 
 function formatDateValue(value) {
@@ -37,25 +36,25 @@ function mapStudent(user, classMap = {}) {
 }
 
 export async function GET(req) {
-  const authUser = getUserFromRequest(req);
-  if (!authUser || !canAccessAdminArea(authUser)) {
-    return ApiResponse.error("Unauthorized", 401);
+  const auth = await requireAdminPermission(req, 'students.view');
+  if (!auth.ok) {
+    return ApiResponse.error(auth.message, auth.status);
   }
 
   try {
-    const teacherRole = isTeacher(authUser);
+    const teacherRole = auth.actor.isTeacher;
     let scopedCenterId = null;
 
     if (teacherRole) {
       const teacherProfile = await prisma.teacher.findUnique({
-        where: { userId: authUser.id },
+        where: { userId: auth.actor.userId },
         select: { centerId: true },
       });
 
       scopedCenterId = teacherProfile?.centerId || null;
     }
 
-    const [users, classes] = await Promise.all([
+    let [users, classes] = await Promise.all([
       prisma.user.findMany({
         where: {
           role: "STUDENT",
@@ -76,8 +75,13 @@ export async function GET(req) {
           },
         },
       }),
-      prisma.class.findMany({ select: { id: true, className: true } }),
+      prisma.class.findMany({ select: { id: true, className: true, centerId: true } }),
     ]);
+
+    if (!teacherRole && !auth.actor.isAdmin) {
+      users = users.filter((user) => auth.actor.canAccessCenter(user.student?.centerId));
+      classes = classes.filter((item) => auth.actor.canAccessCenter(item.centerId));
+    }
 
     const classMap = Object.fromEntries(classes.map((cls) => [cls.id, cls.className]));
 
@@ -89,9 +93,9 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  const authUser = getUserFromRequest(req);
-  if (!authUser || !canAccessAdminArea(authUser)) {
-    return ApiResponse.error("Unauthorized", 401);
+  const auth = await requireAdminPermission(req, 'students.create');
+  if (!auth.ok) {
+    return ApiResponse.error(auth.message, auth.status);
   }
 
   try {
@@ -101,9 +105,9 @@ export async function POST(req) {
     }
 
     let finalCenterId = body.centerId || null;
-    if (isTeacher(authUser)) {
+    if (auth.actor.isTeacher) {
       const teacherProfile = await prisma.teacher.findUnique({
-        where: { userId: authUser.id },
+        where: { userId: auth.actor.userId },
         select: { centerId: true },
       });
 
@@ -112,6 +116,10 @@ export async function POST(req) {
       }
 
       finalCenterId = teacherProfile.centerId;
+    }
+
+    if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(finalCenterId)) {
+      return ApiResponse.error('Forbidden: center is not assigned to this user.', 403);
     }
 
     if (body.studyingClass) {

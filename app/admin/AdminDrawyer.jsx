@@ -24,6 +24,7 @@ import {
   Apartment,
   SchoolOutlined,
   Logout,
+  Security,
 } from "@mui/icons-material";
 
 const drawerWidth = 260;
@@ -34,47 +35,74 @@ const AdminDrawer = ({
   setAdminView,
   setDrawerOpen,
   role,
+  permissions = [],
 }) => {
   const pathname = usePathname();
 
   const isTeacherRole = String(role || "").toUpperCase() === "TEACHER";
+  const normalizedPermissions = Array.isArray(permissions)
+    ? permissions.map((item) => String(item || '').toLowerCase())
+    : [];
+
+  const hasPermission = (permission) => {
+    if (String(role || '').toUpperCase() === 'ADMIN') return true;
+    if (!permission) return true;
+    return normalizedPermissions.includes('*')
+      || normalizedPermissions.includes(permission)
+      || normalizedPermissions.some((item) => item.endsWith('.*') && permission.startsWith(`${item.slice(0, -2)}.`));
+  };
 
   const menuItems = [
     {
       title: "Manage Users",
       value: "users",
       icon: <People />,
+      permission: 'users.view',
     },
     {
       title: "Manage Classes",
       value: "classes",
       icon: <School />,
+      permission: 'classes.view',
     },
     {
       title: "Manage Teachers",
       value: "teachers",
       icon: <Person />,
+      permission: 'teachers.view',
     },
     {
       title: "Manage Centers",
       value: "centers",
       icon: <Apartment />,
+      permission: 'centers.view',
     },
     {
       title: "Manage Students",
       value: "students",
       icon: <SchoolOutlined />,
+      permission: 'students.view',
+    },
+    {
+      title: 'Manage Roles',
+      value: 'roles',
+      icon: <Security />,
+      permission: 'roles.view',
     },
     {
       title: "Assessment Results",
       value: "results",
       icon: <Assessment />,
+      permission: 'results.view',
     },
   ];
 
-  const visibleMenuItems = isTeacherRole
-    ? menuItems.filter((item) => ["classes", "teachers", "students", "results"].includes(item.value))
-    : menuItems;
+  const visibleMenuItems = menuItems
+    .filter((item) => hasPermission(item.permission))
+    .filter((item) => {
+      if (!isTeacherRole) return true;
+      return ["classes", "teachers", "students", "results"].includes(item.value);
+    });
 
   return (
     <Drawer
