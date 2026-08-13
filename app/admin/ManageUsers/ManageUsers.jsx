@@ -19,14 +19,31 @@ const emptyUserForm = {
 };
 
 const genderOptions = ["Male", "Female", "Other", "Prefer not to say"];
-const roleOptions = ["student", "teacher", "admin", "management", "parent"];
+const roleOptions = ["management"];
 
 
 
 
-const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, loading, setLoading}) => {
+const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, loading, setLoading, role, permissions = []}) => {
   const [roles, setRoles] = useState([]);
   const [centers, setCenters] = useState([]);
+
+  const hasPermission = (permission) => {
+    if (String(role || '').toUpperCase() === 'ADMIN') return true;
+    if (!permission) return true;
+
+    const normalized = Array.isArray(permissions)
+      ? permissions.map((item) => String(item || '').toLowerCase())
+      : [];
+
+    return normalized.includes('*')
+      || normalized.includes(permission)
+      || normalized.some((item) => item.endsWith('.*') && permission.startsWith(`${item.slice(0, -2)}.`));
+  };
+
+  const canCreateUsers = hasPermission('users.create');
+  const canEditUsers = hasPermission('users.edit');
+  const canDeleteUsers = hasPermission('users.delete');
     
     const [filters, setFilters] = useState({
         name: "",
@@ -104,6 +121,16 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
   };
 
   const handleSaveUser = async () => {
+    if (selectedUserId && !canEditUsers) {
+      setMessage("You are not authorized to perform this operation.");
+      return;
+    }
+
+    if (!selectedUserId && !canCreateUsers) {
+      setMessage("You are not authorized to perform this operation.");
+      return;
+    }
+
     const endpoint = selectedUserId
       ? `/api/admin/users/${selectedUserId}`
       : "/api/admin/users";
@@ -152,6 +179,11 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
   };
 
   const handleDeleteUser = async (id) => {
+    if (!canDeleteUsers) {
+      setMessage("You are not authorized to perform this operation.");
+      return;
+    }
+
     if (!confirm("Delete this user permanently?")) {
       return;
     }
@@ -228,9 +260,11 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
                 <Typography variant="h6" fontWeight={700}>
                     Users
                 </Typography>
-                <Button variant="contained" onClick={startNewUser}>
-                    Create New User
-                </Button>
+                {canCreateUsers ? (
+                  <Button variant="contained" onClick={startNewUser}>
+                      Create New User
+                  </Button>
+                ) : null}
             </Box>
 
             <TableContainer sx={{ borderRadius: 3, overflow: "hidden" }}>
@@ -242,10 +276,7 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
                             <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Role</TableCell>
                             <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Custom Role</TableCell>
                             <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Assigned Centers</TableCell>
-                            <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Gender</TableCell>
-                            <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Phone</TableCell>
-                            <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>School</TableCell>
-                            <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Class</TableCell>
+                            
                             <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Actions</TableCell>
                         </TableRow>
                     </TableHead>
@@ -261,17 +292,18 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
                                     ? user.assignedCenterIds.map((centerId) => centerNameById[centerId] || centerId).join(', ')
                                     : '-'}
                                 </TableCell>
-                                <TableCell>{user.gender}</TableCell>
-                                <TableCell>{user.phone}</TableCell>
-                                <TableCell>{user.schoolName}</TableCell>
-                                <TableCell>{user.studyingClass}</TableCell>
+                                
                                 <TableCell>
-                                    <Button size="small" onClick={() => handleEditUser(user)} sx={{ mr: 1 }}>
-                                        Edit
-                                    </Button>
-                                    <Button size="small" color="error" onClick={() => handleDeleteUser(user.id)}>
-                                        Delete
-                                    </Button>
+                                    {canEditUsers ? (
+                                      <Button size="small" onClick={() => handleEditUser(user)} sx={{ mr: 1 }}>
+                                          Edit
+                                      </Button>
+                                    ) : '-'}
+                                    {canDeleteUsers ? (
+                                      <Button size="small" color="error" onClick={() => handleDeleteUser(user.id)}>
+                                          Delete
+                                      </Button>
+                                    ) : null}
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -309,30 +341,7 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
                         fullWidth
                         helperText={selectedUserId ? "Leave blank to keep current password." : "Set a password for the new user."}
                     />
-                    <TextField
-                        label="Date of Birth"
-                        name="dob"
-                        type="date"
-                        value={userForm.dob}
-                        onChange={handleUserFormChange}
-                        InputLabelProps={{ shrink: true }}
-                        fullWidth
-                    />
-                    <FormControl fullWidth>
-                        <InputLabel>Gender</InputLabel>
-                        <Select label="Gender" name="gender" value={userForm.gender} onChange={handleUserFormChange}>
-                            <MenuItem value="">None</MenuItem>
-                            {genderOptions.map((gender) => (
-                                <MenuItem key={gender} value={gender}>
-                                    {gender}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                    <TextField label="Phone" name="phone" value={userForm.phone} onChange={handleUserFormChange} fullWidth />
-                    <TextField label="Address" name="address" value={userForm.address} onChange={handleUserFormChange} fullWidth multiline rows={2} />
-                    <TextField label="School Name" name="schoolName" value={userForm.schoolName} onChange={handleUserFormChange} fullWidth />
-                    <TextField label="Class" name="studyingClass" value={userForm.studyingClass} onChange={handleUserFormChange} fullWidth />
+                    
                     <FormControl fullWidth>
                         <InputLabel>User Type</InputLabel>
                         <Select label="User Type" name="userType" value={userForm.userType} onChange={handleUserFormChange}>

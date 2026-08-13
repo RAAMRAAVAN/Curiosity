@@ -43,7 +43,7 @@ export async function GET(req, { params }) {
     }
 
     if (!auth.actor.isAdmin && !scopedCenterId && !auth.actor.canAccessCenter(assessment.class?.centerId || null)) {
-      return ApiResponse.error('Forbidden', 403);
+      return ApiResponse.error('You are not authorized to perform this operation.', 403);
     }
 
     const appearedResults = await prisma.assessmentResult.findMany({

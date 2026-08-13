@@ -36,6 +36,9 @@ const AdminDrawer = ({
   setDrawerOpen,
   role,
   permissions = [],
+  customRolePermissions = [],
+  userName,
+  customRoleName,
 }) => {
   const pathname = usePathname();
 
@@ -43,13 +46,25 @@ const AdminDrawer = ({
   const normalizedPermissions = Array.isArray(permissions)
     ? permissions.map((item) => String(item || '').toLowerCase())
     : [];
+  const normalizedCustomRolePermissions = Array.isArray(customRolePermissions)
+    ? customRolePermissions.map((item) => String(item || '').toLowerCase())
+    : [];
+  const allPermissions = Array.from(new Set([...normalizedPermissions, ...normalizedCustomRolePermissions]));
 
   const hasPermission = (permission) => {
-    if (String(role || '').toUpperCase() === 'ADMIN') return true;
     if (!permission) return true;
-    return normalizedPermissions.includes('*')
-      || normalizedPermissions.includes(permission)
-      || normalizedPermissions.some((item) => item.endsWith('.*') && permission.startsWith(`${item.slice(0, -2)}.`));
+    if (String(role || '').toUpperCase() === 'ADMIN') return true;
+
+    if (allPermissions.includes('*')) return true;
+    if (allPermissions.includes(permission)) return true;
+
+    return allPermissions.some((item) => {
+      if (item === '*') return true;
+      if (item === permission) return true;
+      if (item.endsWith('.*') && permission.startsWith(`${item.slice(0, -2)}.`)) return true;
+      if (permission.endsWith('.*') && item.startsWith(`${permission.slice(0, -2)}.`)) return true;
+      return false;
+    });
   };
 
   const menuItems = [
@@ -182,6 +197,25 @@ const AdminDrawer = ({
       </List>
 
       <Box sx={{ mt: "auto", p: 2 }}>
+        <Box
+          sx={{
+            mx: 1,
+            mb: 1,
+            px: 1.5,
+            py: 1.25,
+            borderRadius: 2,
+            backgroundColor: "#f3f7ff",
+            border: "1px solid rgba(25, 118, 210, 0.12)",
+          }}
+        >
+          <Typography variant="subtitle2" fontWeight={700} sx={{ lineHeight: 1.3 }}>
+            {userName || "User"}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+            {customRoleName || role || "No custom role"}
+          </Typography>
+        </Box>
+
         <ListItem disablePadding>
           <ListItemButton
             onClick={() => {

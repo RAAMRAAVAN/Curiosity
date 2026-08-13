@@ -17,7 +17,23 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
     const [authUser, setAuthUser] = useState(null);
     const [navigationPreference, setNavigationPreference] = useState("contents");
 
+    const hasPermission = (permission) => {
+        if (String(authUser?.role || '').toUpperCase() === 'ADMIN') return true;
+        if (!permission) return true;
+
+        const normalized = Array.isArray(authUser?.permissions)
+            ? authUser.permissions.map((item) => String(item || '').toLowerCase())
+            : [];
+
+        return normalized.includes('*')
+            || normalized.includes(permission)
+            || normalized.some((item) => item.endsWith('.*') && permission.startsWith(`${item.slice(0, -2)}.`));
+    };
+
     const isAdminRole = String(authUser?.role || "").toUpperCase() === "ADMIN";
+    const canCreateClasses = hasPermission('classes.create');
+    const canEditClasses = hasPermission('classes.edit');
+    const canDeleteClasses = hasPermission('classes.delete');
 
     const loadCurrentUser = async () => {
         try {
@@ -196,15 +212,15 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
         <Paper sx={{ p: 3, mb: 4, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                 <Typography variant="h6" fontWeight={700}>Classes</Typography>
-                {isAdminRole ? <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-                    <FormControl size="small" sx={{ minWidth: 220 }}>
+                {isAdminRole || canCreateClasses ? <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                    {isAdminRole ? <FormControl size="small" sx={{ minWidth: 220 }}>
                         <InputLabel>Default View</InputLabel>
                         <Select label="Default View" value={navigationPreference} onChange={handlePreferenceChange}>
                             <MenuItem value="contents">Class Content</MenuItem>
                             <MenuItem value="assessments">Assessments</MenuItem>
                         </Select>
-                    </FormControl>
-                    <Button variant="outlined" sx={{ mr: 1 }} onClick={async () => {
+                    </FormControl> : null}
+                    {isAdminRole ? <Button variant="outlined" sx={{ mr: 1 }} onClick={async () => {
                         if (!confirm("Seed classes 1-12?")) return;
                         setLoading(true);
                         try {
@@ -216,11 +232,11 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                             } else setMessage(d.message || 'Seed failed');
                         } catch (e) { console.error(e); setMessage('Seed failed'); }
                         setLoading(false);
-                    }}>Seed Classes</Button>
-                    <Button variant="contained" onClick={() => {
+                    }}>Seed Classes</Button> : null}
+                    {canCreateClasses ? <Button variant="contained" onClick={() => {
                         const name = prompt("Class name (e.g. Class 1, BSc Computer Science, 4th sem):");
                         if (name) handleCreateClass(name);
-                    }}>Create Class</Button>
+                    }}>Create Class</Button> : null}
                 </Box> : null}
             </Box>
             <TableContainer>
@@ -240,10 +256,11 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                                 <TableCell>{c.className}</TableCell>
                                 <TableCell>{c.icon || "-"}</TableCell>
                                 <TableCell>
-                                    <Button size="small" onClick={() => openEditClass(c)} sx={{ mr: 1 }}>Edit</Button>
-
+                                    {canEditClasses ? <Button size="small" onClick={() => openEditClass(c)} sx={{ mr: 1 }}>Edit</Button> : '-'}
                                 </TableCell>
-                                <TableCell><Button size="small" color="error" onClick={() => handleDeleteClass(c.id)}>Delete</Button></TableCell>
+                                <TableCell>
+                                    {canDeleteClasses ? <Button size="small" color="error" onClick={() => handleDeleteClass(c.id)}>Delete</Button> : '-'}
+                                </TableCell>
                                 <TableCell>
                                     <Button size="small" onClick={() => handleClassAction(c)}>
                                         View Class Contents

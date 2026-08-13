@@ -84,7 +84,7 @@ const emptyForm = {
   permissions: [],
 };
 
-const ManageRoles = ({ setMessage }) => {
+const ManageRoles = ({ setMessage, role, permissions = [] }) => {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -92,6 +92,23 @@ const ManageRoles = ({ setMessage }) => {
   const [editingRole, setEditingRole] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [localMessage, setLocalMessage] = useState(null);
+
+  const hasPermission = (permission) => {
+    if (String(role || '').toUpperCase() === 'ADMIN') return true;
+    if (!permission) return true;
+
+    const normalized = Array.isArray(permissions)
+      ? permissions.map((item) => String(item || '').toLowerCase())
+      : [];
+
+    return normalized.includes('*')
+      || normalized.includes(permission)
+      || normalized.some((item) => item.endsWith('.*') && permission.startsWith(`${item.slice(0, -2)}.`));
+  };
+
+  const canCreateRoles = hasPermission('roles.create');
+  const canEditRoles = hasPermission('roles.edit');
+  const canDeleteRoles = hasPermission('roles.delete');
 
   const loadRoles = async () => {
     try {
@@ -124,6 +141,11 @@ const ManageRoles = ({ setMessage }) => {
   }, [roles]);
 
   const startCreate = () => {
+    if (!canCreateRoles) {
+      setMessage('You are not authorized to perform this operation.');
+      return;
+    }
+
     setEditingRole(null);
     setForm(emptyForm);
     setOpen(true);
@@ -131,6 +153,11 @@ const ManageRoles = ({ setMessage }) => {
   };
 
   const startEdit = (role) => {
+    if (!canEditRoles) {
+      setMessage('You are not authorized to perform this operation.');
+      return;
+    }
+
     setEditingRole(role);
     setForm({
       name: role.name || '',
@@ -155,6 +182,16 @@ const ManageRoles = ({ setMessage }) => {
   };
 
   const saveRole = async () => {
+    if (editingRole && !canEditRoles) {
+      setMessage('You are not authorized to perform this operation.');
+      return;
+    }
+
+    if (!editingRole && !canCreateRoles) {
+      setMessage('You are not authorized to perform this operation.');
+      return;
+    }
+
     try {
       setSaving(true);
       const endpoint = editingRole ? `/api/admin/roles/${editingRole.id}` : '/api/admin/roles';
@@ -190,6 +227,11 @@ const ManageRoles = ({ setMessage }) => {
   };
 
   const deleteRole = async (role) => {
+    if (!canDeleteRoles) {
+      setMessage('You are not authorized to perform this operation.');
+      return;
+    }
+
     if (!window.confirm(`Delete role "${role.name}"?`)) {
       return;
     }
@@ -229,7 +271,9 @@ const ManageRoles = ({ setMessage }) => {
               Create custom management roles and configure exact permissions.
             </Typography>
           </Box>
-          <Button variant="contained" onClick={startCreate}>Create Role</Button>
+          {canCreateRoles ? (
+            <Button variant="contained" onClick={startCreate}>Create Role</Button>
+          ) : null}
         </Box>
 
         <TableContainer>
@@ -253,8 +297,12 @@ const ManageRoles = ({ setMessage }) => {
                     <Chip label={role.status === false ? 'Disabled' : 'Active'} color={role.status === false ? 'default' : 'success'} size="small" />
                   </TableCell>
                   <TableCell>
-                    <Button size="small" onClick={() => startEdit(role)}>Edit</Button>
-                    <Button size="small" color="error" onClick={() => deleteRole(role)}>Delete</Button>
+                    {canEditRoles ? (
+                      <Button size="small" onClick={() => startEdit(role)}>Edit</Button>
+                    ) : null}
+                    {canDeleteRoles ? (
+                      <Button size="small" color="error" onClick={() => deleteRole(role)}>Delete</Button>
+                    ) : null}
                   </TableCell>
                 </TableRow>
               ))}

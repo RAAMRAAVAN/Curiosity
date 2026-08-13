@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Alert,
   Box,
   Button,
   CircularProgress,
@@ -43,6 +44,12 @@ export default function AdminPage() {
   const [message, setMessage] = useState(null);
   const [hasAnyAdminPermission, setHasAnyAdminPermission] = useState(true);
 
+  const getCombinedPermissions = (userData) => {
+    const direct = Array.isArray(userData?.permissions) ? userData.permissions : [];
+    const custom = Array.isArray(userData?.customRole?.permissions) ? userData.customRole.permissions : [];
+    return Array.from(new Set([...direct, ...custom]));
+  };
+
   useEffect(() => {
     const restoreSession = async () => {
       setLoading(true);
@@ -63,35 +70,38 @@ export default function AdminPage() {
             })
           );
 
-          setAdmin(data.data);
+          const combinedPermissions = getCombinedPermissions(data.data);
+          setAdmin({ ...data.data, permissions: combinedPermissions });
           setAuthorized(true);
           const availableViews = [
-            hasPermission(data.data?.permissions, 'users.view', data.data?.role),
-            hasPermission(data.data?.permissions, 'classes.view', data.data?.role),
-            hasPermission(data.data?.permissions, 'teachers.view', data.data?.role),
-            hasPermission(data.data?.permissions, 'centers.view', data.data?.role),
-            hasPermission(data.data?.permissions, 'students.view', data.data?.role),
-            hasPermission(data.data?.permissions, 'roles.view', data.data?.role),
-            hasPermission(data.data?.permissions, 'results.view', data.data?.role),
+            { key: 'users', allowed: hasPermission(combinedPermissions, 'users.view', data.data?.role) },
+            { key: 'classes', allowed: hasPermission(combinedPermissions, 'classes.view', data.data?.role) },
+            { key: 'teachers', allowed: hasPermission(combinedPermissions, 'teachers.view', data.data?.role) },
+            { key: 'centers', allowed: hasPermission(combinedPermissions, 'centers.view', data.data?.role) },
+            { key: 'students', allowed: hasPermission(combinedPermissions, 'students.view', data.data?.role) },
+            { key: 'roles', allowed: hasPermission(combinedPermissions, 'roles.view', data.data?.role) },
+            { key: 'results', allowed: hasPermission(combinedPermissions, 'results.view', data.data?.role) },
           ];
-          const anyPermission = availableViews.some(Boolean);
+          const anyPermission = availableViews.some((item) => item.allowed);
           setHasAnyAdminPermission(anyPermission);
 
-          if (["ADMIN", "MANAGEMENT"].includes(String(data.data?.role || "").toUpperCase()) && hasPermission(data.data?.permissions, 'users.view', data.data?.role)) {
+          const firstAvailableView = availableViews.find((item) => item.allowed)?.key || 'none';
+
+          if (firstAvailableView === 'users') {
             await refreshUsers();
+            setAdminView('users');
           } else {
             setUsers([]);
-            if (hasPermission(data.data?.permissions, 'teachers.view', data.data?.role)) {
-              setAdminView("teachers");
-            } else if (hasPermission(data.data?.permissions, 'classes.view', data.data?.role)) {
-              setAdminView("classes");
-            } else if (hasPermission(data.data?.permissions, 'results.view', data.data?.role)) {
-              setAdminView("results");
-            } else if (hasPermission(data.data?.permissions, 'roles.view', data.data?.role)) {
-              setAdminView('roles');
-            } else {
-              setAdminView('none');
-            }
+            const defaultView =
+              availableViews.find((item) => item.key === 'teachers' && item.allowed)?.key ||
+              availableViews.find((item) => item.key === 'classes' && item.allowed)?.key ||
+              availableViews.find((item) => item.key === 'results' && item.allowed)?.key ||
+              availableViews.find((item) => item.key === 'roles' && item.allowed)?.key ||
+              availableViews.find((item) => item.key === 'centers' && item.allowed)?.key ||
+              availableViews.find((item) => item.key === 'students' && item.allowed)?.key ||
+              'none';
+
+            setAdminView(defaultView);
           }
         } else {
           sessionStorage.removeItem("authDetails");
@@ -128,6 +138,11 @@ export default function AdminPage() {
       console.error(error);
       setMessage("Unable to fetch users.");
     }
+  };
+
+  const getAlertSeverity = (text) => {
+    if (!text) return "error";
+    return /successfully|success/i.test(text) ? "success" : "error";
   };
 
 
@@ -192,7 +207,17 @@ export default function AdminPage() {
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f5f8ff", py: 4, px: 3 }}>
-      {drawerOpen ? <><AdminDrawyer drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} adminView={adminView} setAdminView={setAdminView} role={admin?.role} permissions={admin?.permissions || []} />
+      {drawerOpen ? <><AdminDrawyer
+        drawerOpen={drawerOpen}
+        setDrawerOpen={setDrawerOpen}
+        adminView={adminView}
+        setAdminView={setAdminView}
+        role={admin?.role}
+        permissions={admin?.permissions || []}
+        customRolePermissions={admin?.customRole?.permissions || []}
+        userName={admin?.name}
+        customRoleName={admin?.customRole?.name || admin?.customRoleName || null}
+      />
       </> : <>
       
         <IconButton
@@ -223,11 +248,21 @@ export default function AdminPage() {
         {adminView === "users" ? (
           <>
             {message ? (
-              <Paper sx={{ p: 3, mb: 4, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
-                <Typography color="text.primary">{message}</Typography>
-              </Paper>
+              <Alert severity={getAlertSeverity(message)} sx={{ mb: 4 }}>
+                {message}
+              </Alert>
             ) : null}
-            <ManageUsersPage users={users} setUsers={setUsers} setLoading={setLoading} loading={loading} refreshUsers={refreshUsers} setMessage={setMessage} message={message} />
+            <ManageUsersPage
+              users={users}
+              setUsers={setUsers}
+              setLoading={setLoading}
+              loading={loading}
+              refreshUsers={refreshUsers}
+              setMessage={setMessage}
+              message={message}
+              role={admin?.role}
+              permissions={admin?.permissions || []}
+            />
           </>
         ) : null}
 
@@ -238,18 +273,36 @@ export default function AdminPage() {
                 <Typography color="text.primary">{message}</Typography>
               </Paper>
             ) : null}
-                  <ManageTeachersPage loading={loading} setLoading={setLoading} message={message} setMessage={setMessage} setAdminView={setAdminView} users={users}/></>
+                  <ManageTeachersPage
+                    loading={loading}
+                    setLoading={setLoading}
+                    message={message}
+                    setMessage={setMessage}
+                    setAdminView={setAdminView}
+                    users={users}
+                    role={admin?.role}
+                    permissions={admin?.permissions || []}
+                  />
+                  </>
         </>): null}
 
         {adminView === "centers" ? (
           <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
-            <ManageCenters setMessage={setMessage} />
+            <ManageCenters
+              setMessage={setMessage}
+              role={admin?.role}
+              permissions={admin?.permissions || []}
+            />
           </Paper>
         ) : null}
 
         {adminView === "students" ? (
           <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
-            <ManageStudents setMessage={setMessage} />
+            <ManageStudents
+              setMessage={setMessage}
+              role={admin?.role}
+              permissions={admin?.permissions || []}
+            />
           </Paper>
         ) : null}
 
@@ -263,7 +316,11 @@ export default function AdminPage() {
 
         {adminView === 'roles' ? (
           <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
-            <ManageRoles setMessage={setMessage} />
+            <ManageRoles
+              setMessage={setMessage}
+              role={admin?.role}
+              permissions={admin?.permissions || []}
+            />
           </Paper>
         ) : null}
       </Box>

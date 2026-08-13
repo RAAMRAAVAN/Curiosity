@@ -18,9 +18,18 @@ export async function DELETE(req, { params }) {
     if (!classRecord) {
       return ApiResponse.error('Class not found', 404);
     }
-    if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(classRecord.centerId)) {
-      return ApiResponse.error('Forbidden', 403);
+
+    const classCenterId = classRecord.centerId == null ? null : String(classRecord.centerId).trim();
+    if (!auth.actor.isAdmin) {
+      const assignedCenterIds = (Array.isArray(auth.actor.assignedCenterIds) ? auth.actor.assignedCenterIds : [])
+        .map((centerId) => String(centerId).trim())
+        .filter(Boolean);
+
+      if (!classCenterId || (!assignedCenterIds.includes(classCenterId) && !auth.actor.canAccessCenter(classCenterId))) {
+        return ApiResponse.error('Forbidden', 403);
+      }
     }
+
     await prisma["class"].delete({ where: { id } });
     return ApiResponse.success(null, "Class deleted");
   } catch (err) {
@@ -48,8 +57,15 @@ export async function PATCH(req, { params }) {
     }
 
     const nextCenterId = body.centerId !== undefined ? body.centerId : classRecord.centerId;
-    if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(nextCenterId)) {
-      return ApiResponse.error('Forbidden: center is not assigned to this user.', 403);
+    const normalizedNextCenterId = nextCenterId == null ? null : String(nextCenterId).trim();
+    if (!auth.actor.isAdmin) {
+      const assignedCenterIds = (Array.isArray(auth.actor.assignedCenterIds) ? auth.actor.assignedCenterIds : [])
+        .map((centerId) => String(centerId).trim())
+        .filter(Boolean);
+
+      if (normalizedNextCenterId && !assignedCenterIds.includes(normalizedNextCenterId) && !auth.actor.canAccessCenter(normalizedNextCenterId)) {
+        return ApiResponse.error('Forbidden: center is not assigned to this user.', 403);
+      }
     }
 
     const updated = await prisma["class"].update({ where: { id }, data: { className: body.className, icon: body.icon || null, centerId: body.centerId !== undefined ? (body.centerId || null) : undefined } });

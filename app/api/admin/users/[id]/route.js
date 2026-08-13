@@ -51,6 +51,21 @@ function resolveUserCenterId(user) {
   return profile.centerId || user.centerId || null;
 }
 
+async function getUserAccessibleCenterIds(user) {
+  const profileCenterId = resolveUserCenterId(user);
+  const assignment = await getUserAccessAssignment(user.id);
+  const assignedCenterIds = Array.isArray(assignment?.centerIds) ? assignment.centerIds : [];
+
+  return Array.from(
+    new Set(
+      [profileCenterId, ...assignedCenterIds]
+        .filter((value) => value !== null && value !== undefined && value !== '')
+        .map((value) => String(value).trim())
+        .filter(Boolean)
+    )
+  );
+}
+
 function buildProfileData(body, role) {
   const profileData = {};
 
@@ -131,14 +146,17 @@ async function upsertProfile(userId, role, profileData, userName) {
   return null;
 }
 
-export async function GET(req, { params }) {
+export async function GET(req, context) {
+  const { params } = context;
+  const { id } = await params;
+
   const auth = await requireAdminPermission(req, 'users.view');
   if (!auth.ok) {
     return ApiResponse.error(auth.message, auth.status);
   }
 
   const user = await prisma.user.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       teacher: true,
       student: true,
@@ -152,7 +170,8 @@ export async function GET(req, { params }) {
     return ApiResponse.error("User not found", 404);
   }
 
-  if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(resolveUserCenterId(user))) {
+  const targetCenterIds = await getUserAccessibleCenterIds(user);
+  if (!auth.actor.isAdmin && !targetCenterIds.some((centerId) => auth.actor.canAccessCenter(centerId))) {
     return ApiResponse.error('Forbidden', 403);
   }
 
@@ -165,7 +184,10 @@ export async function GET(req, { params }) {
   return ApiResponse.success(mapUser(user, assignment, customRole));
 }
 
-export async function PATCH(req, { params }) {
+export async function PATCH(req, context) {
+  const { params } = context;
+  const { id } = await params;
+
   const auth = await requireAdminPermission(req, 'users.edit');
   if (!auth.ok) {
     return ApiResponse.error(auth.message, auth.status);
@@ -190,13 +212,13 @@ export async function PATCH(req, { params }) {
     const existing = await prisma.user.findUnique({
       where: { email: body.email },
     });
-    if (existing && existing.id !== params.id) {
+    if (existing && existing.id !== id) {
       return ApiResponse.error("Email already in use.", 400);
     }
   }
 
   const existingUser = await prisma.user.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       teacher: true,
       student: true,
@@ -210,12 +232,13 @@ export async function PATCH(req, { params }) {
     return ApiResponse.error("User not found", 404);
   }
 
-  if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(resolveUserCenterId(existingUser))) {
+  const targetCenterIds = await getUserAccessibleCenterIds(existingUser);
+  if (!auth.actor.isAdmin && !targetCenterIds.some((centerId) => auth.actor.canAccessCenter(centerId))) {
     return ApiResponse.error('Forbidden', 403);
   }
 
   const user = await prisma.user.update({
-    where: { id: params.id },
+    where: { id },
     data: updateData,
   });
 
@@ -228,11 +251,11 @@ export async function PATCH(req, { params }) {
   }
 
   if (body.userType && role !== existingUser.role) {
-    await deleteExistingProfiles(params.id);
+    await deleteExistingProfiles(id);
   }
 
   if (Object.keys(profileData).length > 0 || role === "TEACHER") {
-    await upsertProfile(params.id, role, profileData, name);
+    await upsertProfile(id, role, profileData, name);
   }
 
   if (role === 'MANAGEMENT') {
@@ -250,16 +273,16 @@ export async function PATCH(req, { params }) {
       }
     }
 
-    await setUserAccessAssignment(params.id, {
+    await setUserAccessAssignment(id, {
       roleId: body.customRoleId || null,
       centerIds,
     });
   } else {
-    await deleteUserAccessAssignment(params.id);
+    await deleteUserAccessAssignment(id);
   }
 
   const updatedUser = await prisma.user.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       teacher: true,
       student: true,
@@ -281,14 +304,17 @@ export async function PATCH(req, { params }) {
   );
 }
 
-export async function DELETE(req, { params }) {
+export async function DELETE(req, context) {
+  const { params } = context;
+  const { id } = await params;
+
   const auth = await requireAdminPermission(req, 'users.delete');
   if (!auth.ok) {
     return ApiResponse.error(auth.message, auth.status);
   }
 
   const targetUser = await prisma.user.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       teacher: true,
       student: true,
@@ -302,15 +328,16 @@ export async function DELETE(req, { params }) {
     return ApiResponse.error('User not found', 404);
   }
 
-  if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(resolveUserCenterId(targetUser))) {
+  const targetCenterIds = await getUserAccessibleCenterIds(targetUser);
+  if (!auth.actor.isAdmin && !targetCenterIds.some((centerId) => auth.actor.canAccessCenter(centerId))) {
     return ApiResponse.error('Forbidden', 403);
   }
 
   await prisma.user.delete({
-    where: { id: params.id },
+    where: { id },
   });
 
-  await deleteUserAccessAssignment(params.id);
+  await deleteUserAccessAssignment(id);
 
   return ApiResponse.success(null, "User deleted successfully.");
 }

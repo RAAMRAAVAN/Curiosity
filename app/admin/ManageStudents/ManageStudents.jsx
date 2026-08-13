@@ -26,7 +26,7 @@ import { Delete, Edit, Add } from "@mui/icons-material";
 
 const ALL_CENTERS = "ALL";
 
-export default function ManageStudents({ setMessage }) {
+export default function ManageStudents({ setMessage, role, permissions = [] }) {
   const [students, setStudents] = useState([]);
   const [centers, setCenters] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -49,6 +49,24 @@ export default function ManageStudents({ setMessage }) {
     schoolName: "",
     status: true,
   });
+
+  const hasPermission = (permission) => {
+    if (String(role || '').toUpperCase() === 'ADMIN') return true;
+    if (!permission) return true;
+
+    const normalized = Array.isArray(permissions)
+      ? permissions.map((item) => String(item || '').toLowerCase())
+      : [];
+
+    return normalized.includes('*')
+      || normalized.includes(permission)
+      || normalized.some((item) => item.endsWith('.*') && permission.startsWith(`${item.slice(0, -2)}.`));
+  };
+
+  const canViewStudents = hasPermission('students.view');
+  const canCreateStudents = hasPermission('students.create');
+  const canEditStudents = hasPermission('students.edit');
+  const canDeleteStudents = hasPermission('students.delete');
 
   const classNameById = useMemo(() => {
     const entries = classes
@@ -117,6 +135,11 @@ export default function ManageStudents({ setMessage }) {
   }, []);
 
   const openCreateDialog = () => {
+    if (!canCreateStudents) {
+      setMessage("You are not authorized to perform this operation.");
+      return;
+    }
+
     setEditingStudent(null);
     const lockedCenterId = authUser?.role === "TEACHER" ? authUser.centerId || "" : "";
     setForm({
@@ -136,6 +159,11 @@ export default function ManageStudents({ setMessage }) {
   };
 
   const openEditDialog = async (student) => {
+    if (!canEditStudents) {
+      setMessage("You are not authorized to perform this operation.");
+      return;
+    }
+
     try {
       const response = await fetch(`/api/admin/students/${student.id}`, {
         credentials: "include",
@@ -198,6 +226,16 @@ export default function ManageStudents({ setMessage }) {
   };
 
   const handleSubmit = async () => {
+    if (editingStudent && !canEditStudents) {
+      setMessage("You are not authorized to perform this operation.");
+      return;
+    }
+
+    if (!editingStudent && !canCreateStudents) {
+      setMessage("You are not authorized to perform this operation.");
+      return;
+    }
+
     try {
       const method = editingStudent ? "PATCH" : "POST";
       const url = editingStudent ? `/api/admin/students/${editingStudent.id}` : "/api/admin/students";
@@ -231,6 +269,11 @@ export default function ManageStudents({ setMessage }) {
   };
 
   const handleDelete = async (studentId) => {
+    if (!canDeleteStudents) {
+      setMessage("You are not authorized to perform this operation.");
+      return;
+    }
+
     try {
       const response = await fetch(`/api/admin/students/${studentId}`, {
         method: "DELETE",
@@ -391,9 +434,11 @@ export default function ManageStudents({ setMessage }) {
           <Button variant="outlined" onClick={handleDownloadStudents} disabled={exporting || loading}>
             {exporting ? "Exporting..." : "Download Excel"}
           </Button>
-          <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog}>
-            Add Student
-          </Button>
+          {canCreateStudents ? (
+            <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog}>
+              Add Student
+            </Button>
+          ) : null}
         </Stack>
       </Box>
 
@@ -434,12 +479,16 @@ export default function ManageStudents({ setMessage }) {
                   </TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <IconButton color="primary" onClick={() => openEditDialog(student)}>
-                        <Edit />
-                      </IconButton>
-                      <IconButton color="error" onClick={() => handleDelete(student.id)}>
-                        <Delete />
-                      </IconButton>
+                      {canEditStudents ? (
+                        <IconButton color="primary" onClick={() => openEditDialog(student)}>
+                          <Edit />
+                        </IconButton>
+                      ) : null}
+                      {canDeleteStudents ? (
+                        <IconButton color="error" onClick={() => handleDelete(student.id)}>
+                          <Delete />
+                        </IconButton>
+                      ) : null}
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -569,7 +618,7 @@ export default function ManageStudents({ setMessage }) {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSubmit}>
+          <Button variant="contained" onClick={handleSubmit} disabled={!canCreateStudents && !editingStudent || editingStudent && !canEditStudents}>
             {editingStudent ? "Save Changes" : "Create Student"}
           </Button>
         </DialogActions>

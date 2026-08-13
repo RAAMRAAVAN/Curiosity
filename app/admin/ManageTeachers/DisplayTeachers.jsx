@@ -1,9 +1,9 @@
 import { Delete, Edit } from "@mui/icons-material";
-import { Button, CircularProgress, IconButton, Stack, TableCell, TableRow } from "@mui/material";
+import { Button, CircularProgress, Typography, IconButton, Stack, TableCell, TableRow } from "@mui/material";
 import { useEffect, useState } from "react";
 import TeacherSubjectDialog from "./TeacherSubjectDialog";
 
-const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeacher }) => {
+const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeacher, canEditTeachers = false, canDeleteTeachers = false, canMapSubjects = false }) => {
 
     const [subjects, setSubjects] = useState([]);
     const [subjectLoading, setSubjectsLoading] = useState(false);
@@ -48,6 +48,11 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
 
 
     const handleDeleteTeacher = async (teacherId) => {
+
+        if (!canDeleteTeachers) {
+            alert("You are not authorized to perform this operation.");
+            return;
+        }
 
         if (!confirm("Are you sure you want to remove this teacher?")) {
             return;
@@ -125,7 +130,7 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
 
                     <TableCell>
 
-                        {
+                        {canMapSubjects ? (
                             subjectLoading ?
 
                                 <Button
@@ -144,7 +149,9 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
                                 }}>
                                     Click Here
                                 </Button>
-                        }
+                        ) : (
+                            <Typography variant="caption" color="text.secondary">—</Typography>
+                        )}
 
 
                     </TableCell>
@@ -152,12 +159,16 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
 
                     <TableCell>
                         <Stack direction="row" spacing={1} alignItems="center">
-                            <IconButton color="primary" onClick={() => onEditTeacher(teacher)}>
-                                <Edit />
-                            </IconButton>
-                            <Button size="small" color="error" onClick={() => handleDeleteTeacher(teacher.id)}>
-                                Delete
-                            </Button>
+                            {canEditTeachers ? (
+                                <IconButton color="primary" onClick={() => onEditTeacher(teacher)}>
+                                    <Edit />
+                                </IconButton>
+                            ) : null}
+                            {canDeleteTeachers ? (
+                                <Button size="small" color="error" onClick={() => handleDeleteTeacher(teacher.id)}>
+                                    Delete
+                                </Button>
+                            ) : null}
                         </Stack>
                     </TableCell>
 

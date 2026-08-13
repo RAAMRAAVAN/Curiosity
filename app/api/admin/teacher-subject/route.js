@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 
 
 export async function GET(req) {
+    const auth = await requireAdminPermission(req, 'teachers.view');
+    if (!auth.ok) {
+        return NextResponse.json({ success: false, message: auth.message }, { status: auth.status || 403 });
+    }
 
     try {
 
@@ -200,6 +205,10 @@ export async function GET(req) {
 
 
 export async function POST(request) {
+    const auth = await requireAdminPermission(request, 'teachers.edit');
+    if (!auth.ok) {
+        return NextResponse.json({ success: false, message: auth.message }, { status: auth.status || 403 });
+    }
 
     try {
 

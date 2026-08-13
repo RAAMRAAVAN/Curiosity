@@ -39,7 +39,7 @@ const emptyForm = {
     status: true,
 };
 
-const ManageTeachersPage = ({ users }) => {
+const ManageTeachersPage = ({ users, role, permissions = [] }) => {
     const [open, setOpen] = useState(false);
     const [pageLoading, setPageLoading] = useState(false);
     const [teachers, setTeachers] = useState([]);
@@ -51,6 +51,25 @@ const ManageTeachersPage = ({ users }) => {
     const [authUser, setAuthUser] = useState(null);
     const [exporting, setExporting] = useState(false);
     const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
+
+    const hasPermission = (permission) => {
+        if (String(role || '').toUpperCase() === 'ADMIN') return true;
+        if (!permission) return true;
+
+        const normalized = Array.isArray(permissions)
+            ? permissions.map((item) => String(item || '').toLowerCase())
+            : [];
+
+        return normalized.includes('*')
+            || normalized.includes(permission)
+            || normalized.some((item) => item.endsWith('.*') && permission.startsWith(`${item.slice(0, -2)}.`));
+    };
+
+    const canViewTeachers = hasPermission('teachers.view');
+    const canCreateTeachers = hasPermission('teachers.create');
+    const canEditTeachers = hasPermission('teachers.edit');
+    const canDeleteTeachers = hasPermission('teachers.delete');
+    const canMapSubjects = hasPermission('teachers.edit');
 
     const ensureCentersLoaded = async () => {
         if (centers.length > 0) return;
@@ -352,7 +371,9 @@ const ManageTeachersPage = ({ users }) => {
                         <Button variant='outlined' onClick={handleDownloadTeachers} disabled={exporting || pageLoading}>
                             {exporting ? "Exporting..." : "Download Excel"}
                         </Button>
-                        <Button variant='contained' onClick={openCreateDialog}>Add New Teacher</Button>
+                        {canCreateTeachers ? (
+                            <Button variant='contained' onClick={openCreateDialog}>Add New Teacher</Button>
+                        ) : null}
                     </Stack>
                 </Box>
                 <Box marginTop={1}>
@@ -372,7 +393,15 @@ const ManageTeachersPage = ({ users }) => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                <DisplayTeachers teachers={filteredTeachers} setPageLoading={setPageLoading} FetchTeachers={FetchTeachers} onEditTeacher={openEditDialog} />
+                                <DisplayTeachers
+                                teachers={filteredTeachers}
+                                setPageLoading={setPageLoading}
+                                FetchTeachers={FetchTeachers}
+                                onEditTeacher={openEditDialog}
+                                canEditTeachers={canEditTeachers}
+                                canDeleteTeachers={canDeleteTeachers}
+                                canMapSubjects={canMapSubjects}
+                            />
                             </TableBody>
                         </Table>
                     </TableContainer>
@@ -429,9 +458,11 @@ const ManageTeachersPage = ({ users }) => {
                                     <option value="active">Active</option>
                                     <option value="inactive">Inactive</option>
                                 </TextField>
-                                <Button variant="outlined" onClick={() => { setSelectedTeacherId(editingTeacher.id); setSubjectDialogOpen(true); }}>
-                                    Manage Subjects
-                                </Button>
+                                {canMapSubjects ? (
+                                    <Button variant="outlined" onClick={() => { setSelectedTeacherId(editingTeacher.id); setSubjectDialogOpen(true); }}>
+                                        Manage Subjects
+                                    </Button>
+                                ) : null}
                             </>
                         ) : null}
                     </Stack>

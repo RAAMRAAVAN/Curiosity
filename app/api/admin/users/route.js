@@ -88,6 +88,9 @@ export async function GET(req) {
   }
 
   const users = await prisma.user.findMany({
+    where: {
+      role: "MANAGEMENT",
+    },
     orderBy: { createdAt: "desc" },
     include: {
       teacher: true,
@@ -107,7 +110,18 @@ export async function GET(req) {
 
   const visibleUsers = auth.actor.isAdmin
     ? users
-    : users.filter((user) => auth.actor.canAccessCenter(resolveUserCenterId(user)));
+    : users.filter((user, index) => {
+        // Management users may be assigned to multiple centers via access assignments.
+        // Use the pre-fetched assignments to determine visibility for MANAGEMENT users.
+        const roleName = String(user.role || '').toUpperCase();
+        if (roleName === 'MANAGEMENT') {
+          const assignment = assignments[index] || {};
+          const centerIds = Array.isArray(assignment.centerIds) ? assignment.centerIds : [];
+          return centerIds.some((centerId) => auth.actor.canAccessCenter(centerId));
+        }
+
+        return auth.actor.canAccessCenter(resolveUserCenterId(user));
+      });
 
   return ApiResponse.success(
     visibleUsers.map((user) => {

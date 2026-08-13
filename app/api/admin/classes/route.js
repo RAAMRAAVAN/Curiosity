@@ -14,7 +14,13 @@ export async function GET(req) {
     }
     let classes = await prisma["class"].findMany({ orderBy: { createdAt: "asc" } });
     if (!auth.actor.isAdmin) {
-      classes = classes.filter((item) => !item.centerId || auth.actor.canAccessCenter(item.centerId));
+      const accessibleCenterIds = new Set(
+        (Array.isArray(auth.actor.assignedCenterIds) ? auth.actor.assignedCenterIds : []).map((id) => String(id).trim()).filter(Boolean)
+      );
+      classes = classes.filter((item) => {
+        const centerId = item?.centerId == null ? null : String(item.centerId).trim();
+        return !centerId || accessibleCenterIds.has(centerId) || auth.actor.canAccessCenter(centerId);
+      });
     }
     return ApiResponse.success(classes);
   } catch (err) {
@@ -32,8 +38,19 @@ export async function POST(req) {
   const body = await req.json();
   if (!body.className) return ApiResponse.error("className is required", 400);
 
-  if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(body.centerId)) {
-    return ApiResponse.error('Forbidden: center is not assigned to this user.', 403);
+  const requestedCenterId = body.centerId == null ? null : String(body.centerId).trim();
+  if (!auth.actor.isAdmin) {
+    const assignedCenterIds = (Array.isArray(auth.actor.assignedCenterIds) ? auth.actor.assignedCenterIds : [])
+      .map((id) => String(id).trim())
+      .filter(Boolean);
+
+    if (requestedCenterId && !assignedCenterIds.includes(requestedCenterId) && !auth.actor.canAccessCenter(requestedCenterId)) {
+      return ApiResponse.error('Forbidden: center is not assigned to this user.', 403);
+    }
+
+    if (!requestedCenterId && assignedCenterIds.length === 0) {
+      return ApiResponse.error('Forbidden: center is not assigned to this user.', 403);
+    }
   }
 
   try {

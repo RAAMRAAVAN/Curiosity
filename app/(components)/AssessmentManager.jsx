@@ -54,10 +54,29 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
     { label: 'D', minPercentage: 0 },
   ]);
   const [canManageAssessments, setCanManageAssessments] = useState(true);
+  const [canCreateAssessments, setCanCreateAssessments] = useState(false);
+  const [canEditAssessments, setCanEditAssessments] = useState(false);
   const [permissionChecked, setPermissionChecked] = useState(false);
   const [assessmentUpdateStatus, setAssessmentUpdateStatus] = useState(null);
   const [statusOperationId, setStatusOperationId] = useState(null);
   const computedTotalMarks = questions.reduce((sum, question) => sum + Number(question.marks || 1), 0);
+
+  const hasPermission = (permissions, permission, role) => {
+    if (String(role || '').toUpperCase() === 'ADMIN') return true;
+    if (!permission) return true;
+
+    const normalizedPermissions = Array.isArray(permissions)
+      ? permissions.map((item) => String(item || '').toLowerCase())
+      : [];
+
+    const normalizedPermission = String(permission || '').toLowerCase();
+
+    return normalizedPermissions.includes('*')
+      || normalizedPermissions.includes(normalizedPermission)
+      || normalizedPermissions.some(
+        (item) => item.endsWith('.*') && normalizedPermission.startsWith(`${item.slice(0, -2)}.`)
+      );
+  };
 
   useEffect(() => {
     const loadAccess = async () => {
@@ -66,16 +85,27 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         const response = await res.json();
         if (!response.success) {
           setCanManageAssessments(false);
+          setCanCreateAssessments(false);
+          setCanEditAssessments(false);
           setPermissionChecked(true);
           return;
         }
 
         const role = String(response.data?.role || '').toUpperCase();
-        setCanManageAssessments(role === 'ADMIN' || role === 'MANAGEMENT');
+        const permissions = Array.isArray(response.data?.permissions) ? response.data.permissions : [];
+        const canCreate = hasPermission(permissions, 'assessments.create', role);
+        const canEdit = hasPermission(permissions, 'assessments.edit', role);
+        const canView = hasPermission(permissions, 'assessments.view', role);
+
+        setCanCreateAssessments(canCreate);
+        setCanEditAssessments(canEdit);
+        setCanManageAssessments(canView || canCreate || canEdit || role === 'ADMIN' || role === 'MANAGEMENT');
         setPermissionChecked(true);
       } catch (error) {
         console.error(error);
         setCanManageAssessments(false);
+        setCanCreateAssessments(false);
+        setCanEditAssessments(false);
         setPermissionChecked(true);
       }
     };
@@ -169,8 +199,13 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
   };
 
   const openEditDialog = (assessment) => {
-    if (!canManageAssessments) {
-      setFeedback({ severity: 'warning', message: 'Only admin and management users can edit assessments.' });
+    if (!canEditAssessments && !canManageAssessments) {
+      setFeedback({ severity: 'warning', message: 'You are not authorized to perform this operation.' });
+      return;
+    }
+
+    if (!canEditAssessments && !canCreateAssessments) {
+      setFeedback({ severity: 'warning', message: 'You are not authorized to perform this operation.' });
       return;
     }
 
@@ -288,8 +323,18 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
   };
 
   const handleSubmit = async () => {
+    if (editingAssessment && !canEditAssessments) {
+      setFeedback({ severity: 'warning', message: 'You are not authorized to perform this operation.' });
+      return;
+    }
+
+    if (!editingAssessment && !canCreateAssessments) {
+      setFeedback({ severity: 'warning', message: 'You are not authorized to perform this operation.' });
+      return;
+    }
+
     if (!canManageAssessments) {
-      setFeedback({ severity: 'warning', message: 'Only admin and management users can create or edit assessments.' });
+      setFeedback({ severity: 'warning', message: 'You are not authorized to perform this operation.' });
       return;
     }
 
