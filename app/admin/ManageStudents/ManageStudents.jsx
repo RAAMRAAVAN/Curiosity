@@ -63,10 +63,11 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
       || normalized.some((item) => item.endsWith('.*') && permission.startsWith(`${item.slice(0, -2)}.`));
   };
 
+  const isTeacherRole = String(role || '').toUpperCase() === 'TEACHER';
   const canViewStudents = hasPermission('students.view');
-  const canCreateStudents = hasPermission('students.create');
-  const canEditStudents = hasPermission('students.edit');
-  const canDeleteStudents = hasPermission('students.delete');
+  const canCreateStudents = !isTeacherRole && hasPermission('students.create');
+  const canEditStudents = !isTeacherRole && hasPermission('students.edit');
+  const canDeleteStudents = !isTeacherRole && hasPermission('students.delete');
 
   const classNameById = useMemo(() => {
     const entries = classes
@@ -135,7 +136,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   }, []);
 
   const openCreateDialog = () => {
-    if (!canCreateStudents) {
+    if (isTeacherRole || !canCreateStudents) {
       setMessage("You are not authorized to perform this operation.");
       return;
     }
@@ -159,7 +160,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   };
 
   const openEditDialog = async (student) => {
-    if (!canEditStudents) {
+    if (isTeacherRole || !canEditStudents) {
       setMessage("You are not authorized to perform this operation.");
       return;
     }
@@ -226,6 +227,11 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   };
 
   const handleSubmit = async () => {
+    if (isTeacherRole) {
+      setMessage("You are not authorized to perform this operation.");
+      return;
+    }
+
     if (editingStudent && !canEditStudents) {
       setMessage("You are not authorized to perform this operation.");
       return;
@@ -269,7 +275,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   };
 
   const handleDelete = async (studentId) => {
-    if (!canDeleteStudents) {
+    if (isTeacherRole || !canDeleteStudents) {
       setMessage("You are not authorized to perform this operation.");
       return;
     }
