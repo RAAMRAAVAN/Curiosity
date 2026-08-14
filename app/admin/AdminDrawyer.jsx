@@ -42,7 +42,6 @@ const AdminDrawer = ({
 }) => {
   const pathname = usePathname();
 
-  const isTeacherRole = String(role || "").toUpperCase() === "TEACHER";
   const normalizedPermissions = Array.isArray(permissions)
     ? permissions.map((item) => String(item || '').toLowerCase())
     : [];
@@ -112,12 +111,7 @@ const AdminDrawer = ({
     },
   ];
 
-  const visibleMenuItems = menuItems
-    .filter((item) => hasPermission(item.permission))
-    .filter((item) => {
-      if (!isTeacherRole) return true;
-      return ["classes", "teachers", "students", "results"].includes(item.value);
-    });
+  const visibleMenuItems = menuItems.filter((item) => hasPermission(item.permission));
 
   return (
     <Drawer

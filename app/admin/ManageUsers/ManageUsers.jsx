@@ -73,7 +73,11 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
         const centersData = await centersRes.json();
 
         if (rolesData.success) {
-          setRoles(Array.isArray(rolesData.data) ? rolesData.data.filter((item) => item.status !== false) : []);
+          const filteredRoles = Array.isArray(rolesData.data)
+            ? rolesData.data.filter((item) => item.status !== false && String(item.name || '').trim().toLowerCase() !== 'teachers')
+            : [];
+
+          setRoles(filteredRoles);
         }
 
         if (centersData.success) {
@@ -251,7 +255,7 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
   }, [centers]);
 
   const managementRoleOptions = useMemo(() => {
-    return roles.filter((item) => item.status !== false);
+    return roles.filter((item) => item.status !== false && String(item.name || '').trim().toLowerCase() !== 'teachers');
   }, [roles]);
 
     return (<Box>

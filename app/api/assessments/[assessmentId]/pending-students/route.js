@@ -46,8 +46,13 @@ export async function GET(req, { params }) {
       return ApiResponse.error('Forbidden', 403);
     }
 
-    if (!auth.actor.isAdmin && !scopedCenterId && !auth.actor.canAccessCenter(assessment.class?.centerId || null)) {
-      return ApiResponse.error('You are not authorized to perform this operation.', 403);
+    // For non-teachers (management/admin), verify center access
+    // If class has a center, verify the user can access it
+    // If class has no center, allow access if user has permission
+    if (!auth.actor.isAdmin && !scopedCenterId && assessment.class?.centerId) {
+      if (!auth.actor.canAccessCenter(assessment.class.centerId)) {
+        return ApiResponse.error('You are not authorized to perform this operation.', 403);
+      }
     }
 
     const [eligibleStudents, attemptedResults] = await Promise.all([

@@ -51,8 +51,8 @@ export async function POST(req) {
         return ApiResponse.error('Student profile not found', 404);
       }
 
-      if (!auth.actor.isAdmin && !auth.actor.canAccessCenter(targetStudent.centerId)) {
-        return ApiResponse.error('Forbidden', 403);
+      if (!auth.actor.isAdmin && targetStudent.centerId && !auth.actor.canAccessCenter(targetStudent.centerId)) {
+        return ApiResponse.error('You are not authorized to perform this operation.', 403);
       }
     }
 

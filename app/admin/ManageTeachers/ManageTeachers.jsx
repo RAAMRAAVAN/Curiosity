@@ -65,12 +65,11 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
             || normalized.some((item) => item.endsWith('.*') && permission.startsWith(`${item.slice(0, -2)}.`));
     };
 
-    const isTeacherRole = String(role || '').toUpperCase() === 'TEACHER';
     const canViewTeachers = hasPermission('teachers.view');
     const canCreateTeachers = hasPermission('teachers.create');
-    const canEditTeachers = !isTeacherRole && hasPermission('teachers.edit');
-    const canDeleteTeachers = !isTeacherRole && hasPermission('teachers.delete');
-    const canMapSubjects = !isTeacherRole && hasPermission('teachers.edit');
+    const canEditTeachers = hasPermission('teachers.edit');
+    const canDeleteTeachers = hasPermission('teachers.delete');
+    const canMapSubjects = hasPermission('teachers.edit');
 
     const teacherLocked = authUser?.role === "TEACHER";
 

@@ -1,5 +1,5 @@
 import { ApiResponse } from '@/utils/apiResponse';
-import { createCustomRole, getAllCustomRoles, requireAdminPermission } from '@/lib/adminRbac';
+import { createCustomRole, ensureTeachersRoleExists, getAllCustomRoles, requireAdminPermission } from '@/lib/adminRbac';
 
 export async function GET(req) {
   const auth = await requireAdminPermission(req, 'roles.view');
@@ -8,7 +8,9 @@ export async function GET(req) {
   }
 
   const roles = await getAllCustomRoles();
-  return ApiResponse.success(roles);
+  const teachersRole = await ensureTeachersRoleExists();
+  const mergedRoles = [teachersRole, ...roles.filter((role) => role.id !== teachersRole.id)];
+  return ApiResponse.success(mergedRoles);
 }
 
 export async function POST(req) {

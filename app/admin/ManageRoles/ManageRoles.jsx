@@ -110,6 +110,10 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
   const canEditRoles = hasPermission('roles.edit');
   const canDeleteRoles = hasPermission('roles.delete');
 
+  const teachersPresetRole = useMemo(() => {
+    return roles.find((item) => String(item.name || '').trim().toLowerCase() === 'teachers');
+  }, [roles]);
+
   const loadRoles = async () => {
     try {
       setLoading(true);
@@ -167,6 +171,15 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
     });
     setOpen(true);
     setLocalMessage(null);
+  };
+
+  const openTeachersPreset = () => {
+    if (!teachersPresetRole) {
+      setMessage('Teachers role is not available yet. Please create it first.');
+      return;
+    }
+
+    startEdit(teachersPresetRole);
   };
 
   const togglePermission = (permission) => {
@@ -271,9 +284,14 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
               Create custom management roles and configure exact permissions.
             </Typography>
           </Box>
-          {canCreateRoles ? (
-            <Button variant="contained" onClick={startCreate}>Create Role</Button>
-          ) : null}
+          <Stack direction="row" spacing={1}>
+            {teachersPresetRole ? (
+              <Button variant="outlined" onClick={openTeachersPreset}>Teachers Preset</Button>
+            ) : null}
+            {canCreateRoles ? (
+              <Button variant="contained" onClick={startCreate}>Create Role</Button>
+            ) : null}
+          </Stack>
         </Box>
 
         <TableContainer>
