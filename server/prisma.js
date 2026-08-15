@@ -1,16 +1,13 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
+import { applyDatabaseConfig } from "../lib/db-config.js";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL is not configured. Please add it to .env or .env.local."
-  );
-}
+applyDatabaseConfig(process.env);
 
 const globalForPrisma = global;
 
 export const prisma =
-  globalForPrisma.prisma || new PrismaClient();
+  globalForPrisma.prisma || new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;

@@ -1,5 +1,36 @@
 @echo off
+setlocal enabledelayedexpansion
 
-cd /d D:\RAM\Deploy\Curiosity
+cd /d G:\RAM\Curiosity
 
-npm start
+echo.
+echo ========================================
+echo   Curiosity App Launcher
+echo ========================================
+echo.
+
+rem Read DB_MODE from .env.local if it exists
+if exist .env.local (
+    for /f "tokens=2 delims==" %%A in ('findstr /i "^DB_MODE=" .env.local') do (
+        set "DB_MODE=%%A"
+    )
+)
+
+if defined DB_MODE (
+    echo Using database: !DB_MODE!
+) else (
+    echo Database mode not set in .env.local
+    echo Setting default to: local
+    set "DB_MODE=local"
+)
+
+echo.
+echo Starting Next.js app on port 5000...
+echo.
+echo To switch databases, edit .env.local and change DB_MODE to:
+echo   - local (PostgreSQL on localhost:5432)
+echo   - neon (Neon cloud database)
+echo.
+
+rem Use dev mode with turbopack and force port 5000
+npm run dev -- --port 5000
