@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -53,13 +54,35 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
     { label: 'C', minPercentage: 40 },
     { label: 'D', minPercentage: 0 },
   ]);
+  const [availableClasses, setAvailableClasses] = useState([]);
+  const [allowedClassIds, setAllowedClassIds] = useState(classId ? [String(classId)] : []);
+  const [classesLoading, setClassesLoading] = useState(false);
   const [canManageAssessments, setCanManageAssessments] = useState(true);
   const [canCreateAssessments, setCanCreateAssessments] = useState(false);
   const [canEditAssessments, setCanEditAssessments] = useState(false);
   const [permissionChecked, setPermissionChecked] = useState(false);
   const [assessmentUpdateStatus, setAssessmentUpdateStatus] = useState(null);
   const [statusOperationId, setStatusOperationId] = useState(null);
+  const [absentDialogOpen, setAbsentDialogOpen] = useState(false);
+  const [absentStudents, setAbsentStudents] = useState([]);
+  const [absentLoading, setAbsentLoading] = useState(false);
+  const [absentCounts, setAbsentCounts] = useState({});
+  const [absentCountsLoading, setAbsentCountsLoading] = useState(false);
+  const [selectedStudentsForAbsent, setSelectedStudentsForAbsent] = useState(new Set());
+  const [markingAbsentLoading, setMarkingAbsentLoading] = useState(false);
+  const [operationSteps, setOperationSteps] = useState([]);
+  const [showOperationLoader, setShowOperationLoader] = useState(false);
   const computedTotalMarks = questions.reduce((sum, question) => sum + Number(question.marks || 1), 0);
+
+  const addOperationStep = (stepName, status = 'in-progress') => {
+    setOperationSteps((prev) => {
+      const existing = prev.find((s) => s.name === stepName);
+      if (existing) {
+        return prev.map((s) => (s.name === stepName ? { ...s, status } : s));
+      }
+      return [...prev, { name: stepName, status }];
+    });
+  };
 
   const hasPermission = (permissions, permission, role) => {
     if (String(role || '').toUpperCase() === 'ADMIN') return true;
@@ -79,39 +102,23 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
   };
 
   useEffect(() => {
-    const loadAccess = async () => {
-      try {
-        const res = await fetch('/api/admin/me', { credentials: 'include' });
-        const response = await res.json();
-        if (!response.success) {
-          setCanManageAssessments(false);
-          setCanCreateAssessments(false);
-          setCanEditAssessments(false);
-          setPermissionChecked(true);
-          return;
-        }
-
-        const role = String(response.data?.role || '').toUpperCase();
-        const permissions = Array.isArray(response.data?.permissions) ? response.data.permissions : [];
-        const canCreate = hasPermission(permissions, 'assessments.create', role);
-        const canEdit = hasPermission(permissions, 'assessments.edit', role);
-        const canView = hasPermission(permissions, 'assessments.view', role);
-
-        setCanCreateAssessments(canCreate);
-        setCanEditAssessments(canEdit);
-        setCanManageAssessments(canView || canCreate || canEdit || role === 'ADMIN' || role === 'MANAGEMENT');
-        setPermissionChecked(true);
-      } catch (error) {
-        console.error(error);
-        setCanManageAssessments(false);
-        setCanCreateAssessments(false);
-        setCanEditAssessments(false);
-        setPermissionChecked(true);
-      }
-    };
-
-    loadAccess();
+    // Permission checks disabled - all features are open
+    setCanCreateAssessments(true);
+    setCanEditAssessments(true);
+    setCanManageAssessments(true);
+    setPermissionChecked(true);
   }, []);
+
+  useEffect(() => {
+    // Load absent counts for all assessments
+    if (Array.isArray(assessments) && assessments.length > 0) {
+      assessments.forEach((assessment) => {
+        if (assessment?.id && !absentCounts[assessment.id]) {
+          fetchAbsentCount(assessment.id);
+        }
+      });
+    }
+  }, [assessments]);
 
   useEffect(() => {
     if (!editingAssessment) {
@@ -173,6 +180,58 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
     };
   }, [statusOperationId]);
 
+  useEffect(() => {
+    const loadClasses = async () => {
+      if (!classId) {
+        setAvailableClasses([]);
+        setAllowedClassIds([]);
+        return;
+      }
+
+      try {
+        setClassesLoading(true);
+        const res = await fetch('/api/classes', { credentials: 'include' });
+        const result = await res.json();
+
+        if (!result.success) {
+          throw new Error(result.message || 'Unable to load classes');
+        }
+
+        const classes = Array.isArray(result.data) ? result.data : [];
+        setAvailableClasses(classes);
+        setAllowedClassIds((prev) => {
+          const current = prev && prev.length ? prev : [String(classId)];
+          const validCurrent = current.includes(String(classId)) ? current : [String(classId), ...current.filter(Boolean)];
+          return Array.from(new Set(validCurrent.filter(Boolean))).filter((id) => classes.some((item) => String(item.id) === String(id)) || String(id) === String(classId));
+        });
+      } catch (error) {
+        console.error(error);
+        setAvailableClasses([]);
+        setAllowedClassIds([String(classId)]);
+      } finally {
+        setClassesLoading(false);
+      }
+    };
+
+    loadClasses();
+  }, [classId]);
+
+  useEffect(() => {
+    if (!open && !editingAssessment) {
+      setAllowedClassIds(classId ? [String(classId)] : []);
+    }
+  }, [open, editingAssessment, classId]);
+
+  const handleAllowedClassSelection = (event) => {
+    const nextValues = Array.isArray(event?.target?.value) ? event.target.value : [];
+    const fixedCurrentClass = classId ? [String(classId)] : [];
+    const selectedOthers = nextValues
+      .map((item) => String(item))
+      .filter((item) => item && item !== String(classId));
+
+    setAllowedClassIds([...fixedCurrentClass, ...selectedOthers]);
+  };
+
   const removeQuestion = (index) => {
     setQuestions((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
   };
@@ -199,16 +258,6 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
   };
 
   const openEditDialog = (assessment) => {
-    if (!canEditAssessments && !canManageAssessments) {
-      setFeedback({ severity: 'warning', message: 'You are not authorized to perform this operation.' });
-      return;
-    }
-
-    if (!canEditAssessments && !canCreateAssessments) {
-      setFeedback({ severity: 'warning', message: 'You are not authorized to perform this operation.' });
-      return;
-    }
-
     const normalizedQuestions = (assessment.questions || []).map((question) => {
       const correctOptionIndex = question.options?.findIndex((option) => option.isCorrect) ?? 0;
       return {
@@ -232,6 +281,15 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
       }
     }
 
+    const allowedIds = Array.isArray(assessment?.allowedClasses)
+      ? assessment.allowedClasses.map((item) => String(item.classId || item.id || item)).filter(Boolean)
+      : [];
+    const selectedAllowedClassIds = Array.from(new Set([
+      ...(classId ? [String(classId)] : []),
+      ...allowedIds,
+    ])).filter(Boolean);
+
+    setAllowedClassIds(selectedAllowedClassIds);
     setEditingAssessment(assessment);
     setTitle(assessment.title || '');
     setDescription(assessment.description || '');
@@ -322,22 +380,176 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
     }
   };
 
+  const handleOpenAbsentDialog = async (assessment) => {
+    if (!assessment?.id) return;
+
+    try {
+      setAbsentLoading(true);
+      const res = await fetch(`/api/assessments/${assessment.id}/absent-students`, {
+        credentials: 'include',
+      });
+      const result = await res.json();
+
+      if (!result.success) {
+        throw new Error(result.message || 'Unable to load absent students');
+      }
+
+      setAbsentStudents(result.data || []);
+      setSelectedAssessment(assessment);
+      setAbsentDialogOpen(true);
+    } catch (error) {
+      console.error(error);
+      setFeedback({ severity: 'error', message: error.message || 'Unable to load absent students' });
+    } finally {
+      setAbsentLoading(false);
+    }
+  };
+
+  const handleMarkAbsent = async (students) => {
+    if (!selectedAssessment?.id || !Array.isArray(students) || students.length === 0) return;
+
+    try {
+      setShowOperationLoader(true);
+      setOperationSteps([]);
+      setMarkingAbsentLoading(true);
+
+      addOperationStep('Preparing attendance update');
+      addOperationStep('Sending request to mark students absent');
+      const res = await fetch(`/api/assessments/${selectedAssessment.id}/mark-absent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          userIds: students.map((s) => s.id),
+          reason: null,
+        }),
+      });
+      addOperationStep('Sending request to mark students absent', 'completed');
+
+      const result = await res.json();
+
+      if (!result.success) {
+        throw new Error(result.message || 'Unable to mark students absent');
+      }
+
+      addOperationStep('Updating UI state and counts');
+      setFeedback({ severity: 'success', message: `Marked ${result.data?.markedCount || 0} student(s) as absent` });
+      setSelectedStudentsForAbsent(new Set());
+      setPendingDialogOpen(false);
+
+      addOperationStep('Refreshing absent count');
+      await fetchAbsentCount(selectedAssessment.id);
+      addOperationStep('Refreshing absent count', 'completed');
+
+      addOperationStep('Refreshing pending students list');
+      await handleOpenPendingDialog(selectedAssessment);
+      addOperationStep('Refreshing pending students list', 'completed');
+
+      addOperationStep('Refreshing absent students list');
+      await handleOpenAbsentDialog(selectedAssessment);
+      addOperationStep('Refreshing absent students list', 'completed');
+
+      addOperationStep('Refreshing assessment summary');
+      await fetchAssessments();
+      addOperationStep('Refreshing assessment summary', 'completed');
+      addOperationStep('Completing attendance update', 'completed');
+    } catch (error) {
+      console.error(error);
+      addOperationStep('Error occurred', 'failed');
+      setFeedback({ severity: 'error', message: error.message || 'Unable to mark students absent' });
+    } finally {
+      setMarkingAbsentLoading(false);
+      setShowOperationLoader(false);
+    }
+  };
+
+  const handleRevokeAbsent = async (students) => {
+    if (!selectedAssessment?.id || !Array.isArray(students) || students.length === 0) return;
+
+    try {
+      setShowOperationLoader(true);
+      setOperationSteps([]);
+      setMarkingAbsentLoading(true);
+
+      addOperationStep('Preparing absent status update');
+      addOperationStep('Sending request to revoke absent status');
+      const res = await fetch(`/api/assessments/${selectedAssessment.id}/revoke-absent`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          userIds: students.map((s) => s.id),
+        }),
+      });
+      addOperationStep('Sending request to revoke absent status', 'completed');
+
+      const result = await res.json();
+
+      if (!result.success) {
+        throw new Error(result.message || 'Unable to revoke absent status');
+      }
+
+      addOperationStep('Updating UI state and counts');
+      setFeedback({ severity: 'success', message: `Revoked absent status for ${result.data?.revokedCount || 0} student(s)` });
+      setSelectedStudentsForAbsent(new Set());
+
+      addOperationStep('Refreshing absent count');
+      await fetchAbsentCount(selectedAssessment.id);
+      addOperationStep('Refreshing absent count', 'completed');
+
+      addOperationStep('Refreshing absent students list');
+      await handleOpenAbsentDialog(selectedAssessment);
+      addOperationStep('Refreshing absent students list', 'completed');
+
+      addOperationStep('Refreshing pending students list');
+      await handleOpenPendingDialog(selectedAssessment);
+      addOperationStep('Refreshing pending students list', 'completed');
+
+      addOperationStep('Refreshing assessment summary');
+      await fetchAssessments();
+      addOperationStep('Refreshing assessment summary', 'completed');
+      addOperationStep('Completing absent status update', 'completed');
+    } catch (error) {
+      console.error(error);
+      addOperationStep('Error occurred', 'failed');
+      setFeedback({ severity: 'error', message: error.message || 'Unable to revoke absent status' });
+    } finally {
+      setMarkingAbsentLoading(false);
+      setShowOperationLoader(false);
+    }
+  };
+
+  const toggleStudentForAbsent = (studentId) => {
+    const newSet = new Set(selectedStudentsForAbsent);
+    if (newSet.has(studentId)) {
+      newSet.delete(studentId);
+    } else {
+      newSet.add(studentId);
+    }
+    setSelectedStudentsForAbsent(newSet);
+  };
+
+  const fetchAbsentCount = async (id) => {
+    if (!id) return 0;
+    try {
+      const res = await fetch(`/api/assessments/${id}/absent-students`, {
+        credentials: 'include',
+      });
+      const response = await res.json();
+      if (!response.success) throw new Error(response.message || 'Unable to load absent counts');
+      const count = Array.isArray(response.data)
+        ? response.data.reduce((sum, group) => sum + (group.students?.length || 0), 0)
+        : 0;
+      setAbsentCounts((prev) => ({ ...prev, [id]: count }));
+      return count;
+    } catch (error) {
+      console.error(error);
+      setAbsentCounts((prev) => ({ ...prev, [id]: 0 }));
+      return 0;
+    }
+  };
+
   const handleSubmit = async () => {
-    if (editingAssessment && !canEditAssessments) {
-      setFeedback({ severity: 'warning', message: 'You are not authorized to perform this operation.' });
-      return;
-    }
-
-    if (!editingAssessment && !canCreateAssessments) {
-      setFeedback({ severity: 'warning', message: 'You are not authorized to perform this operation.' });
-      return;
-    }
-
-    if (!canManageAssessments) {
-      setFeedback({ severity: 'warning', message: 'You are not authorized to perform this operation.' });
-      return;
-    }
-
     if (!subjectId && !classId) {
       alert('Class or subject is required to save assessment.');
       return;
@@ -390,6 +602,13 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         setAssessmentUpdateStatus(null);
       }
 
+      const normalizedAllowedClassIds = Array.from(
+        new Set([
+          ...(classId ? [String(classId)] : []),
+          ...(Array.isArray(allowedClassIds) ? allowedClassIds.map((item) => String(item)) : []),
+        ])
+      ).filter(Boolean);
+
       const endpoint = classId ? '/api/assessments' : `/api/subjects/${subjectId}/assessments`;
       const res = await fetch(endpoint, {
         method: editingAssessment ? 'PUT' : 'POST',
@@ -405,6 +624,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
           resolvedSubjectId: subjectId || null,
           totalMarks: computedTotalMarks,
           gradeBands: gradeBands.filter((band) => band?.label?.trim()),
+          allowedClassIds: normalizedAllowedClassIds,
           operationId: operationId || undefined,
           questions: validQuestions,
         }),
@@ -492,6 +712,49 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         </Box>
       ) : null}
 
+      {showOperationLoader ? (
+        <Box
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 2400,
+            bgcolor: 'rgba(2, 6, 23, 0.78)',
+            backdropFilter: 'blur(2px)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            px: 2,
+          }}
+        >
+          <Box
+            sx={{
+              width: '100%',
+              maxWidth: 620,
+              bgcolor: '#ffffff',
+              borderRadius: 3,
+              p: { xs: 3, sm: 4 },
+              boxShadow: '0 18px 45px rgba(15, 23, 42, 0.35)',
+            }}
+          >
+            <Stack spacing={2} alignItems="center" sx={{ mb: 3 }}>
+              <CircularProgress size={42} />
+              <Typography variant="h6" fontWeight={700}>Processing student attendance update</Typography>
+            </Stack>
+            <Stack spacing={1.2}>
+              {operationSteps.length ? operationSteps.map((step) => (
+                <Box key={`${step.name}-${step.status}`} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.2, borderRadius: 2, bgcolor: step.status === 'failed' ? '#fef2f2' : step.status === 'completed' ? '#ecfdf5' : '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: step.status === 'failed' ? '#ef4444' : step.status === 'completed' ? '#22c55e' : '#60a5fa' }} />
+                  <Typography variant="body2" sx={{ flex: 1 }}>{step.name}</Typography>
+                  <Typography variant="caption" color="text.secondary">{step.status === 'completed' ? 'Done' : step.status === 'failed' ? 'Failed' : 'Running'}</Typography>
+                </Box>
+              )) : (
+                <Box sx={{ p: 1.5, textAlign: 'center', color: 'text.secondary' }}>Waiting for backend operations to start…</Box>
+              )}
+            </Stack>
+          </Box>
+        </Box>
+      ) : null}
+
       {feedback ? (
         <Alert severity={feedback.severity} sx={{ mb: 2 }} onClose={() => setFeedback(null)}>
           {feedback.message}
@@ -517,11 +780,6 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         </Box>
       ) : (<>
         <Stack spacing={2}>
-          {!canManageAssessments ? (
-            <Typography variant="body2" color="text.secondary">
-              You can view submissions, but only admin and management users can create or edit assessments.
-            </Typography>
-          ) : null}
           {assessments.map((assessment) => (
             <Card key={assessment.id} variant="outlined" border='1px solid black' sx={{ backgroundColor: '#f9f9f9' }}>
               <CardContent>
@@ -535,7 +793,6 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                     color="primary"
                     variant="outlined"
                     onClick={() => openEditDialog(assessment)}
-                    disabled={!canManageAssessments}
                     sx={{ fontWeight: 600 }}
                   />
                 </Box>
@@ -555,6 +812,13 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                     color="success"
                     variant="outlined"
                     onClick={() => handleOpenAppearedDialog(assessment)}
+                    sx={{ cursor: 'pointer', fontWeight: 600 }}
+                  />
+                  <Chip
+                    label={`Absent: ${absentCounts[assessment.id] || 0}`}
+                    color="error"
+                    variant="outlined"
+                    onClick={() => handleOpenAbsentDialog(assessment)}
                     sx={{ cursor: 'pointer', fontWeight: 600 }}
                   />
                 </Stack>
@@ -586,9 +850,22 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                   </Typography>
                   <List dense disablePadding>
                     {group.students.map((student) => (
-                      <ListItem key={student.id} disablePadding>
+                      <ListItem
+                        key={student.id}
+                        disablePadding
+                        secondaryAction={
+                          <Checkbox
+                            edge="end"
+                            checked={selectedStudentsForAbsent.has(student.id)}
+                            onChange={() => toggleStudentForAbsent(student.id)}
+                          />
+                        }
+                      >
                         <ListItemButton onClick={() => handleOpenPendingStudentAttempt(student)}>
-                          <ListItemText primary={student.name} secondary={student.email} />
+                          <ListItemText 
+                            primary={student.name} 
+                            secondary={`${student.email} • Center: ${student.student?.center?.centerName || 'N/A'}`}
+                          />
                         </ListItemButton>
                       </ListItem>
                     ))}
@@ -599,7 +876,29 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPendingDialogOpen(false)}>Close</Button>
+          <Button
+            onClick={() => {
+              setSelectedStudentsForAbsent(new Set());
+              setPendingDialogOpen(false);
+            }}
+          >
+            Close
+          </Button>
+          {selectedStudentsForAbsent.size > 0 && (
+            <Button
+              variant="contained"
+              color="error"
+              onClick={() => {
+                const selectedStudents = pendingStudents
+                  .flatMap((group) => group.students)
+                  .filter((student) => selectedStudentsForAbsent.has(student.id));
+                handleMarkAbsent(selectedStudents);
+              }}
+              disabled={markingAbsentLoading}
+            >
+              {markingAbsentLoading ? 'Marking...' : `Mark ${selectedStudentsForAbsent.size} as Absent`}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 
@@ -623,7 +922,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                     {group.students.map((student) => (
                       <ListItem key={student.id} disablePadding>
                         <ListItemButton onClick={() => handleOpenAppearedStudentAttempt(student)}>
-                          <ListItemText primary={student.name} secondary={student.email} />
+                          <ListItemText primary={student.name} secondary={`${student.email || 'No email'} • Center: ${student.student?.center?.centerName || student.centerName || 'N/A'}`} />
                         </ListItemButton>
                       </ListItem>
                     ))}
@@ -635,6 +934,88 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAppearedDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={absentDialogOpen} onClose={() => setAbsentDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Absent Students</DialogTitle>
+        <DialogContent dividers>
+          {absentLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : absentStudents.length === 0 ? (
+            <Typography color="text.secondary">No absent students found for this assessment.</Typography>
+          ) : (
+            <Stack spacing={2}>
+              {absentStudents.map((group) => (
+                <Box key={group.className}>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                    Class {group.className}
+                  </Typography>
+                  <List dense disablePadding>
+                    {group.students.map((student) => (
+                      <ListItem
+                        key={student.id}
+                        disablePadding
+                        secondaryAction={
+                          <Checkbox
+                            edge="end"
+                            checked={selectedStudentsForAbsent.has(student.id)}
+                            onChange={() => toggleStudentForAbsent(student.id)}
+                          />
+                        }
+                      >
+                        <ListItemText
+                          primary={student.name}
+                          secondary={
+                            <>
+                              <Typography component="span" variant="body2" color="text.secondary">
+                                {student.email} • Center: {student.student?.center?.centerName || 'N/A'}
+                              </Typography>
+                              {student.reason && (
+                                <>
+                                  <br />
+                                  <Typography component="span" variant="caption" color="text.secondary">
+                                    Reason: {student.reason}
+                                  </Typography>
+                                </>
+                              )}
+                            </>
+                          }
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setSelectedStudentsForAbsent(new Set());
+              setAbsentDialogOpen(false);
+            }}
+          >
+            Close
+          </Button>
+          {selectedStudentsForAbsent.size > 0 && (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => {
+                const selectedStudents = absentStudents
+                  .flatMap((group) => group.students)
+                  .filter((student) => selectedStudentsForAbsent.has(student.id));
+                handleRevokeAbsent(selectedStudents);
+              }}
+              disabled={markingAbsentLoading}
+            >
+              {markingAbsentLoading ? 'Revoking...' : `Revoke ${selectedStudentsForAbsent.size} Absent`}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 
@@ -694,6 +1075,34 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
               <Select value={type} label="Type" onChange={(event) => setType(event.target.value)}>
                 <MenuItem value="ASSESSMENT">Assessment</MenuItem>
                 {/* <MenuItem value="ASSIGNMENT">Assignment</MenuItem> */}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth>
+              <InputLabel>Visible Classes</InputLabel>
+              <Select
+                multiple
+                value={allowedClassIds}
+                label="Visible Classes"
+                onChange={handleAllowedClassSelection}
+                disabled={classesLoading || availableClasses.length === 0}
+                renderValue={(selected) => {
+                  const names = (selected || [])
+                    .map((id) => availableClasses.find((item) => String(item.id) === String(id))?.className)
+                    .filter(Boolean);
+
+                  return names.length ? names.join(', ') : 'No classes selected';
+                }}
+              >
+                {availableClasses.map((item) => {
+                  const isCurrentClass = String(item.id) === String(classId);
+                  return (
+                    <MenuItem key={item.id} value={item.id} disabled={isCurrentClass}>
+                      <Checkbox checked={allowedClassIds.includes(String(item.id))} disabled={isCurrentClass} />
+                      <ListItemText primary={item.className} secondary={isCurrentClass ? 'Current class (fixed)' : 'Visible for this assessment'} />
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
 
@@ -871,7 +1280,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             variant="contained"
             startIcon={<SaveOutlined />}
             onClick={handleSubmit}
-            disabled={saving || (permissionChecked && !canManageAssessments)}
+            disabled={saving}
             sx={{ textTransform: 'none', width: { xs: '100%', sm: 'auto' }, minWidth: 140, borderRadius: 3 }}
           >
             {saving ? (editingAssessment ? 'Updating...' : 'Creating...') : 'Save'}

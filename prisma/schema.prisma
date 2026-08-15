@@ -81,11 +81,15 @@ model User {
   management Management?
   parent     Parent?
 
-  classAccesses          UserClassAccess[]
-  subjectAccesses        UserSubjectAccess[]
-  teacherSubjectAccesses UserTeacherSubjectAccess[]
-  assessmentResults      AssessmentResult[]
+  classAccesses               UserClassAccess[]
+  subjectAccesses             UserSubjectAccess[]
+  teacherSubjectAccesses      UserTeacherSubjectAccess[]
+  assessmentResults           AssessmentResult[]
   assessmentReattemptRequests AssessmentReattemptRequest[]
+  assessmentsModified         Assessment[] @relation("AssessmentLastModifiedBy")
+  allowedClassesModified      AllowedClassesForAssessment[] @relation("AllowedClassLastModifiedBy")
+  assessmentAttendances       AssessmentAttendance[]
+  assessmentAttendancesMarked AssessmentAttendance[] @relation("AssessmentAttendanceMarkedBy")
 }
 
 model AppSetting {
@@ -117,9 +121,10 @@ model Class {
   updatedAt DateTime @updatedAt
 
   // Relations
-  subjects     Subject[]
-  userAccesses UserClassAccess[]
-  assessments  Assessment[]
+  subjects              Subject[]
+  userAccesses          UserClassAccess[]
+  assessments          Assessment[]
+  allowedClasses        AllowedClassesForAssessment[]
 }
 
 //
@@ -415,18 +420,48 @@ model Assessment {
 
   status Boolean @default(true)
 
+  lastModifiedBy String? @map("last_modified_user")
+  lastModifiedUser User? @relation("AssessmentLastModifiedBy", fields: [lastModifiedBy], references: [id], onDelete: SetNull)
+  lastModifiedAt DateTime? @map("last_modified_time")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   questions AssessmentQuestion[]
   results AssessmentResult[]
   reattemptRequests AssessmentReattemptRequest[]
+  allowedClasses AllowedClassesForAssessment[]
+  attendances AssessmentAttendance[]
 
   @@index([classId])
   @@index([subjectId])
   @@index([chapterId])
 
   @@map("assessments")
+}
+
+model AllowedClassesForAssessment {
+  id String @id @default(cuid())
+
+  assessmentId String @map("assessment_id")
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  classId String @map("class_id")
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  active Boolean @default(true) @map("active")
+
+  lastModifiedBy String? @map("last_modified_user")
+  lastModifiedUser User? @relation("AllowedClassLastModifiedBy", fields: [lastModifiedBy], references: [id], onDelete: SetNull)
+  lastModifiedAt DateTime? @map("last_modified_time")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assessmentId, classId])
+  @@index([assessmentId])
+  @@index([classId])
+  @@map("allowed_classes_for_assessment")
 }
 
 model AssessmentQuestion {
@@ -516,6 +551,39 @@ model AssessmentReattemptRequest {
   @@index([userId])
   @@index([status])
   @@map("assessment_reattempt_requests")
+}
+
+enum AssessmentAttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+model AssessmentAttendance {
+  id String @id @default(cuid())
+
+  assessmentId String @map("assessment_id")
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status AssessmentAttendanceStatus @default(PRESENT)
+  reason String? @db.Text
+
+  markedBy String? @map("marked_by")
+  markedByUser User? @relation("AssessmentAttendanceMarkedBy", fields: [markedBy], references: [id], onDelete: SetNull)
+
+  markedAt DateTime? @map("marked_at")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assessmentId, userId])
+  @@index([assessmentId])
+  @@index([userId])
+  @@index([status])
+  @@map("assessment_attendances")
 }
 
 enum ContentType {

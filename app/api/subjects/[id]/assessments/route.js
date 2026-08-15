@@ -59,30 +59,59 @@ const safeUpdateOperationStatus = async (operationId, payload) => {
   }
 };
 
-const buildAssessmentWithStats = async (assessment, subjectId) => {
-  const [attempts, eligibleStudents] = await Promise.all([
+const buildAssessmentWithStats = async (assessment, actor, scopedCenterId = null) => {
+  const visibleClassIds = Array.from(new Set([
+    assessment.classId,
+    ...((Array.isArray(assessment.allowedClasses) ? assessment.allowedClasses : []).map((item) => item.classId).filter(Boolean)),
+  ])).filter(Boolean);
+
+  const [attempts, absentStudents, eligibleStudents] = await Promise.all([
     prisma.assessmentResult.count({
-      where: { assessmentId: assessment.id, status: true },
+      where: {
+        assessmentId: assessment.id,
+        status: true,
+        ...(scopedCenterId
+          ? {
+              user: {
+                student: {
+                  centerId: scopedCenterId,
+                },
+              },
+            }
+          : {}),
+      },
+    }),
+    prisma.assessmentAttendance.count({
+      where: {
+        assessmentId: assessment.id,
+        status: 'ABSENT',
+        ...(scopedCenterId
+          ? {
+              user: {
+                student: {
+                  centerId: scopedCenterId,
+                },
+              },
+            }
+          : {}),
+      },
     }),
     prisma.user.count({
       where: {
         role: 'STUDENT',
         status: true,
-        OR: [
-          {
-            classAccesses: {
-              some: {
-                classId: assessment.classId,
-                status: true,
+        student: {
+          studyingClass: { in: visibleClassIds },
+          ...(scopedCenterId ? { centerId: scopedCenterId } : {}),
+        },
+        ...(actor && !actor.isAdmin && !scopedCenterId && Array.isArray(actor.assignedCenterIds)
+          ? {
+              student: {
+                studyingClass: { in: visibleClassIds },
+                centerId: { in: actor.assignedCenterIds.map((centerId) => String(centerId).trim()).filter(Boolean) },
               },
-            },
-          },
-          {
-            studyingClass: {
-              equals: null,
-            },
-          },
-        ],
+            }
+          : {}),
       },
     }),
   ]);
@@ -90,7 +119,7 @@ const buildAssessmentWithStats = async (assessment, subjectId) => {
   return {
     ...assessment,
     attempts,
-    pending: Math.max(eligibleStudents - attempts, 0),
+    pending: Math.max(eligibleStudents - attempts - absentStudents, 0),
   };
 };
 
@@ -115,12 +144,37 @@ export async function GET(req, { params }) {
     }
 
     // Fetch all assessments
+    let scopedCenterId = null;
+    if (authUser && ['ADMIN', 'MANAGEMENT', 'TEACHER'].includes(String(authUser.role || '').toUpperCase())) {
+      const auth = await requireAdminPermission(req, 'assessments.view');
+      if (!auth.ok) {
+        return ApiResponse.error(auth.message, auth.status);
+      }
+
+      if (auth.actor.isTeacher) {
+        const teacherProfile = await prisma.teacher.findUnique({
+          where: { userId: auth.actor.userId },
+          select: { centerId: true },
+        });
+
+        if (!teacherProfile?.centerId) {
+          return ApiResponse.error('Teacher account is not mapped to any center.', 400);
+        }
+
+        scopedCenterId = teacherProfile.centerId;
+      }
+    }
+
     const assessments = await prisma.assessment.findMany({
       where: {
         subjectId: id,
         status: true,
       },
       include: {
+        allowedClasses: {
+          where: { active: true },
+          select: { classId: true },
+        },
         questions: {
           where: { status: true },
           orderBy: { displayOrder: "asc" },
@@ -162,7 +216,8 @@ export async function GET(req, { params }) {
       assessments.map(async (assessment) => {
         const assessmentData = await buildAssessmentWithStats(
           assessment,
-          id
+          authUser ? await requireAdminPermission(req, 'assessments.view').then((auth) => auth.ok ? auth.actor : null) : null,
+          scopedCenterId
         );
 
         return {
@@ -289,7 +344,7 @@ export async function PUT(req, { params }) {
   try {
     const { id } = await params;
     const body = await req.json();
-    const { assessmentId, title, description, type, questions, totalMarks, gradeBands, operationId: incomingOperationId } = body;
+    const { assessmentId, title, description, type, questions, totalMarks, gradeBands, allowedClassIds, operationId: incomingOperationId } = body;
     operationId = incomingOperationId || null;
 
     await safeUpdateOperationStatus(operationId, {
@@ -335,6 +390,18 @@ export async function PUT(req, { params }) {
       message: 'Updating assessment structure and questions...',
     });
 
+    const subject = await prisma.subject.findUnique({
+      where: { id },
+      select: { classId: true },
+    });
+
+    const currentClassId = subject?.classId || null;
+
+    const normalizedAllowedClassIds = Array.from(new Set([
+      ...(currentClassId ? [String(currentClassId)] : []),
+      ...(Array.isArray(allowedClassIds) ? allowedClassIds.map((item) => String(item)) : []),
+    ].filter(Boolean))).filter((item) => !!item);
+
     const assessment = await prisma.$transaction(async (tx) => {
       const existingQuestions = await tx.assessmentQuestion.findMany({
         where: { assessmentId },
@@ -358,6 +425,40 @@ export async function PUT(req, { params }) {
         typeof gradeBands === 'string' ? gradeBands : JSON.stringify(gradeBands || []),
         assessmentId
       );
+
+      const existingAllowedClasses = await tx.allowedClassesForAssessment.findMany({
+        where: { assessmentId },
+        select: { classId: true },
+      });
+      const existingClassIds = new Set(existingAllowedClasses.map((item) => String(item.classId)));
+      const nextClassIds = new Set(normalizedAllowedClassIds.map((item) => String(item)));
+
+      for (const entry of existingAllowedClasses) {
+        if (!nextClassIds.has(String(entry.classId))) {
+          await tx.allowedClassesForAssessment.updateMany({
+            where: { assessmentId, classId: entry.classId },
+            data: { active: false },
+          });
+        }
+      }
+
+      for (const allowedClassId of normalizedAllowedClassIds) {
+        if (!existingClassIds.has(String(allowedClassId))) {
+          await tx.allowedClassesForAssessment.create({
+            data: {
+              assessmentId,
+              classId: String(allowedClassId),
+              active: true,
+            },
+          });
+          continue;
+        }
+
+        await tx.allowedClassesForAssessment.updateMany({
+          where: { assessmentId, classId: String(allowedClassId) },
+          data: { active: true },
+        });
+      }
 
       for (const [questionIndex, question] of normalizedQuestions.entries()) {
         let questionId = null;

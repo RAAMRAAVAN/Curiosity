@@ -37,9 +37,15 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
   const [pendingLoading, setPendingLoading] = useState(false);
   const [pendingCounts, setPendingCounts] = useState({});
   const [pendingCountsLoading, setPendingCountsLoading] = useState(false);
+  const [absentCounts, setAbsentCounts] = useState({});
+  const [absentCountsLoading, setAbsentCountsLoading] = useState(false);
+  const [absentDialogOpen, setAbsentDialogOpen] = useState(false);
+  const [absentStudents, setAbsentStudents] = useState([]);
+  const [absentLoading, setAbsentLoading] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailResults, setDetailResults] = useState([]);
   const [detailAssessmentTitle, setDetailAssessmentTitle] = useState('');
+  const [detailAbsentStudents, setDetailAbsentStudents] = useState([]);
   const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
   const [canUseCenterFilter, setCanUseCenterFilter] = useState(false);
 
@@ -139,6 +145,36 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
     }
   };
 
+  const fetchAbsentStudents = async (id) => {
+    if (!id) return [];
+    try {
+      const res = await fetch(`/api/assessments/${id}/absent-students`, {
+        credentials: 'include',
+      });
+      const response = await res.json();
+      if (!response.success) throw new Error(response.message || 'Unable to load absent students');
+      const data = Array.isArray(response.data) ? response.data : [];
+      return data;
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  };
+
+  const fetchAbsentCount = async (id) => {
+    if (!id) return 0;
+    try {
+      const groups = await fetchAbsentStudents(id);
+      const count = groups.reduce((sum, group) => sum + (group.students?.length || 0), 0);
+      setAbsentCounts((prev) => ({ ...prev, [id]: count }));
+      return count;
+    } catch (error) {
+      console.error(error);
+      setAbsentCounts((prev) => ({ ...prev, [id]: 0 }));
+      return 0;
+    }
+  };
+
   useEffect(() => {
     fetchResults();
   }, [assessmentId]);
@@ -214,17 +250,22 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
 
     const loadSummaryCounts = async () => {
       setPendingCountsLoading(true);
+      setAbsentCountsLoading(true);
       try {
         await Promise.all(
           assessmentSummaries.map((summary) => {
             if (!summary.id) return Promise.resolve();
-            return fetchPendingCount(summary.id);
+            return Promise.all([
+              fetchPendingCount(summary.id),
+              fetchAbsentCount(summary.id),
+            ]);
           })
         );
       } catch (error) {
-        console.error('Failed to load summary pending counts', error);
+        console.error('Failed to load summary counts', error);
       } finally {
         setPendingCountsLoading(false);
+        setAbsentCountsLoading(false);
       }
     };
 
@@ -247,7 +288,13 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
       });
       const response = await res.json();
       if (!response.success) throw new Error(response.message || 'Unable to load pending students');
-      setPendingStudents(response.data || []);
+      setPendingStudents((response.data || []).map((group) => ({
+        ...group,
+        students: (group.students || []).map((student) => ({
+          ...student,
+          centerName: student.student?.center?.centerName || student.centerName || 'N/A',
+        })),
+      })));
       setPendingDialogOpen(true);
     } catch (error) {
       console.error(error);
@@ -258,53 +305,76 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
     }
   };
 
-  const handleOpenAssessmentDetailDialog = (summary) => {
+  const handleOpenAbsentDialog = async (id) => {
+    if (!id) return;
+
+    try {
+      setAbsentLoading(true);
+      const res = await fetch(`/api/assessments/${id}/absent-students`, {
+        credentials: 'include',
+      });
+      const response = await res.json();
+      if (!response.success) throw new Error(response.message || 'Unable to load absent students');
+      const groups = (response.data || []).map((group) => ({
+        ...group,
+        className: group.className || 'N/A',
+        students: (group.students || []).map((student) => ({
+          ...student,
+          centerName: student.student?.center?.centerName || student.centerName || 'N/A',
+          className: group.className || student.studentClassName || student.student?.className || student.className || 'N/A',
+        })),
+      }));
+      setAbsentStudents(groups);
+      setAbsentDialogOpen(true);
+    } catch (error) {
+      console.error(error);
+      setAbsentStudents([]);
+      setAbsentDialogOpen(true);
+    } finally {
+      setAbsentLoading(false);
+    }
+  };
+
+  const handleOpenAssessmentDetailDialog = async (summary) => {
     if (!summary?.id) return;
     const filtered = results
       .filter((item) => item.assessmentId === summary.id)
       .slice()
       .sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+    const absentGroups = await fetchAbsentStudents(summary.id);
     setDetailResults(filtered);
+    setDetailAbsentStudents(absentGroups);
     setDetailAssessmentTitle(summary.title || 'Assessment Results');
     setSelectedCenter(ALL_CENTERS);
     setDetailDialogOpen(true);
   };
 
-  const downloadDetailResults = () => {
-    if (!filteredDetailResults.length) return;
+  const escapeValue = (value) => String(value).replace(/"/g, '""');
 
-    const headers = [
-      'S.No',
-      'Student',
-      'Center Name',
-      'Class',
-      'Subject',
-      'Correct Attempts',
-      'Wrong Attempts',
-      'Marks Obtained',
-      'Total Marks',
-      'Percentage',
-      'Grade',
-    ];
+  const downloadAbsentStudentsExcel = (groups = absentStudents, fileName = 'absent-students') => {
+    if (!Array.isArray(groups) || groups.length === 0) {
+      return;
+    }
 
-    const rows = filteredDetailResults.map((result, index) => [
-      index + 1,
-      result.user?.name || '',
-      result.studentCenterName || '',
-      result.studentClassName || '',
-      result.assessment?.subject?.subjectName || '',
-      result.correctAttempts ?? 0,
-      result.wrongAttempts ?? 0,
-      result.score ?? 0,
-      result.totalMarks ?? result.totalQuestions ?? 0,
-      `${result.percentage ?? 0}%`,
-      result.grade || '-',
-    ]);
-
-    const escapeValue = (value) => String(value).replace(/"/g, '""');
+    const headers = ['S.No', 'Student', 'Center Name', 'Class', 'Email', 'Reason', 'Marked At'];
+    const rows = groups
+      .flatMap((group) => (group.students || []).map((student) => ({
+        ...student,
+        centerName: student.student?.center?.centerName || student.centerName || 'N/A',
+        className: group.className || student.studentClassName || student.student?.className || student.className || 'N/A',
+      })))
+      .map((student, index) => [
+        index + 1,
+        student.name || '',
+        student.centerName || 'N/A',
+        student.className || 'N/A',
+        student.email || 'No email',
+        student.reason || '—',
+        student.markedAt ? new Date(student.markedAt).toLocaleString() : '—',
+      ]);
 
     const headerRow = headers
-      .map((header) => `<th style="border:1px solid #666; padding:8px; font-weight:bold; background:#f0f0f0;">${escapeValue(header)}</th>`)
+      .map((header) => `<th style="border:1px solid #666; padding:8px; font-weight:bold; background:#f9e4e4;">${escapeValue(header)}</th>`)
       .join('');
 
     const bodyRows = rows
@@ -312,14 +382,115 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
         (row) =>
           `<tr>${row
             .map(
-              (cell) =>
-                `<td style="border:1px solid #666; padding:8px; text-align:left;">${escapeValue(cell)}</td>`
+              (cell) => `<td style="border:1px solid #666; padding:8px; text-align:left;">${escapeValue(cell)}</td>`
             )
             .join('')}</tr>`
       )
       .join('');
 
-    const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><table style="border-collapse:collapse; width:100%;"> <thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table></body></html>`;
+    const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><h2 style="margin-bottom:12px;">${escapeValue(fileName)}</h2><table style="border-collapse:collapse; width:100%;"><thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table></body></html>`;
+
+    const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${String(fileName).replace(/[^a-z0-9-_ ]/gi, '') || 'absent-students'}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadDetailResults = () => {
+    const resultTable = filteredDetailResults.length
+      ? (() => {
+          const headers = [
+            'S.No',
+            'Student',
+            'Center Name',
+            'Class',
+            'Subject',
+            'Correct Attempts',
+            'Wrong Attempts',
+            'Marks Obtained',
+            'Total Marks',
+            'Percentage',
+            'Grade',
+          ];
+
+          const rows = filteredDetailResults.map((result, index) => [
+            index + 1,
+            result.user?.name || '',
+            result.studentCenterName || '',
+            result.studentClassName || '',
+            result.assessment?.subject?.subjectName || '',
+            result.correctAttempts ?? 0,
+            result.wrongAttempts ?? 0,
+            result.score ?? 0,
+            result.totalMarks ?? result.totalQuestions ?? 0,
+            `${result.percentage ?? 0}%`,
+            result.grade || '-',
+          ]);
+
+          const headerRow = headers
+            .map((header) => `<th style="border:1px solid #666; padding:8px; font-weight:bold; background:#f0f0f0;">${escapeValue(header)}</th>`)
+            .join('');
+
+          const bodyRows = rows
+            .map(
+              (row) =>
+                `<tr>${row
+                  .map(
+                    (cell) =>
+                      `<td style="border:1px solid #666; padding:8px; text-align:left;">${escapeValue(cell)}</td>`
+                  )
+                  .join('')}</tr>`
+            )
+            .join('');
+
+          return `<table style="border-collapse:collapse; width:100%; margin-bottom:20px;"> <thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+        })()
+      : '';
+
+    const absentTable = detailAbsentStudents.length
+      ? (() => {
+          const headers = ['S.No', 'Student', 'Center Name', 'Class', 'Reason', 'Marked At'];
+          const rows = detailAbsentStudents
+            .flatMap((group) => (group.students || []).map((student) => ({
+              ...student,
+              centerName: student.student?.center?.centerName || student.centerName || 'N/A',
+              className: group.className || student.studentClassName || student.student?.className || student.className || 'N/A',
+            })))
+            .map((student, index) => [
+              index + 1,
+              student.name || '',
+              student.centerName || 'N/A',
+              student.className || 'N/A',
+              student.reason || '—',
+              student.markedAt ? new Date(student.markedAt).toLocaleString() : '—',
+            ]);
+
+          const headerRow = headers
+            .map((header) => `<th style="border:1px solid #666; padding:8px; font-weight:bold; background:#f9e4e4;">${escapeValue(header)}</th>`)
+            .join('');
+
+          const bodyRows = rows
+            .map(
+              (row) =>
+                `<tr>${row
+                  .map(
+                    (cell) =>
+                      `<td style="border:1px solid #666; padding:8px; text-align:left;">${escapeValue(cell)}</td>`
+                  )
+                  .join('')}</tr>`
+            )
+            .join('');
+
+          return `<h3 style="margin:18px 0 10px;">Absent Students</h3><table style="border-collapse:collapse; width:100%;"> <thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+        })()
+      : '';
+
+    const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><h2 style="margin-bottom:12px;">${escapeValue(detailAssessmentTitle || 'Assessment Results')}</h2>${resultTable}${absentTable}</body></html>`;
 
     const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel' });
     const url = URL.createObjectURL(blob);
@@ -382,6 +553,7 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
                   <TableCell>Subject</TableCell>
                   <TableCell>Appeared</TableCell>
                   <TableCell>Pending</TableCell>
+                  <TableCell>Absent</TableCell>
                   <TableCell>Average Score</TableCell>
                   <TableCell>Action</TableCell>
                 </TableRow>
@@ -401,6 +573,17 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
                         disabled={pendingCountsLoading || !(pendingCounts[summary.id] > 0)}
                       >
                         {pendingCountsLoading ? 'Loading...' : pendingCounts[summary.id] ?? 0}
+                      </Button>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="text"
+                        size="small"
+                        color="error"
+                        onClick={() => handleOpenAbsentDialog(summary.id)}
+                        disabled={absentCountsLoading || !(absentCounts[summary.id] > 0)}
+                      >
+                        {absentCountsLoading ? 'Loading...' : absentCounts[summary.id] ?? 0}
                       </Button>
                     </TableCell>
                     <TableCell>{summary.averageScore}%</TableCell>
@@ -449,13 +632,21 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
             </Table>
           </TableContainer>
 
-          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 1, flexWrap: 'wrap' }}>
             <Button
               variant="outlined"
               onClick={() => handleOpenPendingDialog(assessmentId)}
               disabled={pendingLoading || pendingCount === 0}
             >
               Pending Students ({pendingCountsLoading ? 'Loading...' : pendingCount})
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={() => handleOpenAbsentDialog(assessmentId)}
+              disabled={absentLoading || !(absentCounts[assessmentId] > 0)}
+            >
+              Absent Students ({absentLoading ? 'Loading...' : (absentCounts[assessmentId] ?? 0)})
             </Button>
           </Box>
         </>
@@ -479,7 +670,7 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
                     <ListItem key={student.id} disablePadding>
                       <ListItemText
                         primary={student.name || 'Unnamed student'}
-                        secondary={student.email || 'No email'}
+                        secondary={`${student.email || 'No email'} • Center: ${student.centerName || student.student?.center?.centerName || 'N/A'}`}
                       />
                     </ListItem>
                   ))}
@@ -490,6 +681,55 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPendingDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={absentDialogOpen} onClose={() => setAbsentDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Absent Students</DialogTitle>
+        <DialogContent>
+          {absentLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+          ) : absentStudents.length === 0 ? (
+            <Typography color="text.secondary">No absent students found for this assessment.</Typography>
+          ) : (
+            <List>
+              {absentStudents.map((group) => (
+                <Box key={group.className} sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+                    {group.className}
+                  </Typography>
+                  {group.students?.map((student) => (
+                    <ListItem key={student.id || student.attendanceId} disablePadding>
+                      <ListItemText
+                        primary={student.name || 'Unnamed student'}
+                        secondary={
+                          <>
+                            <Typography component="span" variant="body2" color="text.secondary">
+                              {student.email || 'No email'} • Center: {student.centerName || student.student?.center?.centerName || 'N/A'}
+                            </Typography>
+                            {student.reason ? (
+                              <>
+                                <br />
+                                <Typography component="span" variant="caption" color="text.secondary">
+                                  Reason: {student.reason}
+                                </Typography>
+                              </>
+                            ) : null}
+                          </>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </Box>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+          <Button variant="contained" color="success" onClick={() => downloadAbsentStudentsExcel()} disabled={absentLoading || absentStudents.length === 0}>
+            Export Excel
+          </Button>
+          <Button onClick={() => setAbsentDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
 
@@ -550,6 +790,12 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
                 <CardContent>
                   <Typography variant="subtitle2" color="text.secondary">Top Score</Typography>
                   <Typography variant="h5" fontWeight={700}>{detailStats.top}</Typography>
+                </CardContent>
+              </Card>
+              <Card sx={{ flex: 1, bgcolor: '#fff1f2', borderRadius: 3 }} variant="outlined">
+                <CardContent>
+                  <Typography variant="subtitle2" color="text.secondary">Absent</Typography>
+                  <Typography variant="h5" fontWeight={700}>{detailAbsentStudents.reduce((sum, group) => sum + ((group.students || []).length), 0)}</Typography>
                 </CardContent>
               </Card>
             </Stack>

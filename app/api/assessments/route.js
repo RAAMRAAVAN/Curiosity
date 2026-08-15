@@ -236,6 +236,7 @@ export async function POST(req) {
       questions,
       totalMarks,
       gradeBands,
+      allowedClassIds,
     } = body;
 
     const subjectId = rawSubjectId || null;
@@ -270,7 +271,7 @@ export async function POST(req) {
     const derivedTotalMarks = normalizedQuestions.reduce((sum, question) => sum + (Number(question.marks) || 0), 0);
 
     const assessment = await prisma.$transaction(async (tx) => {
-      return await createAssessmentWithQuestions(tx, {
+      const createdAssessment = await createAssessmentWithQuestions(tx, {
         classId,
         subjectId: finalSubjectId,
         chapterId: chapterId || null,
@@ -281,6 +282,27 @@ export async function POST(req) {
         gradeBands: typeof gradeBands === 'string' ? gradeBands : JSON.stringify(gradeBands || []),
         questions: normalizedQuestions,
       });
+
+      const selectedClassIds = Array.from(new Set([
+        ...(classId ? [String(classId)] : []),
+        ...(Array.isArray(allowedClassIds) ? allowedClassIds.map((item) => String(item)) : []),
+      ].filter(Boolean)));
+
+      for (const allowedClassId of selectedClassIds) {
+        await tx.allowedClassesForAssessment.create({
+          data: {
+            assessmentId: createdAssessment.id,
+            classId: allowedClassId,
+            active: true,
+          },
+        }).catch((error) => {
+          if (!/Unique constraint failed|already exists|duplicate/i.test(String(error?.message || ''))) {
+            throw error;
+          }
+        });
+      }
+
+      return createdAssessment;
     });
 
     return ApiResponse.success(
@@ -305,7 +327,7 @@ export async function PUT(req) {
   let operationId = null;
   try {
     const body = await req.json();
-    const { assessmentId, classId, subjectId: rawSubjectId, chapterId, title, description, type, questions, totalMarks, gradeBands, operationId: incomingOperationId } = body;
+    const { assessmentId, classId, subjectId: rawSubjectId, chapterId, title, description, type, questions, totalMarks, gradeBands, allowedClassIds, operationId: incomingOperationId } = body;
     operationId = incomingOperationId || null;
     const subjectId = rawSubjectId || null;
 
@@ -359,8 +381,13 @@ export async function PUT(req) {
       message: 'Updating assessment structure and questions...',
     });
 
+    const normalizedAllowedClassIds = Array.from(new Set([
+      ...(classId ? [String(classId)] : []),
+      ...(Array.isArray(allowedClassIds) ? allowedClassIds.map((item) => String(item)) : []),
+    ].filter(Boolean))).filter((id) => !!id);
+
     const assessment = await prisma.$transaction(async (tx) => {
-      return updateAssessmentWithQuestions(tx, assessmentId, {
+      const updatedAssessment = await updateAssessmentWithQuestions(tx, assessmentId, {
         classId,
         subjectId: resolvedSubjectId,
         chapterId: chapterId || null,
@@ -371,6 +398,45 @@ export async function PUT(req) {
         gradeBands: typeof gradeBands === 'string' ? gradeBands : JSON.stringify(gradeBands || []),
         questions: normalizedQuestions,
       });
+
+      const existingAllowedClasses = await tx.allowedClassesForAssessment.findMany({
+        where: { assessmentId },
+        select: { classId: true, active: true },
+      });
+
+      const existingClassIds = new Set(existingAllowedClasses.map((item) => String(item.classId)));
+      const nextClassIds = new Set(normalizedAllowedClassIds.map((item) => String(item)));
+
+      for (const entry of existingAllowedClasses) {
+        const classIdValue = String(entry.classId);
+        if (!nextClassIds.has(classIdValue)) {
+          await tx.allowedClassesForAssessment.updateMany({
+            where: { assessmentId, classId: classIdValue },
+            data: { active: false },
+          });
+        }
+      }
+
+      for (const allowedClassId of normalizedAllowedClassIds) {
+        const classIdValue = String(allowedClassId);
+        if (!existingClassIds.has(classIdValue)) {
+          await tx.allowedClassesForAssessment.create({
+            data: {
+              assessmentId,
+              classId: classIdValue,
+              active: true,
+            },
+          });
+          continue;
+        }
+
+        await tx.allowedClassesForAssessment.updateMany({
+          where: { assessmentId, classId: classIdValue },
+          data: { active: true },
+        });
+      }
+
+      return updatedAssessment;
     }, {
       timeout: 60000,
       maxWait: 10000,

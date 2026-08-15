@@ -89,7 +89,7 @@ export async function GET(req, { params }) {
         id: true,
         name: true,
         email: true,
-        student: { select: { studyingClass: true } },
+        student: { select: { studyingClass: true, centerId: true, center: { select: { id: true, name: true } } } },
       },
       orderBy: [{ name: 'asc' }],
     });
@@ -124,9 +124,9 @@ export async function GET(req, { params }) {
     }, {});
 
     const groupedStudents = students.reduce((acc, student) => {
-      const studyingClass = student.student?.studyingClass?.trim();
-      const classLabel = studyingClass
-        ? classNameMap[studyingClass] || studyingClass
+      const studyingClassId = student.student?.studyingClass?.trim();
+      const classLabel = studyingClassId
+        ? classNameMap[studyingClassId] || studyingClassId
         : 'Unassigned';
       const existingGroup = acc.find((group) => group.className === classLabel);
 

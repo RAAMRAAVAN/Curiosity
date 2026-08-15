@@ -2,6 +2,61 @@ import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 
+const normalizeStudentCenter = (studentRecord) => {
+  if (!studentRecord || !studentRecord.student) return studentRecord;
+
+  const center = studentRecord.student.center
+    ? {
+        ...studentRecord.student.center,
+        centerName: studentRecord.student.center.name || null,
+      }
+    : null;
+
+  return {
+    ...studentRecord,
+    student: {
+      ...studentRecord.student,
+      center,
+    },
+  };
+};
+
+const groupPendingStudentsByClass = async (students = []) => {
+  const classIds = Array.from(
+    new Set(
+      students
+        .map((student) => student?.student?.studyingClass)
+        .filter((value) => typeof value === 'string' && value.trim())
+    )
+  );
+
+  const classRecords = classIds.length
+    ? await prisma.class.findMany({
+        where: { id: { in: classIds } },
+        select: { id: true, className: true },
+      })
+    : [];
+
+  const classNameMap = classRecords.reduce((acc, item) => {
+    acc[item.id] = item.className;
+    return acc;
+  }, {});
+
+  return students.reduce((acc, student) => {
+    const studyingClassId = student?.student?.studyingClass?.trim();
+    const classLabel = studyingClassId ? classNameMap[studyingClassId] || studyingClassId : 'Unassigned';
+    const existingGroup = acc.find((group) => group.className === classLabel);
+
+    if (existingGroup) {
+      existingGroup.students.push(student);
+    } else {
+      acc.push({ className: classLabel, students: [student] });
+    }
+
+    return acc;
+  }, []);
+};
+
 export async function GET(req, { params }) {
   try {
     const auth = await requireAdminPermission(req, 'assessments.pending.view');
@@ -34,7 +89,14 @@ export async function GET(req, { params }) {
       select: {
         id: true,
         classId: true,
-        class: { select: { centerId: true } },
+        class: { select: { id: true, className: true, centerId: true } },
+        allowedClasses: {
+          where: { active: true },
+          select: {
+            classId: true,
+            class: { select: { id: true, className: true, centerId: true } },
+          },
+        },
       },
     });
 
@@ -42,26 +104,153 @@ export async function GET(req, { params }) {
       return ApiResponse.error('Assessment not found', 404);
     }
 
-    if (scopedCenterId && assessment.class?.centerId && assessment.class.centerId !== scopedCenterId) {
-      return ApiResponse.error('Forbidden', 403);
-    }
+    const visibleClasses = [
+      assessment.class,
+      ...assessment.allowedClasses.map((item) => item.class),
+    ].filter(Boolean);
 
-    // For non-teachers (management/admin), verify center access
-    // If class has a center, verify the user can access it
-    // If class has no center, allow access if user has permission
-    if (!auth.actor.isAdmin && !scopedCenterId && assessment.class?.centerId) {
-      if (!auth.actor.canAccessCenter(assessment.class.centerId)) {
+    const visibleClassIds = Array.from(new Set(visibleClasses.map((item) => item.id).filter(Boolean)));
+    const visibleCenterIds = Array.from(new Set(visibleClasses.map((item) => item.centerId).filter(Boolean)));
+
+    if (!auth.actor.isAdmin) {
+      const managementAccessibleCenters = Array.isArray(auth.actor.assignedCenterIds)
+        ? auth.actor.assignedCenterIds.map((centerId) => String(centerId).trim()).filter(Boolean)
+        : [];
+
+      if (auth.actor.isTeacher && scopedCenterId) {
+        const allowedVisibleClassIds = visibleClasses
+          .filter((item) => !item.centerId || item.centerId === scopedCenterId)
+          .map((item) => item.id)
+          .filter(Boolean);
+
+        if (!allowedVisibleClassIds.length) {
+          return ApiResponse.error('Forbidden', 403);
+        }
+
+        if (visibleCenterIds.length && !visibleCenterIds.includes(scopedCenterId)) {
+          return ApiResponse.error('Forbidden', 403);
+        }
+
+        const studentClassIds = allowedVisibleClassIds;
+
+        const [eligibleStudents, attemptedResults, absentResults] = await Promise.all([
+          prisma.user.findMany({
+            where: {
+              role: 'STUDENT',
+              status: true,
+              student: {
+                studyingClass: { in: studentClassIds },
+                centerId: scopedCenterId,
+              },
+            },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              student: { select: { studyingClass: true, centerId: true, center: { select: { id: true, name: true } } } },
+            },
+            orderBy: [{ student: { studyingClass: 'asc' } }, { name: 'asc' }],
+          }),
+          prisma.assessmentResult.findMany({
+            where: {
+              assessmentId,
+              status: true,
+              user: {
+                student: { centerId: scopedCenterId },
+              },
+            },
+            select: { userId: true },
+          }),
+          prisma.assessmentAttendance.findMany({
+            where: {
+              assessmentId,
+              status: 'ABSENT',
+            },
+            select: { userId: true },
+          }),
+        ]);
+
+        const attemptedUserIds = new Set(attemptedResults.map((result) => result.userId));
+        const absentUserIds = new Set(absentResults.map((result) => result.userId));
+        const pendingStudents = eligibleStudents
+          .map(normalizeStudentCenter)
+          .filter((student) => !attemptedUserIds.has(student.id) && !absentUserIds.has(student.id));
+        const groupedStudents = await groupPendingStudentsByClass(pendingStudents);
+
+        return ApiResponse.success(groupedStudents);
+      }
+
+      if (!auth.actor.isTeacher && managementAccessibleCenters.length > 0) {
+        const accessibleVisibleClassIds = visibleClasses
+          .filter((item) => !item.centerId || managementAccessibleCenters.includes(String(item.centerId).trim()))
+          .map((item) => item.id)
+          .filter(Boolean);
+
+        if (!accessibleVisibleClassIds.length) {
+          return ApiResponse.error('You are not authorized to perform this operation.', 403);
+        }
+
+        const [eligibleStudents, attemptedResults, absentResults] = await Promise.all([
+          prisma.user.findMany({
+            where: {
+              role: 'STUDENT',
+              status: true,
+              student: {
+                studyingClass: { in: accessibleVisibleClassIds },
+                centerId: { in: managementAccessibleCenters },
+              },
+            },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              student: { select: { studyingClass: true, centerId: true, center: { select: { id: true, name: true } } } },
+            },
+            orderBy: [{ student: { studyingClass: 'asc' } }, { name: 'asc' }],
+          }),
+          prisma.assessmentResult.findMany({
+            where: {
+              assessmentId,
+              status: true,
+              user: {
+                student: {
+                  centerId: { in: managementAccessibleCenters },
+                },
+              },
+            },
+            select: { userId: true },
+          }),
+          prisma.assessmentAttendance.findMany({
+            where: {
+              assessmentId,
+              status: 'ABSENT',
+            },
+            select: { userId: true },
+          }),
+        ]);
+
+        const attemptedUserIds = new Set(attemptedResults.map((result) => result.userId));
+        const absentUserIds = new Set(absentResults.map((result) => result.userId));
+        const pendingStudents = eligibleStudents
+          .map(normalizeStudentCenter)
+          .filter((student) => !attemptedUserIds.has(student.id) && !absentUserIds.has(student.id));
+        const groupedStudents = await groupPendingStudentsByClass(pendingStudents);
+
+        return ApiResponse.success(groupedStudents);
+      }
+
+      if (!auth.actor.isTeacher && managementAccessibleCenters.length === 0) {
         return ApiResponse.error('You are not authorized to perform this operation.', 403);
       }
     }
 
-    const [eligibleStudents, attemptedResults] = await Promise.all([
+    const [eligibleStudents, attemptedResults, absentResults] = await Promise.all([
       prisma.user.findMany({
         where: {
           role: 'STUDENT',
           status: true,
           student: {
-            studyingClass: assessment.classId,
+            studyingClass: { in: visibleClassIds },
             ...(scopedCenterId ? { centerId: scopedCenterId } : {}),
           },
         },
@@ -69,7 +258,7 @@ export async function GET(req, { params }) {
           id: true,
           name: true,
           email: true,
-          student: { select: { studyingClass: true } },
+          student: { select: { studyingClass: true, centerId: true, center: { select: { id: true, name: true } } } },
         },
         orderBy: [{ student: { studyingClass: 'asc' } }, { name: 'asc' }],
       }),
@@ -91,58 +280,34 @@ export async function GET(req, { params }) {
           userId: true,
         },
       }),
+      prisma.assessmentAttendance.findMany({
+        where: {
+          assessmentId,
+          status: 'ABSENT',
+        },
+        select: { userId: true },
+      }),
     ]);
 
     const attemptedUserIds = new Set(attemptedResults.map((result) => result.userId));
-    const pendingStudents = eligibleStudents.filter((student) => !attemptedUserIds.has(student.id));
-
-    const studyingClassValues = Array.from(
-      new Set(
-        pendingStudents
-          .map((student) => student.student?.studyingClass)
-          .filter((value) => typeof value === 'string' && value.trim())
-      )
-    );
-
-    const classRecords = studyingClassValues.length
-      ? await prisma.class.findMany({
-          where: {
-            OR: [
-              { id: { in: studyingClassValues } },
-              { className: { in: studyingClassValues } },
-            ],
-          },
-          select: {
-            id: true,
-            className: true,
-          },
-        })
-      : [];
-
-    const classNameMap = classRecords.reduce((acc, item) => {
-      acc[item.id] = item.className;
-      acc[item.className] = item.className;
-      return acc;
-    }, {});
-
-    const groupedStudents = pendingStudents.reduce((acc, student) => {
-      const studyingClass = student.student?.studyingClass?.trim();
-      const classLabel = studyingClass
-        ? classNameMap[studyingClass] || studyingClass
-        : 'Unassigned';
-      const existingGroup = acc.find((group) => group.className === classLabel);
-
-      if (existingGroup) {
-        existingGroup.students.push(student);
-      } else {
-        acc.push({
-          className: classLabel,
-          students: [student],
-        });
-      }
-
-      return acc;
-    }, []);
+    const absentUserIds = new Set(absentResults.map((result) => result.userId));
+    const pendingStudents = eligibleStudents
+      .map((student) => ({
+        ...student,
+        student: student.student
+          ? {
+              ...student.student,
+              center: student.student.center
+                ? {
+                    ...student.student.center,
+                    centerName: student.student.center.name || null,
+                  }
+                : null,
+            }
+          : null,
+      }))
+      .filter((student) => !attemptedUserIds.has(student.id) && !absentUserIds.has(student.id));
+    const groupedStudents = await groupPendingStudentsByClass(pendingStudents);
 
     return ApiResponse.success(groupedStudents);
   } catch (error) {

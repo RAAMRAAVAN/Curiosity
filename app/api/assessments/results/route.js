@@ -312,7 +312,9 @@ export async function GET(req) {
       : [];
 
     const subjectIds = Array.from(new Set(assessments.map((assessment) => assessment.subjectId).filter(Boolean)));
-    const classIds = Array.from(new Set(assessments.map((assessment) => assessment.classId).filter(Boolean)));
+    const assessmentClassIds = Array.from(new Set(assessments.map((assessment) => assessment.classId).filter(Boolean)));
+    const studentClassIds = Array.from(new Set(studentProfiles.map((student) => student?.studyingClass).filter(Boolean)));
+    const classIds = Array.from(new Set([...assessmentClassIds, ...studentClassIds]));
 
     const subjects = subjectIds.length
       ? await prisma.subject.findMany({

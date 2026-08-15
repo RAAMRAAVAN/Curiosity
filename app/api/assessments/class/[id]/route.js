@@ -3,63 +3,83 @@ import { ApiResponse } from '@/utils/apiResponse';
 import { requireAdminPermission } from '@/lib/adminRbac';
 // import { buildAssessmentWithStats } from "@/lib/assessment"; // Update path if needed
 
-const buildAssessmentWithStats = async (assessment, eligibleStudentIds, scopedCenterId = null) => {
-    const [attempts, attemptUsers] = await Promise.all([
+const getAssessmentEligibleStudentIds = async (assessment, actor, scopedCenterId = null) => {
+    const visibleClassIds = Array.from(new Set([
+        assessment.classId,
+        ...((Array.isArray(assessment.allowedClasses) ? assessment.allowedClasses : []).map((item) => item.classId).filter(Boolean)),
+    ])).filter(Boolean);
+
+    if (!visibleClassIds.length) {
+        return [];
+    }
+
+    const centerFilter = !actor?.isAdmin && !scopedCenterId && Array.isArray(actor?.assignedCenterIds)
+        ? {
+            in: actor.assignedCenterIds.map((centerId) => String(centerId).trim()).filter(Boolean),
+        }
+        : scopedCenterId
+            ? scopedCenterId
+            : undefined;
+
+    const students = await prisma.user.findMany({
+        where: {
+            role: 'STUDENT',
+            status: true,
+            student: {
+                studyingClass: { in: visibleClassIds },
+                ...(centerFilter !== undefined ? { centerId: centerFilter } : {}),
+            },
+        },
+        select: { id: true },
+    });
+
+    return students.map((student) => student.id);
+};
+
+const buildAssessmentWithStats = async (assessment, actor, scopedCenterId = null) => {
+    const eligibleStudentIds = await getAssessmentEligibleStudentIds(assessment, actor, scopedCenterId);
+
+    const [attemptCount, attemptUsers, absentStudents] = await Promise.all([
         prisma.assessmentResult.count({
             where: {
                 assessmentId: assessment.id,
                 status: true,
-                ...(scopedCenterId
-                    ? {
-                        user: {
-                            student: {
-                                centerId: scopedCenterId,
-                            },
-                        },
-                    }
-                    : {}),
+                user: {
+                    student: {
+                        ...(scopedCenterId ? { centerId: scopedCenterId } : {}),
+                    },
+                },
             },
         }),
         prisma.assessmentResult.findMany({
             where: {
                 assessmentId: assessment.id,
                 status: true,
-                ...(scopedCenterId
-                    ? {
-                        user: {
-                            student: {
-                                centerId: scopedCenterId,
-                            },
-                        },
-                    }
-                    : {}),
+                user: {
+                    student: {
+                        ...(scopedCenterId ? { centerId: scopedCenterId } : {}),
+                    },
+                },
             },
             select: { userId: true },
             orderBy: { createdAt: 'asc' },
         }),
+        prisma.assessmentAttendance.findMany({
+            where: {
+                assessmentId: assessment.id,
+                status: 'ABSENT',
+            },
+            select: { userId: true },
+        }),
     ]);
 
-    const attemptUserIds = attemptUsers.map((item) => item.userId);
-    const matchedIds = eligibleStudentIds.filter((id) => attemptUserIds.includes(id));
-    const missingIds = eligibleStudentIds.filter((id) => !attemptUserIds.includes(id));
-
-    const pending = Math.max(missingIds.length, 0);
-
-    console.log('[assessments-class] assessment stats', {
-        assessmentId: assessment.id,
-        assessmentTitle: assessment.title,
-        eligibleStudentCount: eligibleStudentIds.length,
-        attempts,
-        pending,
-        eligibleStudentIds,
-        attemptUserIds,
-        matchedIds,
-        missingIds,
-    });
+    const attemptUserIds = new Set(attemptUsers.map((item) => item.userId));
+    const absentUserIds = new Set(absentStudents.map((item) => item.userId));
+    const pending = eligibleStudentIds.filter((id) => !attemptUserIds.has(id) && !absentUserIds.has(id)).length;
 
     return {
         ...assessment,
-        attempts,
+        attempts: attemptCount,
         pending,
     };
 };
@@ -108,36 +128,7 @@ export async function GET(req, { params }) {
                 ? [classId, classRecord.className]
                 : [classId];
 
-            const eligibleStudents = await prisma.user.findMany({
-                where: {
-                    role: 'STUDENT',
-                    status: true,
-                    student: {
-                        studyingClass: { in: studyingClassValues },
-                        ...(scopedCenterId ? { centerId: scopedCenterId } : {}),
-                    },
-                },
-                select: {
-                    id: true,
-                    name: true,
-                    student: { select: { studyingClass: true } },
-                    role: true,
-                    status: true,
-                },
-                take: 1000,
-            });
-
-        const eligibleStudentIds = eligibleStudents.map((student) => student.id);
-        const eligibleStudentCount = eligibleStudentIds.length;
-
-        console.log('[assessments-class] class lookup', {
-            classId,
-            eligibleStudentCount,
-            eligibleStudentIds,
-            sampleEligibleStudents: eligibleStudents,
-        });
-
-        const assessments = await prisma.assessment.findMany({
+            const assessments = await prisma.assessment.findMany({
             where: {
                 classId,
                 subjectId: subjectId || undefined,
@@ -149,6 +140,14 @@ export async function GET(req, { params }) {
                     select: {
                         id: true,
                         subjectName: true,
+                        classId: true,
+                    },
+                },
+                allowedClasses: {
+                    where: {
+                        active: true,
+                    },
+                    select: {
                         classId: true,
                     },
                 },
@@ -184,7 +183,7 @@ export async function GET(req, { params }) {
 
         const assessmentsWithStats = await Promise.all(
             assessments.map((assessment) =>
-                buildAssessmentWithStats(assessment, eligibleStudentIds, scopedCenterId)
+                buildAssessmentWithStats(assessment, auth.actor, scopedCenterId)
             )
         );
 
