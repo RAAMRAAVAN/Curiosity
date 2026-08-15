@@ -32,5 +32,5 @@ echo   - local (PostgreSQL on localhost:5432)
 echo   - neon (Neon cloud database)
 echo.
 
-rem Use dev mode with turbopack and force port 5000
-npm run dev -- --port 5000
+rem Start the built Next.js app using the normal start script on port 5000
+npm start -- --port 5000
