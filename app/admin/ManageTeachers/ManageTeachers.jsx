@@ -19,6 +19,8 @@ import {
     TableRow,
     TextField,
     Typography,
+    useMediaQuery,
+    useTheme,
 } from "@mui/material";
 
 import { useEffect, useMemo, useState } from "react";
@@ -40,6 +42,10 @@ const emptyForm = {
 };
 
 const ManageTeachersPage = ({ users, role, permissions = [] }) => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+    
     const [open, setOpen] = useState(false);
     const [pageLoading, setPageLoading] = useState(false);
     const [teachers, setTeachers] = useState([]);
@@ -349,11 +355,11 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
     }, [canUseCenterFilter, centerFilterOptions, selectedCenter]);
 
     return (
-        <Box display='flex' width='100%' padding={3}>
-            <Box display='flex' flexDirection='column' width='100%' padding={3} borderRadius={3} backgroundColor='white' boxShadow={3}>
-                <Box display='flex' width='100%' justifyContent='space-between' alignItems='center'>
-                    <Typography fontWeight='bold'>Teachers</Typography>
-                    <Stack direction="row" spacing={1}>
+        <Box sx={{ width: '100%', p: { xs: 1, sm: 2, md: 3 } }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', p: { xs: 2, sm: 3 }, borderRadius: 3, backgroundColor: 'white', boxShadow: 3 }}>
+                <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+                    <Typography fontWeight='bold' sx={{ fontSize: { xs: 14, sm: 16 } }}>Teachers</Typography>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                         {canUseCenterFilter ? (
                             <TextField
                                 select
@@ -361,7 +367,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                                 label="Filter By Center"
                                 value={selectedCenter}
                                 onChange={(event) => setSelectedCenter(event.target.value)}
-                                sx={{ minWidth: 220 }}
+                                sx={{ minWidth: 220, width: { xs: '100%', sm: 'auto' } }}
                                 InputLabelProps={{ shrink: true }}
                             >
                                 {centerFilterOptions.map((center) => (
@@ -369,28 +375,29 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                                 ))}
                             </TextField>
                         ) : null}
-                        <Button variant='outlined' onClick={handleDownloadTeachers} disabled={exporting || pageLoading}>
+                        <Button variant='outlined' onClick={handleDownloadTeachers} disabled={exporting || pageLoading} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                             {exporting ? "Exporting..." : "Download Excel"}
                         </Button>
                         {canCreateTeachers ? (
-                            <Button variant='contained' onClick={openCreateDialog}>Add New Teacher</Button>
+                            <Button variant='contained' onClick={openCreateDialog} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>Add New Teacher</Button>
                         ) : null}
                     </Stack>
                 </Box>
-                <Box marginTop={1}>
-                    <TableContainer sx={{ borderRadius: 3, overflow: "hidden" }}>
-                        <Table sx={{ minWidth: 720 }}>
+                <Box sx={{ marginTop: 2, overflow: 'auto' }}>
+                    <TableContainer sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
+                        <Table sx={{ minWidth: { xs: 600, sm: 720 } }}>
                             <TableHead sx={{ backgroundColor: "#f5f8ff" }}>
                                 <TableRow>
-                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Name</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Email</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Center</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Classes</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Gender</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Phone</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>DOB</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Map Subjects</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a" }}>Actions</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Name</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Email</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Center</TableCell>
+                                    {/* {!isTablet && <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Classes</TableCell>}
+                                    {!isTablet && <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Gender</TableCell>}
+                                    {!isMobile && <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Phone</TableCell>}
+                                    {!isMobile && <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>DOB</TableCell>} */}
+                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Map Subjects</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Edit / Delete</TableCell>
+                                    {/* <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Delete</TableCell> */}
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -409,11 +416,18 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                 </Box>
             </Box>
 
-            <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="md">
-                <DialogTitle>{editingTeacher ? "Edit Teacher" : "Add Teacher"}</DialogTitle>
+            <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth={isMobile ? "xs" : "md"}>
+                <DialogTitle sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 } }}>{editingTeacher ? "Edit Teacher" : "Add Teacher"}</DialogTitle>
                 <DialogContent dividers>
                     <Stack spacing={2} sx={{ mt: 1 }}>
-                        <TextField label="Full Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} fullWidth required />
+                        <TextField 
+                            label="Full Name" 
+                            value={form.name} 
+                            onChange={(e) => setForm({ ...form, name: e.target.value })} 
+                            fullWidth 
+                            required 
+                            size={isMobile ? "small" : "medium"}
+                        />
                         <TextField
                             select
                             label="Center"
@@ -421,6 +435,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                             onChange={(e) => setForm({ ...form, centerId: e.target.value })}
                             fullWidth
                             disabled={teacherLocked}
+                            size={isMobile ? "small" : "medium"}
                         >
                             {!teacherLocked ? <MenuItem value="">None</MenuItem> : null}
                             {centerOptions.map((center) => (
@@ -435,6 +450,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                                     value={form.email || ""}
                                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                                     fullWidth
+                                    size={isMobile ? "small" : "medium"}
                                     helperText="Leave blank to keep the current email"
                                 />
                                 <TextField
@@ -443,24 +459,67 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                                     value={form.password || ""}
                                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                                     fullWidth
+                                    size={isMobile ? "small" : "medium"}
                                     helperText="Leave blank to keep the current password"
                                 />
-                                <TextField label="Date of Birth" type="date" value={form.dob} onChange={(e) => setForm({ ...form, dob: e.target.value })} fullWidth InputLabelProps={{ shrink: true }} />
-                                <TextField select label="Gender" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} fullWidth>
+                                <TextField 
+                                    label="Date of Birth" 
+                                    type="date" 
+                                    value={form.dob} 
+                                    onChange={(e) => setForm({ ...form, dob: e.target.value })} 
+                                    fullWidth 
+                                    size={isMobile ? "small" : "medium"}
+                                    InputLabelProps={{ shrink: true }} 
+                                />
+                                <TextField 
+                                    select 
+                                    label="Gender" 
+                                    value={form.gender} 
+                                    onChange={(e) => setForm({ ...form, gender: e.target.value })} 
+                                    fullWidth
+                                    size={isMobile ? "small" : "medium"}
+                                >
                                     <MenuItem value="">None</MenuItem>
                                     <MenuItem value="Male">Male</MenuItem>
                                     <MenuItem value="Female">Female</MenuItem>
                                     <MenuItem value="Other">Other</MenuItem>
                                     <MenuItem value="Prefer not to say">Prefer not to say</MenuItem>
                                 </TextField>
-                                <TextField label="Phone Number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} fullWidth />
-                                <TextField label="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} fullWidth multiline rows={2} />
-                                <TextField select label="Status" value={form.status ? "active" : "inactive"} onChange={(e) => setForm({ ...form, status: e.target.value === "active" })} SelectProps={{ native: true }} fullWidth>
+                                <TextField 
+                                    label="Phone Number" 
+                                    value={form.phone} 
+                                    onChange={(e) => setForm({ ...form, phone: e.target.value })} 
+                                    fullWidth 
+                                    size={isMobile ? "small" : "medium"}
+                                />
+                                <TextField 
+                                    label="Address" 
+                                    value={form.address} 
+                                    onChange={(e) => setForm({ ...form, address: e.target.value })} 
+                                    fullWidth 
+                                    multiline 
+                                    rows={2}
+                                    size={isMobile ? "small" : "medium"}
+                                />
+                                <TextField 
+                                    select 
+                                    label="Status" 
+                                    value={form.status ? "active" : "inactive"} 
+                                    onChange={(e) => setForm({ ...form, status: e.target.value === "active" })} 
+                                    SelectProps={{ native: true }} 
+                                    fullWidth
+                                    size={isMobile ? "small" : "medium"}
+                                >
                                     <option value="active">Active</option>
                                     <option value="inactive">Inactive</option>
                                 </TextField>
                                 {canMapSubjects ? (
-                                    <Button variant="outlined" onClick={() => { setSelectedTeacherId(editingTeacher.id); setSubjectDialogOpen(true); }}>
+                                    <Button 
+                                        variant="outlined" 
+                                        onClick={() => { setSelectedTeacherId(editingTeacher.id); setSubjectDialogOpen(true); }}
+                                        size={isMobile ? "small" : "medium"}
+                                        fullWidth
+                                    >
                                         Manage Subjects
                                     </Button>
                                 ) : null}
@@ -468,9 +527,9 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                         ) : null}
                     </Stack>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpen(false)}>Cancel</Button>
-                    <Button variant="contained" onClick={handleSubmit} disabled={pageLoading}>{editingTeacher ? "Save Changes" : "Create Teacher"}</Button>
+                <DialogActions sx={{ gap: 1, px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 2 } }}>
+                    <Button onClick={() => setOpen(false)} size={isMobile ? "small" : "medium"}>Cancel</Button>
+                    <Button variant="contained" onClick={handleSubmit} disabled={pageLoading} size={isMobile ? "small" : "medium"}>{editingTeacher ? "Save Changes" : "Create Teacher"}</Button>
                 </DialogActions>
             </Dialog>
 

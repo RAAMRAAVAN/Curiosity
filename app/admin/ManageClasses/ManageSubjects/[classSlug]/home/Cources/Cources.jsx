@@ -98,7 +98,7 @@ const Cources = ({ defaultClass }) => {
 
       setSubjects(result.data || []);
     } catch (err) {
-      console.log(err);
+      // console.log(err);
     }
   };
 
@@ -209,7 +209,7 @@ const Cources = ({ defaultClass }) => {
         loadSubjects(classId);
       }
     } catch (err) {
-      console.log(err);
+      // console.log(err);
       alert("Failed to create subjects");
     } finally {
       setLoading(false);

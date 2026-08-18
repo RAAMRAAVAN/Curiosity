@@ -175,11 +175,11 @@ export async function GET(req, { params }) {
             },
         });
 
-        console.log('[assessments-class] assessments fetched', {
-            classId,
-            assessmentCount: assessments.length,
-            assessmentIds: assessments.map((assessment) => assessment.id),
-        });
+        // console.log('[assessments-class] assessments fetched', {
+        //     classId,
+        //     assessmentCount: assessments.length,
+        //     assessmentIds: assessments.map((assessment) => assessment.id),
+        // });
 
         const assessmentsWithStats = await Promise.all(
             assessments.map((assessment) =>

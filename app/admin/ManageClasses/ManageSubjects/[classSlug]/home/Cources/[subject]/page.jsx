@@ -175,9 +175,9 @@ const Subject = () => {
             setChapterName("");
             setChapterNumber("");
 
-            console.log(
-                "Chapter Created Successfully"
-            );
+            // console.log(
+            //     "Chapter Created Successfully"
+            // );
 
         } catch (error) {
 

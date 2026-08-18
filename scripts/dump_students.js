@@ -6,7 +6,7 @@ async function run(){
     select: { id: true, name: true, student: { select: { studyingClass: true } } },
     take: 200,
   });
-  console.log(JSON.stringify(students, null, 2));
+  // console.log(JSON.stringify(students, null, 2));
   process.exit(0);
 }
 

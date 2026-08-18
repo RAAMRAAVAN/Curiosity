@@ -13,7 +13,7 @@ async function main() {
     data: { password: hashed },
   });
 
-  console.log('Password reset for', user.email);
+  // console.log('Password reset for', user.email);
 }
 
 main()

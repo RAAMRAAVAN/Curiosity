@@ -248,17 +248,17 @@ export async function PUT(req, { params }) {
                 existing.video?.videoPath
             ) {
 
-                console.log("OLD VIDEO TYPE:", existing.video.videoType);
+                // console.log("OLD VIDEO TYPE:", existing.video.videoType);
 
-                console.log(
-                    "OLD VIDEO PATH:",
-                    existing.video.videoPath
-                );
+                // console.log(
+                //     "OLD VIDEO PATH:",
+                //     existing.video.videoPath
+                // );
 
-                console.log(
-                    "NEW VIDEO TYPE:",
-                    videoType
-                );
+                // console.log(
+                //     "NEW VIDEO TYPE:",
+                //     videoType
+                // );
 
 
                 oldVideoToDelete = existing.video.videoPath;
@@ -346,18 +346,18 @@ export async function PUT(req, { params }) {
                 );
 
 
-                console.log(
-                    "Deleting old video:",
-                    filePath
-                );
+                // console.log(
+                //     "Deleting old video:",
+                //     filePath
+                // );
 
 
                 await fs.unlink(filePath);
 
 
-                console.log(
-                    "Old video deleted successfully"
-                );
+                // console.log(
+                //     "Old video deleted successfully"
+                // );
 
 
             } catch (error) {

@@ -10,6 +10,8 @@ import {
   Paper,
   Typography,
   IconButton,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import AdminDrawyer from "./AdminDrawyer";
 import ManageUsersPage from "./ManageUsers/ManageUsers";
@@ -35,14 +37,19 @@ const hasPermission = (permissions, permission, role) => {
 };
 
 export default function AdminPage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
+
   const [users, setUsers] = useState([]);
   const [admin, setAdmin] = useState(null);
   const [authorized, setAuthorized] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(!isMobile);
   const [adminView, setAdminView] = useState("users");
   const [message, setMessage] = useState(null);
   const [hasAnyAdminPermission, setHasAnyAdminPermission] = useState(true);
+  const router = useRouter();
 
   const getCombinedPermissions = (userData) => {
     const direct = Array.isArray(userData?.permissions) ? userData.permissions : [];
@@ -206,8 +213,45 @@ export default function AdminPage() {
   }
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "#f5f8ff", py: 4, px: 3 }}>
-      {drawerOpen ? <><AdminDrawyer
+    <Box sx={{ minHeight: "100vh", bgcolor: "#f5f8ff" }}>
+      {/* Responsive Header with Menu Button */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          px: { xs: 2, sm: 3, md: 4 },
+          py: 2,
+          backgroundColor: '#fff',
+          borderBottom: '1px solid rgba(15, 23, 42, 0.08)',
+          position: { xs: 'sticky', md: 'relative' },
+          top: 0,
+          zIndex: 100,
+          gap: 2,
+        }}
+      >
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 700,
+            fontSize: { xs: 16, sm: 18, md: 20 },
+            flex: 1,
+          }}
+        >
+          Admin Panel
+        </Typography>
+        {isMobile && (
+          <IconButton
+            onClick={() => setDrawerOpen(true)}
+            sx={{ color: 'inherit' }}
+          >
+            <Menu />
+          </IconButton>
+        )}
+      </Box>
+
+      {/* Drawer */}
+      <AdminDrawyer
         drawerOpen={drawerOpen}
         setDrawerOpen={setDrawerOpen}
         adminView={adminView}
@@ -218,20 +262,21 @@ export default function AdminPage() {
         userName={admin?.name}
         customRoleName={admin?.customRole?.name || admin?.customRoleName || null}
       />
-      </> : <>
-      
-        <IconButton
-          onClick={()=>{setDrawerOpen(true)}}
-          color="inherit"
-          sx={{marginBottom:2}}
-        >
-          <Menu/>
-        </IconButton>
-      </>}
-      <Box sx={{ maxWidth: 1400, mx: "auto", ml: drawerOpen ? "250px" : 0 }}>
+
+      {/* Main Content */}
+      <Box
+        sx={{
+          ml: { xs: 0, md: drawerOpen ? 30 : 0 },
+          transition: 'margin-left 0.3s ease-in-out',
+          py: { xs: 2, sm: 3, md: 4 },
+          px: { xs: 2, sm: 3, md: 4 },
+          minHeight: 'calc(100vh - 64px)',
+        }}
+      >
+        <Box sx={{ maxWidth: 1400, mx: "auto", width: '100%' }}>
 
         {adminView === 'none' || !hasAnyAdminPermission ? (
-          <Paper sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(15, 23, 42, 0.08)' }}>
+          <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, border: '1px solid rgba(15, 23, 42, 0.08)' }}>
             <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>No Permissions Assigned</Typography>
             <Typography color="text.secondary">
               This account does not have any admin permissions yet. Ask an ADMIN to assign a custom role and centers.
@@ -269,7 +314,7 @@ export default function AdminPage() {
         {adminView === "teachers" ? (<>
                   <>
                   {message ? (
-              <Paper sx={{ p: 3, mb: 4, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+              <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 4, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
                 <Typography color="text.primary">{message}</Typography>
               </Paper>
             ) : null}
@@ -287,7 +332,7 @@ export default function AdminPage() {
         </>): null}
 
         {adminView === "centers" ? (
-          <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+          <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
             <ManageCenters
               setMessage={setMessage}
               role={admin?.role}
@@ -297,7 +342,7 @@ export default function AdminPage() {
         ) : null}
 
         {adminView === "students" ? (
-          <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+          <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
             <ManageStudents
               setMessage={setMessage}
               role={admin?.role}
@@ -307,7 +352,7 @@ export default function AdminPage() {
         ) : null}
 
         {adminView === "results" ? (
-          <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+          <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
             <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>Assessment Results</Typography>
             <Typography color="text.secondary" sx={{ mb: 3 }}>Review live submissions from students across subjects.</Typography>
             <AssessmentResultsDashboard assessmentId="" />
@@ -315,7 +360,7 @@ export default function AdminPage() {
         ) : null}
 
         {adminView === 'roles' ? (
-          <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+          <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
             <ManageRoles
               setMessage={setMessage}
               role={admin?.role}
@@ -323,6 +368,7 @@ export default function AdminPage() {
             />
           </Paper>
         ) : null}
+        </Box>
       </Box>
     </Box>
   );

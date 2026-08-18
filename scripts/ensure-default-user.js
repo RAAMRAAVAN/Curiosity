@@ -42,8 +42,8 @@ async function main() {
         },
       });
 
-      console.log('Default admin user created:', user.email);
-      console.log('Default admin password:', DEFAULT_USER.password);
+      // console.log('Default admin user created:', user.email);
+      // console.log('Default admin password:', DEFAULT_USER.password);
       return;
     }
 
@@ -61,12 +61,12 @@ async function main() {
         },
       });
 
-      console.log('Default admin user updated:', updated.email);
-      console.log('Default admin password:', DEFAULT_USER.password);
+      // console.log('Default admin user updated:', updated.email);
+      // console.log('Default admin password:', DEFAULT_USER.password);
       return;
     }
 
-    console.log('Default admin user already exists:', existing.email);
+    // console.log('Default admin user already exists:', existing.email);
   } finally {
     await prisma.$disconnect();
   }

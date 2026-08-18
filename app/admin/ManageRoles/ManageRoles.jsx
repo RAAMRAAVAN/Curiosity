@@ -22,6 +22,8 @@ import {
   TableRow,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -85,6 +87,10 @@ const emptyForm = {
 };
 
 const ManageRoles = ({ setMessage, role, permissions = [] }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -276,57 +282,59 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
         </Alert>
       ) : null}
 
-      <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3, borderRadius: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 2, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
           <Box>
-            <Typography variant="h6" fontWeight={700}>Manage Roles</Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 14, sm: 16 } }}>Manage Roles</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: 11, sm: 13 } }}>
               Create custom management roles and configure exact permissions.
             </Typography>
           </Box>
-          <Stack direction="row" spacing={1}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
             {teachersPresetRole ? (
-              <Button variant="outlined" onClick={openTeachersPreset}>Teachers Preset</Button>
+              <Button variant="outlined" onClick={openTeachersPreset} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>Teachers Preset</Button>
             ) : null}
             {canCreateRoles ? (
-              <Button variant="contained" onClick={startCreate}>Create Role</Button>
+              <Button variant="contained" onClick={startCreate} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>Create Role</Button>
             ) : null}
           </Stack>
         </Box>
 
-        <TableContainer>
-          <Table>
-            <TableHead>
+        <TableContainer sx={{ overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
+          <Table sx={{ minWidth: { xs: 500, sm: 600 } }}>
+            <TableHead sx={{ backgroundColor: "#f5f8ff" }}>
               <TableRow>
-                <TableCell>Role Name</TableCell>
-                <TableCell>Description</TableCell>
-                <TableCell>Permissions</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Role Name</TableCell>
+                {!isMobile && <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Description</TableCell>}
+                <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Permissions</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Edit / Delete</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {roles.map((role) => (
-                <TableRow key={role.id}>
-                  <TableCell>{role.name}</TableCell>
-                  <TableCell>{role.description || '-'}</TableCell>
-                  <TableCell>{permissionCountMap.get(role.id) || 0}</TableCell>
-                  <TableCell>
+                <TableRow key={role.id} sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}>
+                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{role.name}</TableCell>
+                  {!isMobile && <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{role.description || '-'}</TableCell>}
+                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{permissionCountMap.get(role.id) || 0}</TableCell>
+                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>
                     <Chip label={role.status === false ? 'Disabled' : 'Active'} color={role.status === false ? 'default' : 'success'} size="small" />
                   </TableCell>
                   <TableCell>
-                    {canEditRoles ? (
-                      <Button size="small" onClick={() => startEdit(role)}>Edit</Button>
-                    ) : null}
-                    {canDeleteRoles ? (
-                      <Button size="small" color="error" onClick={() => deleteRole(role)}>Delete</Button>
-                    ) : null}
+                    <Stack direction="row" spacing={0.5}>
+                      {canEditRoles ? (
+                        <Button size={isMobile ? "small" : "medium"} onClick={() => startEdit(role)} sx={{ fontSize: { xs: 10, sm: 12 } }}>Edit</Button>
+                      ) : null}
+                      {canDeleteRoles ? (
+                        <Button size={isMobile ? "small" : "medium"} color="error" onClick={() => deleteRole(role)} sx={{ fontSize: { xs: 10, sm: 12 } }}>Delete</Button>
+                      ) : null}
+                    </Stack>
                   </TableCell>
                 </TableRow>
               ))}
               {!loading && roles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">No custom roles found.</TableCell>
+                  <TableCell colSpan={isMobile ? 4 : 5} align="center" sx={{ py: 3 }}>No custom roles found.</TableCell>
                 </TableRow>
               ) : null}
             </TableBody>
@@ -334,14 +342,15 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
         </TableContainer>
       </Paper>
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>{editingRole ? 'Edit Role' : 'Create Role'}</DialogTitle>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth={isMobile ? "xs" : "md"} fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 } }}>{editingRole ? 'Edit Role' : 'Create Role'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
               label="Role Name"
               value={form.name}
               onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+              size={isMobile ? "small" : "medium"}
               fullWidth
             />
             <TextField

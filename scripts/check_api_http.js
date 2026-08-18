@@ -33,5 +33,5 @@ function get(path) {
     out.push(r);
   }
   fs.writeFileSync('scripts/check_api_http_results.json', JSON.stringify(out, null, 2));
-  console.log('WROTE scripts/check_api_http_results.json');
+  // console.log('WROTE scripts/check_api_http_results.json');
 })();

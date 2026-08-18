@@ -21,10 +21,16 @@ import {
   TableRow,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { Delete, Edit, Add } from "@mui/icons-material";
 
 export default function ManageCenters({ setMessage, role, permissions = [] }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
   const [centers, setCenters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -168,13 +174,13 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 3, flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
         <Box>
-          <Typography variant="h5" fontWeight={700}>Manage Centers</Typography>
-          <Typography color="text.secondary">Create, view, and edit centers.</Typography>
+          <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: 18, sm: 20, md: 24 } }}>Manage Centers</Typography>
+          <Typography color="text.secondary" sx={{ fontSize: { xs: 12, sm: 14 } }}>Create, view, and edit centers.</Typography>
         </Box>
         {canCreateCenters ? (
-          <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog}>
+          <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>
             Add Center
           </Button>
         ) : null}
@@ -186,47 +192,47 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
         </Alert>
       ) : null}
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
-        <Table>
-          <TableHead>
+      <TableContainer component={Paper} sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
+        <Table sx={{ minWidth: { xs: 500, sm: 600 } }}>
+          <TableHead sx={{ backgroundColor: "#f5f8ff" }}>
             <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Slug</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Name</TableCell>
+              {!isMobile && <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Description</TableCell>}
+              <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Status</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={isMobile ? 3 : 4} align="center" sx={{ py: 4 }}>
                   Loading centers...
                 </TableCell>
               </TableRow>
             ) : centers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={isMobile ? 3 : 4} align="center" sx={{ py: 4 }}>
                   No centers found.
                 </TableCell>
               </TableRow>
             ) : (
               centers.map((center) => (
-                <TableRow key={center.id} hover>
-                  <TableCell>{center.name}</TableCell>
-                  <TableCell>{center.slug}</TableCell>
-                  <TableCell>
+                <TableRow key={center.id} hover sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}>
+                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{center.name}</TableCell>
+                  {!isMobile && <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{center.slug}</TableCell>}
+                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>
                     <Chip label={center.status ? "Active" : "Inactive"} color={center.status ? "success" : "default"} size="small" />
                   </TableCell>
                   <TableCell align="right">
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                    <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                       {canEditCenters ? (
-                        <IconButton color="primary" onClick={() => openEditDialog(center)}>
-                          <Edit />
+                        <IconButton color="primary" onClick={() => openEditDialog(center)} size={isMobile ? "small" : "medium"}>
+                          <Edit fontSize={isMobile ? "small" : "medium"} />
                         </IconButton>
                       ) : null}
                       {canDeleteCenters ? (
-                        <IconButton color="error" onClick={() => handleDelete(center.id)}>
-                          <Delete />
+                        <IconButton color="error" onClick={() => handleDelete(center.id)} size={isMobile ? "small" : "medium"}>
+                          <Delete fontSize={isMobile ? "small" : "medium"} />
                         </IconButton>
                       ) : null}
                     </Stack>
@@ -238,8 +244,8 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
         </Table>
       </TableContainer>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingCenter ? "Edit Center" : "Create Center"}</DialogTitle>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth={isMobile ? "xs" : "sm"} fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 } }}>{editingCenter ? "Edit Center" : "Create Center"}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
@@ -248,6 +254,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               fullWidth
               required
+              size={isMobile ? "small" : "medium"}
             />
             <TextField
               label="Slug"
@@ -255,6 +262,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
               onChange={(e) => setForm({ ...form, slug: e.target.value })}
               fullWidth
               required
+              size={isMobile ? "small" : "medium"}
             />
             <TextField
               select
@@ -263,15 +271,16 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
               onChange={(e) => setForm({ ...form, status: e.target.value === "active" })}
               SelectProps={{ native: true }}
               fullWidth
+              size={isMobile ? "small" : "medium"}
             >
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </TextField>
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSubmit} disabled={(!canCreateCenters && !editingCenter) || (editingCenter && !canEditCenters)}>
+        <DialogActions sx={{ gap: 1, px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 2 } }}>
+          <Button onClick={() => setDialogOpen(false)} size={isMobile ? "small" : "medium"}>Cancel</Button>
+          <Button variant="contained" onClick={handleSubmit} disabled={(!canCreateCenters && !editingCenter) || (editingCenter && !canEditCenters)} size={isMobile ? "small" : "medium"}>
             {editingCenter ? "Save Changes" : "Create Center"}
           </Button>
         </DialogActions>

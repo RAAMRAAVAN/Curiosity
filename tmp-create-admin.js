@@ -62,9 +62,9 @@ async function main() {
     });
   }
 
-  console.log('Admin user ready:');
-  console.log('Email:', email);
-  console.log('Password:', password);
+  // console.log('Admin user ready:');
+  // console.log('Email:', email);
+  // console.log('Password:', password);
 }
 
 main()

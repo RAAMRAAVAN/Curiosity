@@ -21,12 +21,18 @@ import {
   TableRow,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { Delete, Edit, Add } from "@mui/icons-material";
 
 const ALL_CENTERS = "ALL";
 
 export default function ManageStudents({ setMessage, role, permissions = [] }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
   const [students, setStudents] = useState([]);
   const [centers, setCenters] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -408,12 +414,12 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 3, flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
         <Box>
-          <Typography variant="h5" fontWeight={700}>Manage Students</Typography>
-          <Typography color="text.secondary">Create and manage student accounts with center and class selection.</Typography>
+          <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: 18, sm: 20, md: 24 } }}>Manage Students</Typography>
+          <Typography color="text.secondary" sx={{ fontSize: { xs: 12, sm: 14 } }}>Create and manage student accounts with center and class selection.</Typography>
         </Box>
-        <Stack direction="row" spacing={1}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           {canUseCenterFilter ? (
             <TextField
               select
@@ -421,7 +427,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
               label="Filter By Center"
               value={selectedCenter}
               onChange={(event) => setSelectedCenter(event.target.value)}
-              sx={{ minWidth: 220 }}
+              sx={{ minWidth: 220, width: { xs: '100%', sm: 'auto' } }}
               InputLabelProps={{ shrink: true }}
             >
               {centerFilterOptions.map((center) => (
@@ -431,62 +437,62 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
               ))}
             </TextField>
           ) : null}
-          <Button variant="outlined" onClick={handleDownloadStudents} disabled={exporting || loading}>
+          <Button variant="outlined" onClick={handleDownloadStudents} disabled={exporting || loading} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>
             {exporting ? "Exporting..." : "Download Excel"}
           </Button>
           {canCreateStudents ? (
-            <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog}>
+            <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>
               Add Student
             </Button>
           ) : null}
         </Stack>
       </Box>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
-        <Table>
-          <TableHead>
+      <TableContainer component={Paper} sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
+        <Table sx={{ minWidth: { xs: 600, sm: 720 } }}>
+          <TableHead sx={{ backgroundColor: "#f5f8ff" }}>
             <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Center</TableCell>
-              <TableCell>Class</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Name</TableCell>
+              {/* <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Email</TableCell> */}
+              <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Center</TableCell>
+              <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Class</TableCell>
+              <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Status</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={isMobile ? 4 : isTablet ? 5 : 6} align="center" sx={{ py: 4 }}>
                   Loading students...
                 </TableCell>
               </TableRow>
             ) : filteredStudents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={isMobile ? 4 : isTablet ? 5 : 6} align="center" sx={{ py: 4 }}>
                   {students.length === 0 ? "No students found." : "No students found for the selected center."}
                 </TableCell>
               </TableRow>
             ) : (
               filteredStudents.map((student) => (
-                <TableRow key={student.id} hover>
-                  <TableCell>{student.name}</TableCell>
-                  <TableCell>{student.email}</TableCell>
-                  <TableCell>{student.centerName || "—"}</TableCell>
-                  <TableCell>{student.className || classNameById[student.studyingClass] || "—"}</TableCell>
-                  <TableCell>
+                <TableRow key={student.id} hover sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}>
+                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{student.name}</TableCell>
+                  {/* <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{student.email}</TableCell> */}
+                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{student.centerName || "—"}</TableCell>
+                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{student.className || classNameById[student.studyingClass] || "—"}</TableCell>
+                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>
                     <Chip label={student.status ? "Active" : "Inactive"} color={student.status ? "success" : "default"} size="small" />
                   </TableCell>
                   <TableCell align="right">
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                    <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                       {canEditStudents ? (
-                        <IconButton color="primary" onClick={() => openEditDialog(student)}>
-                          <Edit />
+                        <IconButton color="primary" onClick={() => openEditDialog(student)} size={isMobile ? "small" : "medium"}>
+                          <Edit fontSize={isMobile ? "small" : "medium"} />
                         </IconButton>
                       ) : null}
                       {canDeleteStudents ? (
-                        <IconButton color="error" onClick={() => handleDelete(student.id)}>
-                          <Delete />
+                        <IconButton color="error" onClick={() => handleDelete(student.id)} size={isMobile ? "small" : "medium"}>
+                          <Delete fontSize={isMobile ? "small" : "medium"} />
                         </IconButton>
                       ) : null}
                     </Stack>
@@ -498,8 +504,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
         </Table>
       </TableContainer>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingStudent ? "Edit Student" : "Create Student"}</DialogTitle>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth={isMobile ? "xs" : "sm"} fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 } }}>{editingStudent ? "Edit Student" : "Create Student"}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
@@ -508,6 +514,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               fullWidth
               required
+              size={isMobile ? "small" : "medium"}
             />
             {!editingStudent ? null : (
               <>
@@ -517,6 +524,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   fullWidth
+                  size={isMobile ? "small" : "medium"}
                 />
                 <TextField
                   label="Password"

@@ -119,13 +119,13 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
 
                     <TableCell>{teacher.centerName || "—"}</TableCell>
 
-                    <TableCell>{teacher.classNames?.join(", ") || "—"}</TableCell>
+                    {/* <TableCell>{teacher.classNames?.join(", ") || "—"}</TableCell>
 
                     <TableCell>{teacher.gender || "—"}</TableCell>
 
                     <TableCell>{teacher.phone || "—"}</TableCell>
 
-                    <TableCell>{teacher.dob || "—"}</TableCell>
+                    <TableCell>{teacher.dob || "—"}</TableCell> */}
 
 
                     <TableCell>

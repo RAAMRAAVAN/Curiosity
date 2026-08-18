@@ -199,7 +199,7 @@ const TeacherSubjectDialog = ({
                 subjectIds: selected,
             };
 
-            console.log("Payload:", payload);
+            // console.log("Payload:", payload);
 
             setPageLoading(true);
 

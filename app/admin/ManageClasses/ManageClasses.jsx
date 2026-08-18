@@ -1,5 +1,5 @@
 'use client'
-import { Paper, Typography, Box, Button, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
+import { Paper, Typography, Box, Button, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem, useMediaQuery, useTheme } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { setDefaultClass } from "@/redux/features/classSlice";
@@ -10,6 +10,10 @@ import { useDispatch } from "react-redux";
 const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
     const dispatch = useDispatch();
     const router = useRouter();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+    
     const [classes, setClasses] = useState([]);
     const [openClassModal, setOpenClassModal] = useState(false);
     const [classForm, setClassForm] = useState({ className: "", icon: "" });
@@ -209,18 +213,18 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
     };
 
     return (<>
-        <Paper sx={{ p: 3, mb: 4, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                <Typography variant="h6" fontWeight={700}>Classes</Typography>
-                {isAdminRole || canCreateClasses ? <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-                    {isAdminRole ? <FormControl size="small" sx={{ minWidth: 220 }}>
+        <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 4, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 2, flexDirection: { xs: "column", sm: "row" }, gap: { xs: 2, sm: 1 } }}>
+                <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 14, sm: 16 } }}>Classes</Typography>
+                {isAdminRole || canCreateClasses ? <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", width: { xs: '100%', sm: 'auto' } }}>
+                    {isAdminRole ? <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 220 } }}>
                         <InputLabel>Default View</InputLabel>
                         <Select label="Default View" value={navigationPreference} onChange={handlePreferenceChange}>
                             <MenuItem value="contents">Class Content</MenuItem>
                             <MenuItem value="assessments">Assessments</MenuItem>
                         </Select>
                     </FormControl> : null}
-                    {isAdminRole ? <Button variant="outlined" sx={{ mr: 1 }} onClick={async () => {
+                    {isAdminRole ? <Button variant="outlined" size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }} onClick={async () => {
                         if (!confirm("Seed classes 1-12?")) return;
                         setLoading(true);
                         try {
@@ -233,55 +237,67 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                         } catch (e) { console.error(e); setMessage('Seed failed'); }
                         setLoading(false);
                     }}>Seed Classes</Button> : null}
-                    {canCreateClasses ? <Button variant="contained" onClick={() => {
+                    {canCreateClasses ? <Button variant="contained" size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }} onClick={() => {
                         const name = prompt("Class name (e.g. Class 1, BSc Computer Science, 4th sem):");
                         if (name) handleCreateClass(name);
                     }}>Create Class</Button> : null}
                 </Box> : null}
             </Box>
-            <TableContainer>
-                <Table>
+            <TableContainer sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
+                <Table sx={{ minWidth: { xs: 500, sm: 600 } }}>
                     <TableHead>
-                        <TableRow>
-                            <TableCell>Class Name</TableCell>
-                            <TableCell>Icon</TableCell>
-                            <TableCell>Edit</TableCell>
-                            <TableCell>Delete</TableCell>
-                            <TableCell>Open</TableCell>
+                        <TableRow sx={{ backgroundColor: "#f5f8ff" }}>
+                            <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Class Name</TableCell>
+                            {/* {!isMobile && <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Icon</TableCell>} */}
+                            <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 }, }}>Edit</TableCell>
+                            <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 }, }}>Delete</TableCell>
+                            <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 }, }}>View Contents</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {classes.map((c) => (
-                            <TableRow key={c.id}>
-                                <TableCell>{c.className}</TableCell>
-                                <TableCell>{c.icon || "-"}</TableCell>
+                            <TableRow key={c.id} sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}>
+                                <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{c.className}</TableCell>
+                                {/* {!isMobile && <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{c.icon || "-"}</TableCell>} */}
                                 <TableCell>
-                                    {canEditClasses ? <Button size="small" onClick={() => openEditClass(c)} sx={{ mr: 1 }}>Edit</Button> : '-'}
+                                        {canEditClasses ? <Button size="small" onClick={() => openEditClass(c)} sx={{ fontSize: { xs: 10, sm: 12 } }}>Edit</Button> : null}
                                 </TableCell>
                                 <TableCell>
-                                    {canDeleteClasses ? <Button size="small" color="error" onClick={() => handleDeleteClass(c.id)}>Delete</Button> : '-'}
+                                        {canDeleteClasses ? <Button size="small" color="error" onClick={() => handleDeleteClass(c.id)} sx={{ fontSize: { xs: 10, sm: 12 } }}>Delete</Button> : null}
                                 </TableCell>
                                 <TableCell>
-                                    <Button size="small" onClick={() => handleClassAction(c)}>
-                                        View Class Contents
-                                    </Button>
+                                        <Button size="small" onClick={() => handleClassAction(c)} sx={{ fontSize: { xs: 10, sm: 12 } }}>
+                                            View Contents
+                                        </Button>
                                 </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </TableContainer>
-            <Dialog open={openClassModal} onClose={() => { setOpenClassModal(false); setEditingClassId(null); }} maxWidth="sm" fullWidth>
-                <DialogTitle>{editingClassId ? "Edit Class" : "Create Class"}</DialogTitle>
+            <Dialog open={openClassModal} onClose={() => { setOpenClassModal(false); setEditingClassId(null); }} maxWidth={isMobile ? "xs" : "sm"} fullWidth>
+                <DialogTitle sx={{ fontSize: { xs: 14, sm: 16 }, fontWeight: 700 }}>{editingClassId ? "Edit Class" : "Create Class"}</DialogTitle>
                 <DialogContent>
                     <Box sx={{ display: 'grid', gap: 2, mt: 1 }}>
-                        <TextField label="Class Name" value={classForm.className} onChange={(e) => setClassForm({ ...classForm, className: e.target.value })} fullWidth />
-                        <TextField label="Icon URL" value={classForm.icon} onChange={(e) => setClassForm({ ...classForm, icon: e.target.value })} fullWidth />
+                        <TextField 
+                            label="Class Name" 
+                            value={classForm.className} 
+                            onChange={(e) => setClassForm({ ...classForm, className: e.target.value })} 
+                            fullWidth 
+                            size={isMobile ? "small" : "medium"}
+                        />
+                        <TextField 
+                            label="Icon URL" 
+                            value={classForm.icon} 
+                            onChange={(e) => setClassForm({ ...classForm, icon: e.target.value })} 
+                            fullWidth 
+                            size={isMobile ? "small" : "medium"}
+                        />
                     </Box>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => { setOpenClassModal(false); setEditingClassId(null); }}>Cancel</Button>
-                    <Button variant="contained" onClick={handleSaveClass}>{editingClassId ? 'Save Changes' : 'Create'}</Button>
+                <DialogActions sx={{ gap: 1, px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 2 } }}>
+                    <Button onClick={() => { setOpenClassModal(false); setEditingClassId(null); }} size={isMobile ? "small" : "medium"}>Cancel</Button>
+                    <Button variant="contained" onClick={handleSaveClass} size={isMobile ? "small" : "medium"}>{editingClassId ? 'Save Changes' : 'Create'}</Button>
                 </DialogActions>
             </Dialog>
         </Paper>

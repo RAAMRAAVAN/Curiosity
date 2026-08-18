@@ -27,7 +27,7 @@ async function check() {
     }
   }
   fs.writeFileSync(outPath, results.map(r => JSON.stringify(r)).join('\n'));
-  console.log('WROTE', outPath);
+  // console.log('WROTE', outPath);
 }
 
 check().catch(e => { console.error(e); process.exit(1); });

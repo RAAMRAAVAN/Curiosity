@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 async function main() {
   const email = 'rambaburai911@gmail.com';
   const user = await prisma.user.findUnique({ where: { email } });
-  console.log('Exact lookup result:', user);
+  // console.log('Exact lookup result:', user);
 
   const candidates = await prisma.user.findMany({
     where: {
@@ -13,7 +13,7 @@ async function main() {
       },
     },
   });
-  console.log('Partial lookup results:', candidates);
+  // console.log('Partial lookup results:', candidates);
 }
 
 main()

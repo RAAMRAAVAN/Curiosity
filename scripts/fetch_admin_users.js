@@ -6,7 +6,7 @@ const req = http.request(options, (res) => {
   res.on('data', (c) => body += c.toString());
   res.on('end', () => {
     fs.writeFileSync('scripts/admin_users.json', body);
-    console.log('WROTE scripts/admin_users.json');
+    // console.log('WROTE scripts/admin_users.json');
   });
 });
 req.on('error', (e) => { console.error(e); process.exit(1); });

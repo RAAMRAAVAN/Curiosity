@@ -147,7 +147,7 @@ const Chapter = ({ chapters, setChapters, loading, subject, fetchChapters }) => 
   };
 
   const handleSubmit = async () => {
-    console.log(formData);
+    // console.log(formData);
 
     try {
       const res = await fetch(`/api/admin/chapters/${formData.chapterID}`, {
@@ -167,7 +167,7 @@ const Chapter = ({ chapters, setChapters, loading, subject, fetchChapters }) => 
   };
 
   useEffect(() => {
-    console.log("Chapters = ", chapters);
+    // console.log("Chapters = ", chapters);
   }, [chapters])
 
   const EditSubject = () => {

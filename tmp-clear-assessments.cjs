@@ -18,13 +18,13 @@ async function main() {
     prisma.assessmentReattemptRequest.count(),
   ]);
 
-  console.log(JSON.stringify({
-    assessments: counts[0],
-    questions: counts[1],
-    options: counts[2],
-    results: counts[3],
-    reattempts: counts[4],
-  }, null, 2));
+  // console.log(JSON.stringify({
+  //   assessments: counts[0],
+  //   questions: counts[1],
+  //   options: counts[2],
+  //   results: counts[3],
+  //   reattempts: counts[4],
+  // }, null, 2));
 }
 
 main()

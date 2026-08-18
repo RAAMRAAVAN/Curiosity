@@ -13,6 +13,8 @@ import {
   ListItemIcon,
   ListItemText,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 
 import {
@@ -28,6 +30,7 @@ import {
 } from "@mui/icons-material";
 
 const drawerWidth = 260;
+const mobileDrawerWidth = 240;
 
 const AdminDrawer = ({
   drawerOpen,
@@ -41,6 +44,8 @@ const AdminDrawer = ({
   customRoleName,
 }) => {
   const pathname = usePathname();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const normalizedPermissions = Array.isArray(permissions)
     ? permissions.map((item) => String(item || '').toLowerCase())
@@ -113,16 +118,24 @@ const AdminDrawer = ({
 
   const visibleMenuItems = menuItems.filter((item) => hasPermission(item.permission));
 
+  const handleMenuItemClick = () => {
+    if (isMobile) {
+      setDrawerOpen(false);
+    }
+  };
+
   return (
     <Drawer
-      variant="persistent"
+      variant={isMobile ? "temporary" : "persistent"}
       open={drawerOpen}
+      onClose={() => setDrawerOpen(false)}
       sx={{
-        width: drawerWidth,
+        width: isMobile ? mobileDrawerWidth : drawerWidth,
         flexShrink: 0,
         "& .MuiDrawer-paper": {
-          width: drawerWidth,
+          width: isMobile ? mobileDrawerWidth : drawerWidth,
           boxSizing: "border-box",
+          marginTop: { xs: 0, md: 0 },
         },
       }}
     >
@@ -149,7 +162,10 @@ const AdminDrawer = ({
           <ListItem key={item.value} disablePadding>
             <ListItemButton
               selected={adminView === item.value}
-              onClick={() => setAdminView(item.value)}
+              onClick={() => {
+                setAdminView(item.value);
+                handleMenuItemClick();
+              }}
               sx={{
                 mx: 1,
                 my: 0.5,

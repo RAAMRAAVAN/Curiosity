@@ -8,7 +8,7 @@ async function main() {
     where: { email },
     data: { role: 'ADMIN' },
   });
-  console.log('Updated role for', user.email, '=>', user.role);
+  // console.log('Updated role for', user.email, '=>', user.role);
 }
 
 main()

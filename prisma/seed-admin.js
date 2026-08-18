@@ -29,9 +29,9 @@ async function main() {
     },
   });
 
-  console.log("Admin user created:", admin.email);
-  console.log("Admin login email:", adminEmail);
-  console.log("Admin login password:", adminPassword);
+  // console.log("Admin user created:", admin.email);
+  // console.log("Admin login email:", adminEmail);
+  // console.log("Admin login password:", adminPassword);
 }
 
 main()
