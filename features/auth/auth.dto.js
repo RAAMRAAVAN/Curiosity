@@ -13,6 +13,7 @@ export function toUserDto(user) {
     email: user.email,
     role: user.role,
     userType: user.role?.toLowerCase(),
+    centerName: profile.center?.name || user.center?.name || null,
     dob: profile.dob ?? null,
     gender: profile.gender ?? null,
     phone: profile.phone ?? null,

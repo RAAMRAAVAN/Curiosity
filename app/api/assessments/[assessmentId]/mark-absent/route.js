@@ -1,6 +1,7 @@
 import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
+import { teacherCanAccessAssessment } from '@/lib/teacherAssessmentAccess';
 
 export async function POST(req, { params }) {
   try {
@@ -15,6 +16,10 @@ export async function POST(req, { params }) {
 
     if (!assessmentId) {
       return ApiResponse.error('Assessment ID is required', 400);
+    }
+
+    if (!(await teacherCanAccessAssessment(prisma, assessmentId, auth.actor))) {
+      return ApiResponse.error('You are not authorized to manage this assessment.', 403);
     }
 
     if (!Array.isArray(userIds) || userIds.length === 0) {

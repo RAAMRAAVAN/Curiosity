@@ -5,6 +5,7 @@ import { ensureAssessmentSchemaColumns } from '@/lib/assessmentCompatibility';
 import { updateAssessmentOperationStatus } from '@/lib/assessmentUpdateStatus';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { getUserFromRequest } from '@/server/auth';
+import { teacherCanAccessSubject, teacherCanAccessAssessment } from '@/lib/teacherAssessmentAccess';
 
 const normalizeQuestions = (questions) => {
   if (!Array.isArray(questions) || questions.length === 0) {
@@ -266,6 +267,10 @@ export async function POST(req, { params }) {
       return ApiResponse.error('Subject not found', 404);
     }
 
+    if (!(await teacherCanAccessSubject(prisma, id, auth.actor))) {
+      return ApiResponse.error('You are not authorized to create an assessment for this subject.', 403);
+    }
+
     const derivedTotalMarks = normalizedQuestions.reduce((sum, question) => sum + (Number(question.marks) || 0), 0);
 
     const assessment = await prisma.$transaction(async (tx) => {
@@ -380,6 +385,10 @@ export async function PUT(req, { params }) {
 
     if (!existingAssessment) {
       return ApiResponse.error('Assessment not found', 404);
+    }
+
+    if (!(await teacherCanAccessAssessment(prisma, assessmentId, auth.actor))) {
+      return ApiResponse.error('You are not authorized to manage this assessment.', 403);
     }
 
     const derivedTotalMarks = normalizedQuestions.reduce((sum, question) => sum + (Number(question.marks) || 0), 0);

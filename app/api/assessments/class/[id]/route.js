@@ -97,10 +97,11 @@ export async function GET(req, { params }) {
         const chapterId = searchParams.get('chapterId');
 
         let scopedCenterId = null;
+        let teacherId = null;
         if (auth.actor.isTeacher) {
             const teacherProfile = await prisma.teacher.findUnique({
                 where: { userId: auth.actor.userId },
-                select: { centerId: true },
+            select: { id: true, centerId: true },
             });
 
             if (!teacherProfile?.centerId) {
@@ -108,6 +109,7 @@ export async function GET(req, { params }) {
             }
 
             scopedCenterId = teacherProfile.centerId;
+            teacherId = teacherProfile.id;
         }
 
         if (!classId) {
@@ -134,6 +136,7 @@ export async function GET(req, { params }) {
                 subjectId: subjectId || undefined,
                 chapterId: chapterId || undefined,
                 status: true,
+                ...(teacherId ? { subject: { teacherSubjects: { some: { teacherId, status: true } } } } : {}),
             },
             include: {
                 subject: {

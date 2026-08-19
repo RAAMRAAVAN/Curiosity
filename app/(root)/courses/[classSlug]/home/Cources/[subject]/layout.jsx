@@ -21,7 +21,6 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import SettingsIcon from "@mui/icons-material/Settings";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { Inbox, Mail } from "@mui/icons-material";
 import LoginModal from "@/app/(components)/MyProfile/LoginModal";
@@ -75,6 +74,7 @@ export default function Layout({ children }) {
   };
 
   const isLoggedIn = Boolean(authDetails?.loggedIn);
+  const currentUser = authDetails?.user || {};
 
   const handleLogoutClick = async () => {
     try {
@@ -238,22 +238,19 @@ export default function Layout({ children }) {
             <List>
               {isLoggedIn ? (
                 <>
-                  <ListItem disablePadding>
-                    <ListItemButton disabled>
-                      <ListItemIcon>
-                        <AccountCircleIcon />
-                      </ListItemIcon>
-                      <ListItemText primary="Profile" primaryTypographyProps={{ fontSize: 14 }} />
-                    </ListItemButton>
-                  </ListItem>
-                  <ListItem disablePadding>
-                    <ListItemButton disabled>
-                      <ListItemIcon>
-                        <SettingsIcon />
-                      </ListItemIcon>
-                      <ListItemText primary="My Account" primaryTypographyProps={{ fontSize: 14 }} />
-                    </ListItemButton>
-                  </ListItem>
+                  <Box sx={{ px: 1.5, py: 1 }}>
+                    <Typography variant="subtitle2" fontWeight={700}>
+                      {currentUser.name || "User"}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+                      <Box component="span" fontWeight={700}>Role:</Box> {currentUser.role || "No role"}
+                    </Typography>
+                    {String(currentUser.role || '').toUpperCase() === 'TEACHER' ? (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+                        <Box component="span" fontWeight={700}>Centre:</Box> {currentUser.centerName || "No center assigned"}
+                      </Typography>
+                    ) : null}
+                  </Box>
                   <ListItem disablePadding>
                     <ListItemButton onClick={handleLogoutClick}>
                       <ListItemIcon>

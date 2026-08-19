@@ -46,6 +46,23 @@ export async function GET(req) {
       where.classId = classID;
     }
 
+    if (role === 'TEACHER') {
+      const userId = authUser?.userId || authUser?.id;
+      const teacher = userId
+        ? await prisma.teacher.findUnique({
+            where: { userId },
+            select: { id: true },
+          })
+        : null;
+
+      where.teacherSubjects = {
+        some: {
+          teacherId: teacher?.id || '__unassigned_teacher__',
+          status: true,
+        },
+      };
+    }
+
     const subjects = await prisma.subject.findMany({
       where,
       include: {

@@ -5,7 +5,8 @@ export const authRepository = {
     return prisma.user.findUnique({
       where: { email },
       include: {
-        teacher: true,
+        center: true,
+        teacher: { include: { center: true } },
         student: true,
         admin: true,
         management: true,
@@ -18,7 +19,8 @@ export const authRepository = {
     return prisma.user.findUnique({
       where: { id },
       include: {
-        teacher: true,
+        center: true,
+        teacher: { include: { center: true } },
         student: true,
         admin: true,
         management: true,

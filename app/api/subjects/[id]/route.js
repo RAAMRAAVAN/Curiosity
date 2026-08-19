@@ -31,12 +31,29 @@ export async function GET(
       );
     }
 
+    const teacher = role === 'TEACHER'
+      ? await prisma.teacher.findUnique({
+          where: { userId: authUser?.userId || authUser?.id || '' },
+          select: { id: true },
+        })
+      : null;
+
 
     const subject =
-      await prisma.subject.findUnique({
+      await prisma.subject.findFirst({
 
         where: {
           id,
+          ...(role === 'TEACHER'
+            ? {
+                teacherSubjects: {
+                  some: {
+                    teacherId: teacher?.id || '__unassigned_teacher__',
+                    status: true,
+                  },
+                },
+              }
+            : {}),
         },
 
 

@@ -27,6 +27,7 @@ import {
   SchoolOutlined,
   Logout,
   Security,
+  LockReset,
 } from "@mui/icons-material";
 
 const drawerWidth = 260;
@@ -41,6 +42,7 @@ const AdminDrawer = ({
   permissions = [],
   customRolePermissions = [],
   userName,
+  centerName,
   customRoleName,
 }) => {
   const pathname = usePathname();
@@ -85,6 +87,12 @@ const AdminDrawer = ({
       permission: 'classes.view',
     },
     {
+      title: "View Assessments",
+      value: "assessments",
+      icon: <Assessment />,
+      permission: 'assessments.view',
+    },
+    {
       title: "Manage Teachers",
       value: "teachers",
       icon: <Person />,
@@ -113,6 +121,12 @@ const AdminDrawer = ({
       value: "results",
       icon: <Assessment />,
       permission: 'results.view',
+    },
+    {
+      title: "Reset Password",
+      value: "reset-password",
+      icon: <LockReset />,
+      permission: null,
     },
   ];
 
@@ -222,8 +236,13 @@ const AdminDrawer = ({
             {userName || "User"}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
-            {customRoleName || role || "No custom role"}
+            <Box component="span" fontWeight={700}>Role:</Box> {customRoleName || role || "No custom role"}
           </Typography>
+          {String(role || '').toUpperCase() === 'TEACHER' ? (
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+              <Box component="span" fontWeight={700}>Centre:</Box> {centerName || "No center assigned"}
+            </Typography>
+          ) : null}
         </Box>
 
         <ListItem disablePadding>

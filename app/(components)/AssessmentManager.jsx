@@ -33,7 +33,7 @@ import {
 } from '@mui/material';
 import { AddCircleOutline, CheckCircleOutline, Close, DeleteOutline, RadioButtonUnchecked, Quiz, SaveOutlined } from '@mui/icons-material';
 
-const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessments, loading, addQuestion, subjectId, classId, chapterId, title, setTitle, description, setDescription, type, setType, questions, setQuestions, feedback, setFeedback, editingAssessment, setEditingAssessment, open, setOpen, saving, setSaving }) => {
+const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessments, loading, addQuestion, subjectId, classId, chapterId, title, setTitle, description, setDescription, type, setType, questions, setQuestions, feedback, setFeedback, editingAssessment, setEditingAssessment, open, setOpen, saving, setSaving, allowSubjectSelection = false, assessmentSubjectOptions = [], assessmentVisibleClassOptions = [], onAssessmentSubjectChange, onAllowedClassIdsChange }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const defaultGradeBands = [
@@ -77,6 +77,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
   const [operationSteps, setOperationSteps] = useState([]);
   const [showOperationLoader, setShowOperationLoader] = useState(false);
   const computedTotalMarks = questions.reduce((sum, question) => sum + Number(question.marks || 1), 0);
+  const visibleClassOptions = assessmentVisibleClassOptions.length ? assessmentVisibleClassOptions : availableClasses;
 
   const addOperationStep = (stepName, status = 'in-progress') => {
     setOperationSteps((prev) => {
@@ -186,12 +187,6 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
 
   useEffect(() => {
     const loadClasses = async () => {
-      if (!classId) {
-        setAvailableClasses([]);
-        setAllowedClassIds([]);
-        return;
-      }
-
       try {
         setClassesLoading(true);
         const res = await fetch('/api/classes', { credentials: 'include' });
@@ -204,14 +199,16 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         const classes = Array.isArray(result.data) ? result.data : [];
         setAvailableClasses(classes);
         setAllowedClassIds((prev) => {
-          const current = prev && prev.length ? prev : [String(classId)];
-          const validCurrent = current.includes(String(classId)) ? current : [String(classId), ...current.filter(Boolean)];
+          const current = prev && prev.length ? prev : (classId ? [String(classId)] : []);
+          const validCurrent = classId && !current.includes(String(classId))
+            ? [String(classId), ...current.filter(Boolean)]
+            : current;
           return Array.from(new Set(validCurrent.filter(Boolean))).filter((id) => classes.some((item) => String(item.id) === String(id)) || String(id) === String(classId));
         });
       } catch (error) {
         console.error(error);
         setAvailableClasses([]);
-        setAllowedClassIds([String(classId)]);
+        setAllowedClassIds(classId ? [String(classId)] : []);
       } finally {
         setClassesLoading(false);
       }
@@ -226,6 +223,12 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
     }
   }, [open, editingAssessment, classId]);
 
+  useEffect(() => {
+    if (!editingAssessment && !allowSubjectSelection) {
+      setAllowedClassIds(classId ? [String(classId)] : []);
+    }
+  }, [classId, editingAssessment, allowSubjectSelection]);
+
   const handleAllowedClassSelection = (event) => {
     const nextValues = Array.isArray(event?.target?.value) ? event.target.value : [];
     const fixedCurrentClass = classId ? [String(classId)] : [];
@@ -233,7 +236,9 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
       .map((item) => String(item))
       .filter((item) => item && item !== String(classId));
 
-    setAllowedClassIds([...fixedCurrentClass, ...selectedOthers]);
+    const nextAllowedClassIds = [...fixedCurrentClass, ...selectedOthers];
+    setAllowedClassIds(nextAllowedClassIds);
+    onAllowedClassIdsChange?.(nextAllowedClassIds);
   };
 
   const removeQuestion = (index) => {
@@ -335,7 +340,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
     setPendingDialogOpen(false);
     setStudentAssessmentContext({
       assessmentId: selectedAssessment.id,
-      subjectId: subjectId || '',
+      subjectId: selectedAssessment.subjectId || subjectId || '',
       studentId: student.id,
       editMode: false,
       studentName: student.name,
@@ -350,7 +355,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
     setAppearedDialogOpen(false);
     setStudentAssessmentContext({
       assessmentId: selectedAssessment.id,
-      subjectId: subjectId || '',
+      subjectId: selectedAssessment.subjectId || subjectId || '',
       studentId: student.id,
       editMode: true,
       studentName: student.name,
@@ -554,7 +559,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
   };
 
   const handleSubmit = async () => {
-    if (!subjectId && !classId) {
+    if (!subjectId && !classId && !editingAssessment) {
       alert('Class or subject is required to save assessment.');
       return;
     }
@@ -613,19 +618,21 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         ])
       ).filter(Boolean);
 
-      const endpoint = classId ? '/api/assessments' : `/api/subjects/${subjectId}/assessments`;
+      const resolvedClassId = editingAssessment?.classId || classId || undefined;
+      const resolvedSubjectId = editingAssessment?.subjectId || subjectId || null;
+      const endpoint = editingAssessment || classId ? '/api/assessments' : `/api/subjects/${subjectId}/assessments`;
       const res = await fetch(endpoint, {
         method: editingAssessment ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           assessmentId: editingAssessment?.id,
-          classId: classId || undefined,
-          subjectId: subjectId || null,
+          classId: resolvedClassId,
+          subjectId: resolvedSubjectId,
           chapterId: chapterId || null,
           title: title.trim(),
           description: description.trim() || null,
           type,
-          resolvedSubjectId: subjectId || null,
+          resolvedSubjectId,
           totalMarks: computedTotalMarks,
           gradeBands: gradeBands.filter((band) => band?.label?.trim()),
           allowedClassIds: normalizedAllowedClassIds,
@@ -799,6 +806,11 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                   <Box sx={{ width: '100%', minWidth: 0 }}>
                     <Typography fontWeight="bold">{assessment.title}</Typography>
                     <Typography variant="body2" color="text.secondary">{assessment.description || 'No description'}</Typography>
+                    {(assessment.subject?.subjectName || assessment.class?.className) ? (
+                      <Typography variant="caption" color="text.secondary">
+                        {assessment.subject?.subjectName || 'Subject'}{assessment.class?.className ? ` • ${assessment.class.className}` : ''}
+                      </Typography>
+                    ) : null}
                   </Box>
                   <Chip
                     label={`View ${assessment.type}`}
@@ -1175,22 +1187,22 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             </FormControl>
 
             <FormControl fullWidth>
-              <InputLabel>Visible Classes</InputLabel>
+              <InputLabel>Group Classes</InputLabel>
               <Select
                 multiple
                 value={allowedClassIds}
-                label="Visible Classes"
+                label="Group Classes"
                 onChange={handleAllowedClassSelection}
                 disabled={classesLoading || availableClasses.length === 0}
                 renderValue={(selected) => {
                   const names = (selected || [])
-                    .map((id) => availableClasses.find((item) => String(item.id) === String(id))?.className)
+                    .map((id) => visibleClassOptions.find((item) => String(item.id) === String(id))?.className)
                     .filter(Boolean);
 
                   return names.length ? names.join(', ') : 'No classes selected';
                 }}
               >
-                {availableClasses.map((item) => {
+                {visibleClassOptions.map((item) => {
                   const isCurrentClass = String(item.id) === String(classId);
                   return (
                     <MenuItem key={item.id} value={item.id} disabled={isCurrentClass}>
@@ -1202,6 +1214,24 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
               </Select>
             </FormControl>
 
+            {allowSubjectSelection && !editingAssessment ? (
+              <FormControl fullWidth>
+                <InputLabel>Subject</InputLabel>
+                <Select
+                  value={subjectId || ''}
+                  label="Subject"
+                  onChange={(event) => onAssessmentSubjectChange?.(event.target.value)}
+                  disabled={!assessmentSubjectOptions.length}
+                >
+                  {assessmentSubjectOptions.map((item) => (
+                    <MenuItem key={item.id} value={item.id}>
+                      <ListItemText primary={item.subjectName} secondary={item.className || undefined} />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : null}
+
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
               <TextField
                 label="Total Marks"
@@ -1211,9 +1241,9 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                 inputProps={{ min: 0, readOnly: true }}
                 helperText="Auto-calculated from per-question marks"
               />
-              <Typography variant="body2" color="text.secondary" sx={{ alignSelf: 'center' }}>
+              {/* <Typography variant="body2" color="text.secondary" sx={{ alignSelf: 'center' }}>
                 {computedTotalMarks} marks from questions
-              </Typography>
+              </Typography> */}
             </Stack>
 
             <Box sx={{ border: '1px solid #e5e7eb', borderRadius: 3, p: 2 }}>
