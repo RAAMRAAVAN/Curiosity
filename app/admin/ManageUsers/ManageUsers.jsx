@@ -24,7 +24,7 @@ const roleOptions = ["management"];
 
 
 
-const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, loading, setLoading, role, permissions = []}) => {
+const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessage, loading, setLoading, role, permissions = [] }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -94,6 +94,9 @@ const ManageUsersPage = ({users, setUsers, messgae, refreshUsers, setMessage, lo
 
     useEffect(() => {
       loadRolesAndCenters();
+      if (typeof refreshUsers === 'function') {
+        refreshUsers();
+      }
     }, []);
 
     const handleUserFormChange = (event) => {

@@ -127,7 +127,6 @@ export default function AdminPage() {
           }
 
           if (defaultView === 'users') {
-            await refreshUsers();
             setAdminView('users');
           } else {
             setUsers([]);
@@ -169,6 +168,12 @@ export default function AdminPage() {
       setMessage("Unable to fetch users.");
     }
   };
+
+  useEffect(() => {
+    if (authorized && adminView === 'users') {
+      refreshUsers();
+    }
+  }, [authorized, adminView]);
 
   const getAlertSeverity = (text) => {
     if (!text) return "error";
