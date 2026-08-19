@@ -416,9 +416,23 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                 </Box>
             </Box>
 
-            <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth={isMobile ? "xs" : "md"}>
+            <Dialog
+                open={open}
+                onClose={() => setOpen(false)}
+                fullWidth
+                maxWidth={isMobile ? false : "md"}
+                sx={isMobile ? {
+                    '& .MuiDialog-paper': {
+                        margin: 0,
+                        width: '100%',
+                        maxWidth: '100%',
+                        height: '80vh',
+                        maxHeight: '80vh',
+                    },
+                } : {}}
+            >
                 <DialogTitle sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 } }}>{editingTeacher ? "Edit Teacher" : "Add Teacher"}</DialogTitle>
-                <DialogContent dividers>
+                <DialogContent dividers sx={{ overflowY: 'auto' }}>
                     <Stack spacing={2} sx={{ mt: 1 }}>
                         <TextField 
                             label="Full Name" 

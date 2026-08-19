@@ -3,11 +3,15 @@ import { Box, Button, Grid, IconButton, Tooltip, Typography } from "@mui/materia
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import ComingSoon from "../../ComingSoon";
+import LoginModal from "@/app/(components)/MyProfile/LoginModal";
+import SignupModal from "@/app/(components)/MyProfile/SignupModal";
 import { useState } from "react";
 
 const HomeBroucher = () => {
     const router = useRouter();
     const [open, setOpen] = useState(false);
+    const [openLogin, setOpenLogin] = useState(false);
+    const [openSignup, setOpenSignup] = useState(false);
     const handleClose = () => {
         setOpen(false);
     }
@@ -80,7 +84,7 @@ const HomeBroucher = () => {
                                     marginTop: 2,
                                     borderRadius: 2
                                 }}
-                                onClick={() => { router.push(`./courses/NA/ChooseClass/`) }}
+                                onClick={() => { setOpenLogin(true) }}
                             >
                                 Start Learning for free <ArrowRightAlt />
                             </Button>
@@ -187,6 +191,22 @@ const HomeBroucher = () => {
             </Box>
         </Box>
         <ComingSoon open={open} handleClose={handleClose} />
+        <LoginModal
+            open={openLogin}
+            onClose={() => setOpenLogin(false)}
+            onSignupClick={() => {
+                setOpenLogin(false);
+                setOpenSignup(true);
+            }}
+        />
+        <SignupModal
+            open={openSignup}
+            onClose={() => setOpenSignup(false)}
+            onLoginClick={() => {
+                setOpenSignup(false);
+                setOpenLogin(true);
+            }}
+        />
     </>);
 }
 export default HomeBroucher;

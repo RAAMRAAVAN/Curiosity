@@ -341,7 +341,16 @@ const TeacherSubjectDialog = ({
             open={open}
             onClose={() => setOpen(false)}
             fullWidth
-            maxWidth="md"
+            maxWidth={false}
+            sx={{
+                '& .MuiDialog-paper': {
+                    margin: { xs: 0, sm: '32px' },
+                    width: { xs: '100%', sm: 'calc(100% - 64px)' },
+                    maxWidth: { xs: '100%', sm: '900px' },
+                    height: { xs: '80vh', sm: 'auto' },
+                    maxHeight: { xs: '80vh', sm: 'calc(100% - 64px)' },
+                },
+            }}
         >
 
 
@@ -351,7 +360,7 @@ const TeacherSubjectDialog = ({
 
 
 
-            <DialogContent>
+            <DialogContent sx={{ overflowY: 'auto' }}>
 
 
                 <Box

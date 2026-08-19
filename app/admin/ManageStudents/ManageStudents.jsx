@@ -504,9 +504,23 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
         </Table>
       </TableContainer>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth={isMobile ? "xs" : "sm"} fullWidth>
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth={isMobile ? false : "sm"}
+        fullWidth
+        sx={isMobile ? {
+          '& .MuiDialog-paper': {
+            margin: 0,
+            width: '100%',
+            maxWidth: '100%',
+            height: '80vh',
+            maxHeight: '80vh',
+          },
+        } : {}}
+      >
         <DialogTitle sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 } }}>{editingStudent ? "Edit Student" : "Create Student"}</DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ overflowY: 'auto' }}>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
               label="Full Name"

@@ -307,6 +307,7 @@ export async function GET(req) {
             totalMarks: true,
             subjectId: true,
             classId: true,
+            // createdAt: true,
           },
         })
       : [];

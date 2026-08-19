@@ -25,11 +25,15 @@ import {
   TableRow,
   TextField,
   Typography,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { Assessment, BarChart, TrendingUp } from '@mui/icons-material';
 
 const AssessmentResultsDashboard = ({ assessmentId }) => {
   const ALL_CENTERS = 'ALL';
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [pendingDialogOpen, setPendingDialogOpen] = useState(false);
@@ -221,6 +225,7 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
           totalScore: 0,
           totalPercent: 0,
           maxScore: 0,
+          createdAt: result.assessment?.createdAt,
         });
       }
 
@@ -242,7 +247,12 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
             ? Math.round((summary.totalPercent / summary.attempts) * 100) / 100
             : 0,
       }))
-      .sort((a, b) => b.attempts - a.attempts);
+      .sort((a, b) => {
+        // Sort by creation date (latest first)
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
   }, [results, assessmentId]);
 
   useEffect(() => {
@@ -652,7 +662,21 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
         </>
       ) : null}
 
-      <Dialog open={pendingDialogOpen} onClose={() => setPendingDialogOpen(false)} fullWidth maxWidth="sm">
+      <Dialog 
+        open={pendingDialogOpen} 
+        onClose={() => setPendingDialogOpen(false)} 
+        fullWidth
+        maxWidth={isMobile ? false : "sm"}
+        sx={isMobile ? {
+          '& .MuiDialog-paper': {
+            margin: 0,
+            width: '100%',
+            maxWidth: '100%',
+            height: '80vh',
+            maxHeight: '80vh',
+          },
+        } : {}}
+      >
         <DialogTitle>Pending Students</DialogTitle>
         <DialogContent>
           {pendingLoading ? (
@@ -684,7 +708,21 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={absentDialogOpen} onClose={() => setAbsentDialogOpen(false)} fullWidth maxWidth="sm">
+      <Dialog 
+        open={absentDialogOpen} 
+        onClose={() => setAbsentDialogOpen(false)} 
+        fullWidth
+        maxWidth={isMobile ? false : "sm"}
+        sx={isMobile ? {
+          '& .MuiDialog-paper': {
+            margin: 0,
+            width: '100%',
+            maxWidth: '100%',
+            height: '80vh',
+            maxHeight: '80vh',
+          },
+        } : {}}
+      >
         <DialogTitle>Absent Students</DialogTitle>
         <DialogContent>
           {absentLoading ? (
@@ -733,7 +771,21 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={detailDialogOpen} onClose={() => setDetailDialogOpen(false)} fullWidth maxWidth="lg">
+      <Dialog 
+        open={detailDialogOpen} 
+        onClose={() => setDetailDialogOpen(false)} 
+        fullWidth
+        maxWidth={isMobile ? false : "lg"}
+        sx={isMobile ? {
+          '& .MuiDialog-paper': {
+            margin: 0,
+            width: '100%',
+            maxWidth: '100%',
+            height: '80vh',
+            maxHeight: '80vh',
+          },
+        } : {}}
+      >
         <DialogTitle>{detailAssessmentTitle}</DialogTitle>
         <DialogContent>
           <Box
@@ -772,7 +824,7 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
             </Button>
           </Box>
 
-          <Box sx={{ mb: 3 }}>
+          <Box sx={{ mb: 3, display: { xs: 'none', lg: 'block' } }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <Card sx={{ flex: 1, bgcolor: '#f5f7ff', borderRadius: 3 }} variant="outlined">
                 <CardContent>

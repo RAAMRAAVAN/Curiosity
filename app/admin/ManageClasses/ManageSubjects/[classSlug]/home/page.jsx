@@ -63,16 +63,16 @@ const HomePage = () => {
 
 
         <Box display="flex" width="100%" flexDirection="column">
-          <Grid container marginTop={2} marginBottom={5} display="flex" maxWidth="800px">
+          {/* <Grid container marginTop={2} marginBottom={5} display="flex" maxWidth="800px">
             <Grid item xs={2}><Box display="flex"><Chip label="All Cources" sx={{ display: "flex", width: "120px" }} borderRadius={3} variant="outlined" onClick={handleClick} /></Box></Grid>
             <Grid item xs={2}><Box display="flex"><Chip label="Main Subjects" sx={{ display: "flex", width: "120px" }} borderRadius={3} variant="outlined" onClick={handleClick} /></Box></Grid>
             <Grid item xs={2}><Box display="flex"><Chip label="Grammar" sx={{ display: "flex", width: "120px" }} borderRadius={3} variant="outlined" onClick={handleClick} /></Box></Grid>
             <Grid item xs={2}><Box display="flex"><Chip label="Skill Building" sx={{ display: "flex", width: "120px" }} borderRadius={3} variant="outlined" onClick={handleClick} /></Box></Grid>
             <Grid item xs={2}><Box display="flex"><Chip label="Practices" sx={{ display: "flex", width: "120px" }} borderRadius={3} variant="outlined" onClick={handleClick} /></Box></Grid>
             <Grid item xs={2}><Box display="flex"><Chip label="NCERT" sx={{ display: "flex", width: "120px" }} borderRadius={3} variant="outlined" onClick={handleClick} /></Box></Grid>
-          </Grid>
+          </Grid> */}
 
-          <Typography fontWeight="bold" fontSize={20} marginBottom={2}>Subjects</Typography>
+          <Typography marginTop={2} fontWeight="bold" fontSize={20} marginBottom={2}>Subjects</Typography>
           <Cources defaultClass={classDetails?.id} />
         </Box>
       </Box>

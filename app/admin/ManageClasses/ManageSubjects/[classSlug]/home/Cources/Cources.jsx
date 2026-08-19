@@ -273,7 +273,7 @@ const Cources = ({ defaultClass }) => {
                 boxShadow={2}
                 width="100%"
                 height="100%"
-                minHeight={300}
+                minHeight={200}
                 borderRadius={3}
                 justifyContent="center"
                 alignItems="center"

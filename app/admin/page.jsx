@@ -92,14 +92,23 @@ export default function AdminPage() {
           const anyPermission = availableViews.some((item) => item.allowed);
           setHasAnyAdminPermission(anyPermission);
 
-          const firstAvailableView = availableViews.find((item) => item.allowed)?.key || 'none';
+          const userRole = String(data.data?.role || '').toUpperCase();
+          let defaultView;
 
-          if (firstAvailableView === 'users') {
-            await refreshUsers();
-            setAdminView('users');
+          if (userRole === 'MANAGEMENT') {
+            // For management users, prioritize Assessment Results
+            defaultView =
+              availableViews.find((item) => item.key === 'results' && item.allowed)?.key ||
+              availableViews.find((item) => item.key === 'teachers' && item.allowed)?.key ||
+              availableViews.find((item) => item.key === 'classes' && item.allowed)?.key ||
+              availableViews.find((item) => item.key === 'roles' && item.allowed)?.key ||
+              availableViews.find((item) => item.key === 'centers' && item.allowed)?.key ||
+              availableViews.find((item) => item.key === 'students' && item.allowed)?.key ||
+              availableViews.find((item) => item.key === 'users' && item.allowed)?.key ||
+              'none';
           } else {
-            setUsers([]);
-            const defaultView =
+            defaultView =
+              availableViews.find((item) => item.key === 'users' && item.allowed)?.key ||
               availableViews.find((item) => item.key === 'teachers' && item.allowed)?.key ||
               availableViews.find((item) => item.key === 'classes' && item.allowed)?.key ||
               availableViews.find((item) => item.key === 'results' && item.allowed)?.key ||
@@ -107,7 +116,13 @@ export default function AdminPage() {
               availableViews.find((item) => item.key === 'centers' && item.allowed)?.key ||
               availableViews.find((item) => item.key === 'students' && item.allowed)?.key ||
               'none';
+          }
 
+          if (defaultView === 'users') {
+            await refreshUsers();
+            setAdminView('users');
+          } else {
+            setUsers([]);
             setAdminView(defaultView);
           }
         } else {

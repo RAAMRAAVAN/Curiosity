@@ -342,9 +342,23 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
         </TableContainer>
       </Paper>
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth={isMobile ? "xs" : "md"} fullWidth>
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        maxWidth={isMobile ? false : "md"}
+        fullWidth
+        sx={isMobile ? {
+          '& .MuiDialog-paper': {
+            margin: 0,
+            width: '100%',
+            maxWidth: '100%',
+            height: '80vh',
+            maxHeight: '80vh',
+          },
+        } : {}}
+      >
         <DialogTitle sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 } }}>{editingRole ? 'Edit Role' : 'Create Role'}</DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ overflowY: 'auto' }}>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
               label="Role Name"

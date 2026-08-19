@@ -28,10 +28,14 @@ import {
   Stack,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
-import { AddCircleOutline, CheckCircleOutline, DeleteOutline, RadioButtonUnchecked, Quiz, SaveOutlined } from '@mui/icons-material';
+import { AddCircleOutline, CheckCircleOutline, Close, DeleteOutline, RadioButtonUnchecked, Quiz, SaveOutlined } from '@mui/icons-material';
 
 const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessments, loading, addQuestion, subjectId, classId, chapterId, title, setTitle, description, setDescription, type, setType, questions, setQuestions, feedback, setFeedback, editingAssessment, setEditingAssessment, open, setOpen, saving, setSaving }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const defaultGradeBands = [
     { label: 'A', minPercentage: 80 },
     { label: 'B', minPercentage: 60 },
@@ -832,9 +836,23 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
       </>
       )}
 
-      <Dialog open={pendingDialogOpen} onClose={() => setPendingDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={pendingDialogOpen}
+        onClose={() => setPendingDialogOpen(false)}
+        maxWidth={isMobile ? false : "sm"}
+        fullWidth
+        sx={isMobile ? {
+          '& .MuiDialog-paper': {
+            margin: 0,
+            width: '100%',
+            maxWidth: '100%',
+            height: '80vh',
+            maxHeight: '80vh',
+          },
+        } : {}}
+      >
         <DialogTitle>Pending Students</DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ overflowY: 'auto' }}>
           {pendingLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress />
@@ -902,9 +920,23 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         </DialogActions>
       </Dialog>
 
-      <Dialog open={appearedDialogOpen} onClose={() => setAppearedDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={appearedDialogOpen}
+        onClose={() => setAppearedDialogOpen(false)}
+        maxWidth={isMobile ? false : "sm"}
+        fullWidth
+        sx={isMobile ? {
+          '& .MuiDialog-paper': {
+            margin: 0,
+            width: '100%',
+            maxWidth: '100%',
+            height: '80vh',
+            maxHeight: '80vh',
+          },
+        } : {}}
+      >
         <DialogTitle>Appeared Students</DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ overflowY: 'auto' }}>
           {appearedLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress />
@@ -937,9 +969,23 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         </DialogActions>
       </Dialog>
 
-      <Dialog open={absentDialogOpen} onClose={() => setAbsentDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={absentDialogOpen}
+        onClose={() => setAbsentDialogOpen(false)}
+        maxWidth={isMobile ? false : "sm"}
+        fullWidth
+        sx={isMobile ? {
+          '& .MuiDialog-paper': {
+            margin: 0,
+            width: '100%',
+            maxWidth: '100%',
+            height: '80vh',
+            maxHeight: '80vh',
+          },
+        } : {}}
+      >
         <DialogTitle>Absent Students</DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ overflowY: 'auto' }}>
           {absentLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress />
@@ -1019,11 +1065,36 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         </DialogActions>
       </Dialog>
 
-      <Dialog open={studentAssessmentOpen} onClose={() => setStudentAssessmentOpen(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>Student Assessment</DialogTitle>
-        <DialogContent dividers>
+      <Dialog
+        open={studentAssessmentOpen}
+        onClose={() => setStudentAssessmentOpen(false)}
+        maxWidth={false}
+        fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            display: 'flex',
+            flexDirection: 'column',
+            margin: 0,
+            width: '100%',
+            maxWidth: '100%',
+            height: '100vh',
+            maxHeight: '100vh',
+          },
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+          Student Assessment
+          <IconButton
+            aria-label="Close student assessment"
+            onClick={() => setStudentAssessmentOpen(false)}
+            edge="end"
+          >
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
           {studentAssessmentContext ? (
-            <Box sx={{ py: 1 }}>
+            <Box sx={{ py: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
               <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
                 {studentAssessmentContext.studentName || 'Student assessment'}
               </Typography>
@@ -1033,28 +1104,35 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
               <iframe
                 src={`/assessment?assessmentId=${studentAssessmentContext.assessmentId}&subjectId=${studentAssessmentContext.subjectId || ''}&studentId=${studentAssessmentContext.studentId}&editMode=${studentAssessmentContext.editMode}&returnTo=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
                 title="Student assessment"
-                style={{ width: '100%', minHeight: '70vh', border: '1px solid #d0d7de', borderRadius: 8 }}
+                style={{ width: '100%', height: '100%', minHeight: 0, border: '1px solid #d0d7de', borderRadius: 8 }}
               />
             </Box>
           ) : null}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setStudentAssessmentOpen(false)}>Close</Button>
-        </DialogActions>
       </Dialog>
 
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
-        maxWidth="lg"
+        maxWidth={isMobile ? false : "lg"}
         fullWidth
-        PaperProps={{ sx: { minHeight: 620, borderRadius: 3, overflow: 'hidden' } }}
+        sx={isMobile ? {
+          '& .MuiDialog-paper': {
+            margin: 0,
+            width: '100%',
+            maxWidth: '100%',
+            height: '100vh',
+            maxHeight: '100vh',
+            borderRadius: 0,
+          },
+        } : {}}
+        PaperProps={{ sx: { minHeight: { xs: 'auto', sm: 620 }, borderRadius: 3, overflow: 'hidden' } }}
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontWeight: 700 }}>
           <Quiz sx={{ fontSize: 28, color: '#1a73e8' }} />
           {editingAssessment ? 'Edit Assessment / Assignment' : 'Create Assessment'}
         </DialogTitle>
-        <DialogContent dividers sx={{ p: { xs: 2.5, sm: 3.5, md: 4 } }}>
+        <DialogContent dividers sx={{ p: { xs: 2.5, sm: 3.5, md: 4 }, overflowY: 'auto' }}>
           <Stack spacing={3} sx={{ mt: 1 }}>
             <TextField
               label="Assessment Title"

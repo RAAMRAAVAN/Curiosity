@@ -275,13 +275,19 @@ const Assessments = () => {
                         <Box
                             position="absolute"
                             right={10}
-                            bottom={10}
+                            bottom={-15}
                         >
                             <Fab
                                 variant="extended"
                                 onClick={openCreateDialog}
+                                sx={{
+                                    minHeight: { xs: 36, sm: 48 },
+                                    height: { xs: 36, sm: 48 },
+                                    // px: { xs: 2, sm: 2 },
+                                    fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                                }}
                             >
-                                <Add sx={{ mr: 1 }} />
+                                <Add sx={{ mr: { xs: 0.5, sm: 1 }, fontSize: { xs: 18, sm: 24 } }} />
                                 Add New Assessment
                             </Fab>
                         </Box>
@@ -291,8 +297,8 @@ const Assessments = () => {
 
                 <Box
                     display="flex"
-                    width="96%"
-                    padding={2}
+                    width="100%"
+                    // padding={2}
                     // border='1px black solid'
                     flexDirection="column"
                 >
