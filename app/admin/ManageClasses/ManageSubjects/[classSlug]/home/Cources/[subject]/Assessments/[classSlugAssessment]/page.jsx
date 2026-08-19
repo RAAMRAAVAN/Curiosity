@@ -274,8 +274,8 @@ const Assessments = () => {
                     {canCreateAssessment && (
                         <Box
                             position="absolute"
-                            right={10}
-                            bottom={-15}
+                            right={20}
+                            bottom={-16}
                         >
                             <Fab
                                 variant="extended"

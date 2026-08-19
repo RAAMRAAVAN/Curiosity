@@ -785,10 +785,18 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
       ) : (<>
         <Stack spacing={2}>
           {assessments.map((assessment) => (
-            <Card key={assessment.id} variant="outlined" border='1px solid black' sx={{ backgroundColor: '#f9f9f9' }}>
+            <Card
+              key={assessment.id}
+              variant="outlined"
+              sx={{
+                width: { xs: '100%', sm: '100%' },
+                mx: 'auto',
+                backgroundColor: '#f9f9f9',
+              }}
+            >
               <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-                  <Box>
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2 }}>
+                  <Box sx={{ width: '100%', minWidth: 0 }}>
                     <Typography fontWeight="bold">{assessment.title}</Typography>
                     <Typography variant="body2" color="text.secondary">{assessment.description || 'No description'}</Typography>
                   </Box>
@@ -797,7 +805,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                     color="primary"
                     variant="outlined"
                     onClick={() => openEditDialog(assessment)}
-                    sx={{ fontWeight: 600 }}
+                    sx={{ fontWeight: 600, alignSelf: { xs: 'flex-center', sm: 'auto' } }}
                   />
                 </Box>
                 <Divider sx={{ my: 1.5 }} />
@@ -1077,8 +1085,8 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             margin: 0,
             width: '100%',
             maxWidth: '100%',
-            height: '100vh',
-            maxHeight: '100vh',
+            height: '90vh',
+            maxHeight: '90vh',
           },
         }}
       >
@@ -1092,19 +1100,19 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             <Close />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflow: 'hidden', p: 0 }}>
           {studentAssessmentContext ? (
-            <Box sx={{ py: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+            <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Typography variant="subtitle1" fontWeight={700} sx={{ px: { xs: 1.5, sm: 2 }, py: 1, mb: 0 }}>
                 {studentAssessmentContext.studentName || 'Student assessment'}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {/* <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 {studentAssessmentContext.studentEmail || 'Opening assessment for this student.'}
-              </Typography>
+              </Typography> */}
               <iframe
                 src={`/assessment?assessmentId=${studentAssessmentContext.assessmentId}&subjectId=${studentAssessmentContext.subjectId || ''}&studentId=${studentAssessmentContext.studentId}&editMode=${studentAssessmentContext.editMode}&returnTo=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
                 title="Student assessment"
-                style={{ width: '100%', height: '100%', minHeight: 0, border: '1px solid #d0d7de', borderRadius: 8 }}
+                style={{ display: 'block', width: '100%', flex: 1, minHeight: 0, border: '1px solid #d0d7de', borderRadius: 0, padding: 0, margin: 0 }}
               />
             </Box>
           ) : null}
@@ -1121,16 +1129,26 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             margin: 0,
             width: '100%',
             maxWidth: '100%',
-            height: '100vh',
-            maxHeight: '100vh',
+            height: '90vh',
+            maxHeight: '90vh',
             borderRadius: 0,
           },
         } : {}}
         PaperProps={{ sx: { minHeight: { xs: 'auto', sm: 620 }, borderRadius: 3, overflow: 'hidden' } }}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontWeight: 700 }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontWeight: 700, px: { xs: 2, sm: 3 } }}>
           <Quiz sx={{ fontSize: 28, color: '#1a73e8' }} />
-          {editingAssessment ? 'Edit Assessment / Assignment' : 'Create Assessment'}
+          <Typography component="span" sx={{ flex: 1, minWidth: 0, fontWeight: 700 }}>
+            {editingAssessment ? 'Edit Assessment' : 'Create Assessment'}
+          </Typography>
+          <IconButton
+            aria-label="Close assessment dialog"
+            onClick={() => setOpen(false)}
+            edge="end"
+            sx={{ flexShrink: 0 }}
+          >
+            <Close />
+          </IconButton>
         </DialogTitle>
         <DialogContent dividers sx={{ p: { xs: 2.5, sm: 3.5, md: 4 }, overflowY: 'auto' }}>
           <Stack spacing={3} sx={{ mt: 1 }}>
@@ -1351,9 +1369,6 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
           </Stack>
         </DialogContent>
         <DialogActions sx={{ flexWrap: 'wrap', gap: 1, justifyContent: 'flex-end', p: { xs: 2, sm: 3 } }}>
-          <Button onClick={() => setOpen(false)} sx={{ textTransform: 'none', width: { xs: '100%', sm: 'auto' }, borderRadius: 3 }}>
-            Cancel
-          </Button>
           <Button
             variant="contained"
             startIcon={<SaveOutlined />}
