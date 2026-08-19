@@ -89,7 +89,7 @@ export async function GET(req) {
 
   const users = await prisma.user.findMany({
     where: {
-      role: { not: "STUDENT" },
+      role: "MANAGEMENT",
     },
     orderBy: { createdAt: "desc" },
     include: {

@@ -228,7 +228,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
     }
   };
     const visibleUsers = useMemo(() => {
-        return users.filter((user) => String(user.role || "").toLowerCase() !== "student");
+      return users.filter((user) => String(user.role || "").toUpperCase() === "MANAGEMENT");
     }, [users]);
 
     const filteredUsers = useMemo(() => {
