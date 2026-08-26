@@ -51,6 +51,9 @@ const normalizeQuestions = (questions) => {
     return {
       id: typeof question?.id === 'string' ? question.id : null,
       questionText,
+      questionDesc: typeof (question?.questionDesc ?? question?.questiondesc) === 'string'
+        ? (question.questionDesc ?? question.questiondesc).trim() || null
+        : null,
       marks: Math.max(0, marks),
       options,
     };
@@ -107,6 +110,7 @@ const createAssessmentWithQuestions = async (tx, data) => {
     const createdQuestion = await createAssessmentQuestionRecord(tx, {
       assessmentId: createdAssessment.id,
       questionText: question.questionText,
+      questionDesc: question.questionDesc,
       marks: question.marks ?? 1,
       displayOrder: questionIndex + 1,
     });
@@ -160,6 +164,7 @@ const updateAssessmentWithQuestions = async (tx, assessmentId, data) => {
         where: { id: question.id },
         data: {
           questionText: question.questionText,
+          questionDesc: question.questionDesc,
           marks: question.marks ?? 1,
           displayOrder: questionIndex + 1,
           status: true,
@@ -170,6 +175,7 @@ const updateAssessmentWithQuestions = async (tx, assessmentId, data) => {
       const createdQuestion = await createAssessmentQuestionRecord(tx, {
         assessmentId,
         questionText: question.questionText,
+        questionDesc: question.questionDesc,
         marks: question.marks ?? 1,
         displayOrder: questionIndex + 1,
       });
@@ -226,6 +232,7 @@ export async function POST(req) {
 
   try {
     const body = await req.json();
+    await ensureAssessmentSchemaColumns(prisma);
 
     const {
       classId,

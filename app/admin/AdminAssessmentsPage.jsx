@@ -7,6 +7,7 @@ import AssessmentManager from '@/app/(components)/AssessmentManager';
 
 const emptyQuestion = () => ({
   questionText: '',
+  questionDesc: '',
   marks: 1,
   correctOptionIndex: 0,
   options: ['', '', '', ''],

@@ -46,6 +46,9 @@ const normalizeQuestions = (questions) => {
     return {
       id: typeof question?.id === 'string' ? question.id : null,
       questionText,
+      questionDesc: typeof (question?.questionDesc ?? question?.questiondesc) === 'string'
+        ? (question.questionDesc ?? question.questiondesc).trim() || null
+        : null,
       marks: Math.max(0, marks),
       options,
     };
@@ -244,6 +247,7 @@ export async function POST(req, { params }) {
   try {
     const { id } = await params;
     const body = await req.json();
+    await ensureAssessmentSchemaColumns(prisma);
 
     const { title, description, type, questions, totalMarks, gradeBands } = body;
 
@@ -296,6 +300,7 @@ export async function POST(req, { params }) {
           data: {
             assessmentId: createdAssessment.id,
             questionText: question.questionText,
+            questionDesc: question.questionDesc,
             marks: question.marks,
             displayOrder: questionIndex + 1,
             status: true,
@@ -478,6 +483,7 @@ export async function PUT(req, { params }) {
             where: { id: question.id },
             data: {
               questionText: question.questionText,
+              questionDesc: question.questionDesc,
               marks: question.marks,
               displayOrder: questionIndex + 1,
               status: true,
@@ -489,6 +495,7 @@ export async function PUT(req, { params }) {
             data: {
               assessmentId,
               questionText: question.questionText,
+              questionDesc: question.questionDesc,
               marks: question.marks,
               displayOrder: questionIndex + 1,
               status: true,

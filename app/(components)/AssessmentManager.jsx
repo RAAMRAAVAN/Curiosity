@@ -272,6 +272,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
       return {
         id: question.id || null,
         questionText: question.questionText || '',
+        questionDesc: question.questionDesc ?? question.questiondesc ?? '',
         marks: Number(question.marks) || 1,
         correctOptionIndex: correctOptionIndex >= 0 ? correctOptionIndex : 0,
         options: (question.options || []).map((option) => option.optionText || ''),
@@ -569,6 +570,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
       .map((question) => ({
         id: question.id || undefined,
         questionText: question.questionText.trim(),
+        questionDesc: String(question.questionDesc ?? question.questiondesc ?? '').trim() || null,
         marks: Number(question.marks) || 1,
         correctOptionIndex: Number(question.correctOptionIndex) || 0,
         options: question.options.map((option, index) => ({
@@ -1322,6 +1324,25 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                   sx={{
                     mb: 2,
                     "& .MuiOutlinedInput-root": {
+                      borderRadius: 3,
+                    },
+                  }}
+                />
+
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  variant="outlined"
+                  label="Question description"
+                  placeholder="Add a passage or additional details"
+                  value={question.questionDesc ?? ''}
+                  onChange={(e) =>
+                    updateQuestion(questionIndex, 'questionDesc', e.target.value)
+                  }
+                  sx={{
+                    mb: 2,
+                    '& .MuiOutlinedInput-root': {
                       borderRadius: 3,
                     },
                   }}

@@ -25,6 +25,7 @@ const Assessments = () => {
 
     const emptyQuestion = () => ({
         questionText: '',
+        questionDesc: '',
         correctOptionIndex: 0,
         options: ['', '', '', ''],
     });

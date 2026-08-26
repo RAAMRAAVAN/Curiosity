@@ -277,10 +277,19 @@ const AssessmentPage = () => {
                     <Typography
                       fontWeight={700}
                       fontSize={{ xs: 15, sm: 16.5, md: 17 }}
-                      sx={{ mb: 2 }}
+                      sx={{ mb: question.questionDesc ? 1 : 2, whiteSpace: 'pre-line' }}
                     >
                       {questionIndex + 1}. {question.questionText}
                     </Typography>
+
+                    {question.questionDesc ? (
+                      <Typography
+                        color="text.secondary"
+                        sx={{ mb: 2, whiteSpace: 'pre-line' }}
+                      >
+                        {question.questionDesc}
+                      </Typography>
+                    ) : null}
 
                     <RadioGroup
                       value={answers[questionIndex]?.selectedOptionIndex ?? ''}

@@ -1,6 +1,7 @@
 import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
+import { teacherCanAccessAssessment } from '@/lib/teacherAssessmentAccess';
 
 const normalizeStudentCenter = (studentRecord) => {
   if (!studentRecord || !studentRecord.student) return studentRecord;
@@ -82,6 +83,10 @@ export async function GET(req, { params }) {
 
     if (!assessmentId) {
       return ApiResponse.error('Assessment ID is required', 400);
+    }
+
+    if (!(await teacherCanAccessAssessment(prisma, assessmentId, auth.actor))) {
+      return ApiResponse.error('You are not authorized to view this assessment.', 403);
     }
 
     const assessment = await prisma.assessment.findUnique({

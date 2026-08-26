@@ -471,6 +471,7 @@ model AssessmentQuestion {
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 
   questionText String @map("question_text") @db.Text
+  questionDesc String? @map("question_desc") @db.Text
   marks Int @default(1)
   displayOrder Int @default(1) @map("display_order")
   status Boolean @default(true)
