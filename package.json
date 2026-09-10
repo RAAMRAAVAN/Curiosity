@@ -8,7 +8,9 @@
     "export": "next export",
     "start": "next start",
     "lint": "next lint",
-    "build:export": "npm run build && npm run export"
+    "build:export": "npm run build && npm run export",
+    "studio": "node scripts/with-db-env.js studio",
+    "prisma": "node scripts/with-db-env.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

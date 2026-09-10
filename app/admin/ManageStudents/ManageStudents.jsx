@@ -511,7 +511,6 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 3, flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
         <Box>
           <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: 18, sm: 20, md: 24 } }}>Manage Students</Typography>
-          <Typography color="text.secondary" sx={{ fontSize: { xs: 12, sm: 14 } }}>Create and manage student accounts with center and class selection.</Typography>
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           <TextField
@@ -529,7 +528,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
               label="Filter By Center"
               value={selectedCenter}
               onChange={(event) => setSelectedCenter(event.target.value)}
-              sx={{ minWidth: 220, width: { xs: '100%', sm: 'auto' } }}
+              sx={{ minWidth: 220, width: { xs: '100%', sm: 'auto' }, mt: { xs: 1, sm: 0 } }}
               InputLabelProps={{ shrink: true }}
             >
               {centerFilterOptions.map((center) => (
@@ -539,7 +538,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
               ))}
             </TextField>
           ) : null}
-          <Button variant="outlined" onClick={handleDownloadStudents} disabled={exporting || loading} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+          <Button variant="outlined" onClick={handleDownloadStudents} disabled={exporting || loading} size={isMobile ? "small" : "medium"} sx={{ display: { xs: 'none', sm: 'inline-flex' }, width: { xs: '100%', sm: 'auto' } }}>
             {exporting ? "Exporting..." : "Export Students"}
           </Button>
           {canCreateStudents ? (
