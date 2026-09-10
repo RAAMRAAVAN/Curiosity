@@ -24,6 +24,7 @@ import ManageCenters from "./ManageCenters/ManageCenters";
 import ManageStudents from "./ManageStudents/ManageStudents";
 import ManageRoles from './ManageRoles/ManageRoles';
 import ResetPassword from './ResetPassword';
+import AttendanceManager from './Attendance/AttendanceManager';
 
 const hasPermission = (permissions, permission, role) => {
   if (String(role || '').toUpperCase() === 'ADMIN') return true;
@@ -89,6 +90,7 @@ export default function AdminPage() {
             { key: 'teachers', allowed: hasPermission(combinedPermissions, 'teachers.view', data.data?.role) },
             { key: 'centers', allowed: hasPermission(combinedPermissions, 'centers.view', data.data?.role) },
             { key: 'students', allowed: hasPermission(combinedPermissions, 'students.view', data.data?.role) },
+            { key: 'attendance', allowed: hasPermission(combinedPermissions, 'attendance.view', data.data?.role) },
             { key: 'roles', allowed: hasPermission(combinedPermissions, 'roles.view', data.data?.role) },
             { key: 'results', allowed: hasPermission(combinedPermissions, 'results.view', data.data?.role) },
             { key: 'reset-password', allowed: true },
@@ -109,6 +111,7 @@ export default function AdminPage() {
               availableViews.find((item) => item.key === 'roles' && item.allowed)?.key ||
               availableViews.find((item) => item.key === 'centers' && item.allowed)?.key ||
               availableViews.find((item) => item.key === 'students' && item.allowed)?.key ||
+              availableViews.find((item) => item.key === 'attendance' && item.allowed)?.key ||
               availableViews.find((item) => item.key === 'users' && item.allowed)?.key ||
               'none';
           } else {
@@ -121,6 +124,7 @@ export default function AdminPage() {
               availableViews.find((item) => item.key === 'roles' && item.allowed)?.key ||
               availableViews.find((item) => item.key === 'centers' && item.allowed)?.key ||
               availableViews.find((item) => item.key === 'students' && item.allowed)?.key ||
+              availableViews.find((item) => item.key === 'attendance' && item.allowed)?.key ||
               availableViews.find((item) => item.key === 'reset-password' && item.allowed)?.key ||
               availableViews.find((item) => item.key === 'reset-password' && item.allowed)?.key ||
               'none';
@@ -384,6 +388,10 @@ export default function AdminPage() {
               permissions={admin?.permissions || []}
             />
           </Paper>
+        ) : null}
+
+        {adminView === "attendance" ? (
+          <AttendanceManager role={admin?.role} permissions={admin?.permissions || []} />
         ) : null}
 
         {adminView === "results" ? (

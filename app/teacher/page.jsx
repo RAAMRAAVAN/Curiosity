@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AssessmentManager from "@/app/(components)/AssessmentManager";
+import AttendanceManager from "@/app/admin/Attendance/AttendanceManager";
 import {
   Box,
   Button,
@@ -65,6 +66,7 @@ export default function TeacherPage() {
   const [editContentId, setEditContentId] = useState(null);
   const [reattemptRequests, setReattemptRequests] = useState([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
+  const [showAttendance, setShowAttendance] = useState(false);
 
   useEffect(() => {
     loadTeacher();
@@ -286,7 +288,12 @@ export default function TeacherPage() {
           <Button variant="outlined" disabled={!selectedClass} onClick={() => setOpenSubjectModal(true)}>
             Create Subject
           </Button>
+          <Button variant={showAttendance ? "contained" : "outlined"} onClick={() => setShowAttendance((current) => !current)} sx={{ ml: 2 }}>
+            Attendance
+          </Button>
         </Paper>
+
+        {showAttendance ? <AttendanceManager role="TEACHER" permissions={["attendance.view", "attendance.mark", "attendance.edit"]} /> : null}
 
         <Box sx={{ display: "grid", gap: 3, gridTemplateColumns: "280px 1fr" }}>
           <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>

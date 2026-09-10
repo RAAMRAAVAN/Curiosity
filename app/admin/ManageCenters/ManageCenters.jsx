@@ -87,6 +87,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
 
     setEditingCenter(null);
     setForm({ name: "", slug: "", status: true });
+    setAlert(null);
     setDialogOpen(true);
   };
 
@@ -102,6 +103,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
       slug: center.slug || "",
       status: center.status ?? true,
     });
+    setAlert(null);
     setDialogOpen(true);
   };
 
@@ -129,14 +131,14 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
       const data = await response.json();
 
       if (data.success) {
-        setAlert(null);
+        const message = data.message || "Center saved successfully.";
+        setAlert({ severity: "success", message });
         setDialogOpen(false);
-        setMessage(data.message || "Center saved successfully.");
+        setMessage(message);
         await loadCenters();
       } else {
         const message = data.message || "Unable to save center.";
         setAlert({ severity: "error", message });
-        setDialogOpen(false);
         setMessage(message);
       }
     } catch (error) {
@@ -186,7 +188,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
         ) : null}
       </Box>
 
-      {alert ? (
+      {alert && !dialogOpen ? (
         <Alert severity={alert.severity || "error"} sx={{ mb: 3 }} onClose={() => setAlert(null)}>
           {alert.message}
         </Alert>
@@ -262,6 +264,11 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
         <DialogTitle sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 } }}>{editingCenter ? "Edit Center" : "Create Center"}</DialogTitle>
         <DialogContent dividers sx={{ overflowY: 'auto' }}>
           <Stack spacing={2} sx={{ mt: 1 }}>
+            {alert ? (
+              <Alert severity={alert.severity || "error"} onClose={() => setAlert(null)}>
+                {alert.message}
+              </Alert>
+            ) : null}
             <TextField
               label="Center Name"
               value={form.name}
@@ -273,9 +280,12 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
             <TextField
               label="Slug"
               value={form.slug}
-              onChange={(e) => setForm({ ...form, slug: e.target.value })}
+              onChange={(e) => setForm({ ...form, slug: e.target.value.replace(/[^a-z]/gi, "").slice(0, 3).toUpperCase() })}
               fullWidth
               required
+              disabled={Boolean(editingCenter)}
+              inputProps={{ maxLength: 3, pattern: "[A-Z]{3}" }}
+              helperText={editingCenter ? "Slug cannot be changed after creation" : "Exactly 3 uppercase letters"}
               size={isMobile ? "small" : "medium"}
             />
             <TextField

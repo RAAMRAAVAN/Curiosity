@@ -31,6 +31,8 @@ function mapStudent(user, classMap = {}) {
     phone: profile.phone || "",
     address: profile.address || "",
     schoolName: profile.schoolName || "",
+    teaGarden: profile.teaGarden || "",
+    guardianName: profile.guardianName || "",
     status: user.status,
   };
 }
@@ -167,6 +169,8 @@ export async function PATCH(req, { params }) {
     if (body.phone !== undefined) profileData.phone = body.phone || null;
     if (body.address !== undefined) profileData.address = body.address || null;
     if (body.schoolName !== undefined) profileData.schoolName = body.schoolName || null;
+    if (body.teaGarden !== undefined) profileData.teaGarden = body.teaGarden?.trim() || null;
+    if (body.guardianName !== undefined) profileData.guardianName = body.guardianName?.trim() || null;
 
     if (teacherRole && profileData.studyingClass) {
       const selectedClass = await prisma.class.findUnique({

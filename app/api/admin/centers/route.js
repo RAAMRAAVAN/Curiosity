@@ -1,6 +1,7 @@
 import { ApiResponse } from "@/utils/apiResponse";
 import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from '@/lib/adminRbac';
+import { isValidCenterSlug, normalizeCenterSlug } from "@/lib/centerSlug";
 
 export async function GET(req) {
   const auth = await requireAdminPermission(req, 'centers.view');
@@ -32,14 +33,15 @@ export async function POST(req) {
 
   try {
     const body = await req.json();
-    if (!body.name || !body.slug) {
-      return ApiResponse.error("Name and slug are required", 400);
+    const slug = normalizeCenterSlug(body.slug);
+    if (!body.name || !isValidCenterSlug(slug)) {
+      return ApiResponse.error("Name and a unique 3-letter uppercase slug are required", 400);
     }
 
     const center = await prisma.center.create({
       data: {
         name: body.name,
-        slug: body.slug,
+        slug,
         status: body.status !== undefined ? Boolean(body.status) : true,
       },
     });
@@ -47,6 +49,9 @@ export async function POST(req) {
     return ApiResponse.success(center, "Center created successfully.");
   } catch (error) {
     console.error(error);
+    if (error?.code === "P2002") {
+      return ApiResponse.error("This center slug is already in use", 409);
+    }
     return ApiResponse.error("Unable to create center", 500, error);
   }
 }

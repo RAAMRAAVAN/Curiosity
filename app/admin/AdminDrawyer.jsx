@@ -28,6 +28,7 @@ import {
   Logout,
   Security,
   LockReset,
+  EventAvailable,
 } from "@mui/icons-material";
 
 const drawerWidth = 260;
@@ -109,6 +110,12 @@ const AdminDrawer = ({
       value: "students",
       icon: <SchoolOutlined />,
       permission: 'students.view',
+    },
+    {
+      title: "Attendance",
+      value: "attendance",
+      icon: <EventAvailable />,
+      permission: 'attendance.view',
     },
     {
       title: 'Manage Roles',

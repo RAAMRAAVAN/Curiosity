@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import { prisma } from "@/server/prisma";
 import { ApiResponse } from "@/utils/apiResponse";
 import { requireAdminPermission } from '@/lib/adminRbac';
@@ -71,16 +71,15 @@ export async function GET(req) {
         : "";
 
       return {
+        "Enrollment ID": user.id || "",
         Name: user.name || "",
-        Email: user.email || "",
         "Center Name": profile.center?.name || "",
         "Class Name": className || "",
-        Grade: className || "",
         DOB: formatDateForExport(profile.dob),
         Gender: profile.gender || "",
-        Phone: profile.phone || "",
-        Address: profile.address || "",
         "School Name": profile.schoolName || "",
+        "Tea Garden": profile.teaGarden || "",
+        "Guardian Name": profile.guardianName || "",
         Status: user.status ? "Active" : "Inactive",
       };
     });
@@ -94,6 +93,48 @@ export async function GET(req) {
     }
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
+    worksheet["!cols"] = [
+      { wch: 24 },
+      { wch: 24 },
+      { wch: 22 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 24 },
+      { wch: 22 },
+      { wch: 24 },
+      { wch: 12 },
+    ];
+
+    const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1");
+    const border = {
+      top: { style: "thin", color: { rgb: "B7C3D0" } },
+      bottom: { style: "thin", color: { rgb: "B7C3D0" } },
+      left: { style: "thin", color: { rgb: "B7C3D0" } },
+      right: { style: "thin", color: { rgb: "B7C3D0" } },
+    };
+
+    for (let row = range.s.r; row <= range.e.r; row += 1) {
+      for (let column = range.s.c; column <= range.e.c; column += 1) {
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: column });
+        const cell = worksheet[cellAddress];
+        if (!cell) continue;
+
+        cell.s = {
+          border,
+          alignment: { vertical: "center", wrapText: true },
+          ...(row === 0
+            ? {
+                font: { bold: true, color: { rgb: "FFFFFF" } },
+                fill: { patternType: "solid", fgColor: { rgb: "1F4E78" } },
+              }
+            : column === 0
+              ? { font: { bold: true } }
+              : {}),
+        };
+      }
+    }
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
 

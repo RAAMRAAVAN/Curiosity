@@ -37,21 +37,22 @@ enum TeacherRole {
 model Center {
   id String @id @default(cuid())
 
-  name String @unique
-  slug String @unique
+  name   String  @unique
+  slug   String  @unique
   status Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users User[]
-  classes Class[]
-  subjects Subject[]
-  teachers Teacher[]
-  students Student[]
-  admins Admin[]
-  managements Management[]
-  parents Parent[]
+  users              User[]
+  classes            Class[]
+  subjects           Subject[]
+  teachers           Teacher[]
+  students           Student[]
+  admins             Admin[]
+  managements        Management[]
+  parents            Parent[]
+  studentAttendances StudentAttendance[]
 }
 
 //
@@ -86,16 +87,18 @@ model User {
   teacherSubjectAccesses      UserTeacherSubjectAccess[]
   assessmentResults           AssessmentResult[]
   assessmentReattemptRequests AssessmentReattemptRequest[]
-  assessmentsModified         Assessment[] @relation("AssessmentLastModifiedBy")
+  assessmentsModified         Assessment[]                  @relation("AssessmentLastModifiedBy")
   allowedClassesModified      AllowedClassesForAssessment[] @relation("AllowedClassLastModifiedBy")
   assessmentAttendances       AssessmentAttendance[]
-  assessmentAttendancesMarked AssessmentAttendance[] @relation("AssessmentAttendanceMarkedBy")
+  assessmentAttendancesMarked AssessmentAttendance[]        @relation("AssessmentAttendanceMarkedBy")
+  studentAttendances          StudentAttendance[]
+  studentAttendancesMarked    StudentAttendance[]           @relation("StudentAttendanceMarker")
 }
 
 model AppSetting {
   id String @id @default(cuid())
 
-  key String @unique
+  key   String @unique
   value String
 
   createdAt DateTime @default(now())
@@ -121,10 +124,11 @@ model Class {
   updatedAt DateTime @updatedAt
 
   // Relations
-  subjects              Subject[]
-  userAccesses          UserClassAccess[]
-  assessments          Assessment[]
-  allowedClasses        AllowedClassesForAssessment[]
+  subjects           Subject[]
+  userAccesses       UserClassAccess[]
+  assessments        Assessment[]
+  allowedClasses     AllowedClassesForAssessment[]
+  studentAttendances StudentAttendance[]
 }
 
 //
@@ -197,12 +201,14 @@ model Student {
   centerId String? @map("center_id")
   center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
 
-  dob     DateTime?
-  gender  String?
-  phone   String?
-  address String?
+  dob           DateTime?
+  gender        String?
+  phone         String?
+  address       String?
   schoolName    String?
   studyingClass String?
+  teaGarden     String?
+  guardianName  String?
 
   status Boolean @default(true)
 
@@ -219,10 +225,10 @@ model Admin {
   centerId String? @map("center_id")
   center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
 
-  dob     DateTime?
-  gender  String?
-  phone   String?
-  address String?
+  dob           DateTime?
+  gender        String?
+  phone         String?
+  address       String?
   schoolName    String?
   studyingClass String?
 
@@ -241,10 +247,10 @@ model Management {
   centerId String? @map("center_id")
   center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
 
-  dob     DateTime?
-  gender  String?
-  phone   String?
-  address String?
+  dob           DateTime?
+  gender        String?
+  phone         String?
+  address       String?
   schoolName    String?
   studyingClass String?
 
@@ -263,10 +269,10 @@ model Parent {
   centerId String? @map("center_id")
   center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
 
-  dob     DateTime?
-  gender  String?
-  phone   String?
-  address String?
+  dob           DateTime?
+  gender        String?
+  phone         String?
+  address       String?
   schoolName    String?
   studyingClass String?
 
@@ -380,7 +386,7 @@ model Chapter {
   updatedAt DateTime @updatedAt
 
   // Relations
-  contents ChapterContent[]
+  contents    ChapterContent[]
   assessments Assessment[]
 
   @@unique([subjectId, chapterName])
@@ -412,38 +418,37 @@ model Assessment {
   chapterId String?  @map("chapter_id")
   chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
-  title String
-  description String? @db.Text
-  type AssessmentType @default(ASSESSMENT)
-  totalMarks Int @default(0) @map("total_marks")
-  gradeBands String? @db.Text @map("grade_bands")
+  title       String
+  description String?        @db.Text
+  type        AssessmentType @default(ASSESSMENT)
+  totalMarks  Int            @default(0) @map("total_marks")
+  gradeBands  String?        @map("grade_bands") @db.Text
 
   status Boolean @default(true)
 
-  lastModifiedBy String? @map("last_modified_user")
-  lastModifiedUser User? @relation("AssessmentLastModifiedBy", fields: [lastModifiedBy], references: [id], onDelete: SetNull)
-  lastModifiedAt DateTime? @map("last_modified_time")
+  lastModifiedBy   String?   @map("last_modified_user")
+  lastModifiedUser User?     @relation("AssessmentLastModifiedBy", fields: [lastModifiedBy], references: [id], onDelete: SetNull)
+  lastModifiedAt   DateTime? @map("last_modified_time")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  questions AssessmentQuestion[]
-  results AssessmentResult[]
+  questions         AssessmentQuestion[]
+  results           AssessmentResult[]
   reattemptRequests AssessmentReattemptRequest[]
-  allowedClasses AllowedClassesForAssessment[]
-  attendances AssessmentAttendance[]
+  allowedClasses    AllowedClassesForAssessment[]
+  attendances       AssessmentAttendance[]
 
   @@index([classId])
   @@index([subjectId])
   @@index([chapterId])
-
   @@map("assessments")
 }
 
 model AllowedClassesForAssessment {
   id String @id @default(cuid())
 
-  assessmentId String @map("assessment_id")
+  assessmentId String     @map("assessment_id")
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 
   classId String @map("class_id")
@@ -451,9 +456,9 @@ model AllowedClassesForAssessment {
 
   active Boolean @default(true) @map("active")
 
-  lastModifiedBy String? @map("last_modified_user")
-  lastModifiedUser User? @relation("AllowedClassLastModifiedBy", fields: [lastModifiedBy], references: [id], onDelete: SetNull)
-  lastModifiedAt DateTime? @map("last_modified_time")
+  lastModifiedBy   String?   @map("last_modified_user")
+  lastModifiedUser User?     @relation("AllowedClassLastModifiedBy", fields: [lastModifiedBy], references: [id], onDelete: SetNull)
+  lastModifiedAt   DateTime? @map("last_modified_time")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -467,14 +472,14 @@ model AllowedClassesForAssessment {
 model AssessmentQuestion {
   id String @id @default(cuid())
 
-  assessmentId String @map("assessment_id")
+  assessmentId String     @map("assessment_id")
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 
-  questionText String @map("question_text") @db.Text
+  questionText String  @map("question_text") @db.Text
   questionDesc String? @map("question_desc") @db.Text
-  marks Int @default(1)
-  displayOrder Int @default(1) @map("display_order")
-  status Boolean @default(true)
+  marks        Int     @default(1)
+  displayOrder Int     @default(1) @map("display_order")
+  status       Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -488,13 +493,13 @@ model AssessmentQuestion {
 model AssessmentOption {
   id String @id @default(cuid())
 
-  questionId String @map("question_id")
+  questionId String             @map("question_id")
   question   AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
-  optionText String @map("option_text")
-  isCorrect Boolean @default(false) @map("is_correct")
-  displayOrder Int @default(1) @map("display_order")
-  status Boolean @default(true)
+  optionText   String  @map("option_text")
+  isCorrect    Boolean @default(false) @map("is_correct")
+  displayOrder Int     @default(1) @map("display_order")
+  status       Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -506,18 +511,18 @@ model AssessmentOption {
 model AssessmentResult {
   id String @id @default(cuid())
 
-  assessmentId String @map("assessment_id")
+  assessmentId String     @map("assessment_id")
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 
   userId String @map("user_id")
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  score Int @default(0)
-  totalQuestions Int @default(0) @map("total_questions")
-  totalMarks Int @default(0) @map("total_marks")
-  percentage Int @default(0)
-  grade String?
-  answers String? @db.Text
+  score          Int     @default(0)
+  totalQuestions Int     @default(0) @map("total_questions")
+  totalMarks     Int     @default(0) @map("total_marks")
+  percentage     Int     @default(0)
+  grade          String?
+  answers        String? @db.Text
 
   status Boolean @default(true)
 
@@ -532,18 +537,18 @@ model AssessmentResult {
 model AssessmentReattemptRequest {
   id String @id @default(cuid())
 
-  assessmentId String @map("assessment_id")
+  assessmentId String     @map("assessment_id")
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 
   userId String @map("user_id")
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   status AssessmentReattemptStatus @default(PENDING)
-  reason String? @db.Text
+  reason String?                   @db.Text
 
-  requestedAt DateTime @default(now()) @map("requested_at")
-  reviewedAt DateTime? @map("reviewed_at")
-  reviewedBy String? @map("reviewed_by")
+  requestedAt DateTime  @default(now()) @map("requested_at")
+  reviewedAt  DateTime? @map("reviewed_at")
+  reviewedBy  String?   @map("reviewed_by")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -560,20 +565,52 @@ enum AssessmentAttendanceStatus {
   LATE
 }
 
+enum StudentAttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+model StudentAttendance {
+  id String @id @default(cuid())
+
+  attendanceDate DateTime @map("attendance_date") @db.Date
+  studentId      String   @map("student_id")
+  student        User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  centerId String @map("center_id")
+  center   Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  classId String @map("class_id")
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  status   StudentAttendanceStatus
+  markedBy String?                 @map("marked_by")
+  marker   User?                   @relation("StudentAttendanceMarker", fields: [markedBy], references: [id], onDelete: SetNull)
+  markedAt DateTime                @default(now()) @map("marked_at")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([attendanceDate, studentId])
+  @@index([attendanceDate, centerId, classId])
+  @@index([studentId])
+  @@map("student_attendances")
+}
+
 model AssessmentAttendance {
   id String @id @default(cuid())
 
-  assessmentId String @map("assessment_id")
+  assessmentId String     @map("assessment_id")
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 
   userId String @map("user_id")
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   status AssessmentAttendanceStatus @default(PRESENT)
-  reason String? @db.Text
+  reason String?                    @db.Text
 
-  markedBy String? @map("marked_by")
-  markedByUser User? @relation("AssessmentAttendanceMarkedBy", fields: [markedBy], references: [id], onDelete: SetNull)
+  markedBy     String? @map("marked_by")
+  markedByUser User?   @relation("AssessmentAttendanceMarkedBy", fields: [markedBy], references: [id], onDelete: SetNull)
 
   markedAt DateTime? @map("marked_at")
 

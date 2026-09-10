@@ -74,6 +74,10 @@ const permissionGroups = [
     permissions: ['results.view', 'results.export'],
   },
   {
+    title: 'Attendance',
+    permissions: ['attendance.view', 'attendance.mark', 'attendance.edit'],
+  },
+  {
     title: 'Admin Navigation',
     permissions: ['navigation.edit'],
   },

@@ -39,6 +39,7 @@
     "axios": "^1.18.1",
     "bcryptjs": "^3.0.3",
     "dayjs": "^1.11.13",
+    "exceljs": "^4.4.0",
     "framer-motion": "^12.7.4",
     "jsonwebtoken": "^9.0.3",
     "next": "^15.2.4",
@@ -53,7 +54,8 @@
     "react-window": "^1.8.11",
     "swiper": "^14.0.1",
     "tinymce": "^8.8.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "xlsx-js-style": "^1.2.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

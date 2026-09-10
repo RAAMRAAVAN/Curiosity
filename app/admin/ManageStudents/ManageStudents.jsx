@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Box,
   Button,
   Chip,
@@ -38,10 +39,16 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
   const [editingStudent, setEditingStudent] = useState(null);
   const [authUser, setAuthUser] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState(null);
+  const fileInputRef = useRef(null);
   const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
+  const [studentSearch, setStudentSearch] = useState("");
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -53,6 +60,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
     phone: "",
     address: "",
     schoolName: "",
+    teaGarden: "",
+    guardianName: "",
     status: true,
   });
 
@@ -159,6 +168,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
       phone: "",
       address: "",
       schoolName: "",
+      teaGarden: "",
+      guardianName: "",
       status: true,
     });
     setDialogOpen(true);
@@ -171,7 +182,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
     }
 
     try {
-      const response = await fetch(`/api/admin/students/${student.id}`, {
+      const response = await fetch(`/api/admin/students/${encodeURIComponent(student.id)}`, {
         credentials: "include",
       });
       const data = await response.json();
@@ -190,6 +201,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
           phone: latestStudent.phone || "",
           address: latestStudent.address || "",
           schoolName: latestStudent.schoolName || "",
+          teaGarden: latestStudent.teaGarden || "",
+          guardianName: latestStudent.guardianName || "",
           status: latestStudent.status ?? true,
         });
       } else {
@@ -205,6 +218,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
           phone: student.phone || "",
           address: student.address || "",
           schoolName: student.schoolName || "",
+          teaGarden: student.teaGarden || "",
+          guardianName: student.guardianName || "",
           status: student.status ?? true,
         });
         setMessage(data.message || "Unable to load latest student details.");
@@ -224,6 +239,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
         phone: student.phone || "",
         address: student.address || "",
         schoolName: student.schoolName || "",
+        teaGarden: student.teaGarden || "",
+        guardianName: student.guardianName || "",
         status: student.status ?? true,
       });
       setDialogOpen(true);
@@ -244,7 +261,9 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
 
     try {
       const method = editingStudent ? "PATCH" : "POST";
-      const url = editingStudent ? `/api/admin/students/${editingStudent.id}` : "/api/admin/students";
+      const url = editingStudent
+        ? `/api/admin/students/${encodeURIComponent(editingStudent.id)}`
+        : "/api/admin/students";
       const isTeacherRole = authUser?.role === "TEACHER";
 
       const payload = {
@@ -274,14 +293,23 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
     }
   };
 
-  const handleDelete = async (studentId) => {
+  const requestDelete = (student) => {
     if (!canDeleteStudents) {
       setMessage("You are not authorized to perform this operation.");
       return;
     }
 
+    setDeleteConfirmation(student);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirmation) return;
+
+    const studentId = deleteConfirmation.id;
+    setDeleteConfirmation(null);
+
     try {
-      const response = await fetch(`/api/admin/students/${studentId}`, {
+      const response = await fetch(`/api/admin/students/${encodeURIComponent(studentId)}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -332,6 +360,65 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
     }
   };
 
+  const handleDownloadTemplate = async () => {
+    try {
+      setTemplateLoading(true);
+      const response = await fetch("/api/admin/students/template", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || "Unable to download the student template.");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "student-import-template.xlsx";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      setImportMessage({ severity: "error", message: error.message || "Unable to download the student template." });
+    } finally {
+      setTemplateLoading(false);
+    }
+  };
+
+  const handleImportFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      setImporting(true);
+      setImportMessage(null);
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/admin/students/import", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        const details = Array.isArray(data.errors) && data.errors.length
+          ? ` ${data.errors.join(" | ")}`
+          : "";
+        throw new Error(`${data.message || "Unable to import students."}${details}`);
+      }
+
+      setImportMessage({ severity: "success", message: data.message || "Students imported successfully." });
+      await loadData();
+    } catch (error) {
+      setImportMessage({ severity: "error", message: error.message || "Unable to import students." });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const classOptions = useMemo(
     () => {
       const teacherLocked = authUser?.role === "TEACHER";
@@ -371,12 +458,19 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   }, [centers, students]);
 
   const filteredStudents = useMemo(() => {
-    if (!canUseCenterFilter || selectedCenter === ALL_CENTERS) {
-      return students;
-    }
+    const search = studentSearch.trim().toLowerCase();
 
-    return students.filter((student) => (student.centerId || "") === selectedCenter);
-  }, [students, canUseCenterFilter, selectedCenter]);
+    return students.filter((student) => {
+      const matchesCenter = !canUseCenterFilter
+        || selectedCenter === ALL_CENTERS
+        || (student.centerId || "") === selectedCenter;
+      const matchesSearch = !search
+        || String(student.name || "").toLowerCase().includes(search)
+        || String(student.id || "").toLowerCase().includes(search);
+
+      return matchesCenter && matchesSearch;
+    });
+  }, [students, canUseCenterFilter, selectedCenter, studentSearch]);
 
   const centerOptions = useMemo(() => {
     if (!teacherLocked) return centers;
@@ -420,6 +514,14 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
           <Typography color="text.secondary" sx={{ fontSize: { xs: 12, sm: 14 } }}>Create and manage student accounts with center and class selection.</Typography>
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+          <TextField
+            size="small"
+            label="Search Students"
+            placeholder="Name or Enrollment ID"
+            value={studentSearch}
+            onChange={(event) => setStudentSearch(event.target.value)}
+            sx={{ minWidth: 240, width: { xs: '100%', sm: 'auto' } }}
+          />
           {canUseCenterFilter ? (
             <TextField
               select
@@ -438,7 +540,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
             </TextField>
           ) : null}
           <Button variant="outlined" onClick={handleDownloadStudents} disabled={exporting || loading} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-            {exporting ? "Exporting..." : "Download Excel"}
+            {exporting ? "Exporting..." : "Export Students"}
           </Button>
           {canCreateStudents ? (
             <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>
@@ -447,6 +549,12 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
           ) : null}
         </Stack>
       </Box>
+
+      {importMessage ? (
+        <Alert severity={importMessage.severity} sx={{ mb: 3 }} onClose={() => setImportMessage(null)}>
+          {importMessage.message}
+        </Alert>
+      ) : null}
 
       <TableContainer component={Paper} sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
         <Table sx={{ minWidth: { xs: 600, sm: 720 } }}>
@@ -470,7 +578,11 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
             ) : filteredStudents.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={isMobile ? 4 : isTablet ? 5 : 6} align="center" sx={{ py: 4 }}>
-                  {students.length === 0 ? "No students found." : "No students found for the selected center."}
+                  {students.length === 0
+                    ? "No students found."
+                    : studentSearch.trim()
+                      ? "No students match your search."
+                      : "No students found for the selected center."}
                 </TableCell>
               </TableRow>
             ) : (
@@ -491,7 +603,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
                         </IconButton>
                       ) : null}
                       {canDeleteStudents ? (
-                        <IconButton color="error" onClick={() => handleDelete(student.id)} size={isMobile ? "small" : "medium"}>
+                        <IconButton color="error" onClick={() => requestDelete(student)} size={isMobile ? "small" : "medium"}>
                           <Delete fontSize={isMobile ? "small" : "medium"} />
                         </IconButton>
                       ) : null}
@@ -503,6 +615,43 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {canCreateStudents ? (
+        <Stack
+          direction="row"
+          spacing={1}
+          justifyContent="flex-end"
+          sx={{ display: { xs: "none", xl: "flex" }, mt: 2 }}
+        >
+          <Button variant="outlined" onClick={handleDownloadTemplate} disabled={templateLoading || loading}>
+            {templateLoading ? "Preparing..." : "Download Template"}
+          </Button>
+          <Button variant="outlined" component="label" disabled={importing || loading}>
+            {importing ? "Importing..." : "Upload Template"}
+            <input ref={fileInputRef} hidden type="file" accept=".xlsx,.xls" onChange={handleImportFile} />
+          </Button>
+        </Stack>
+      ) : null}
+
+      <Dialog
+        open={Boolean(deleteConfirmation)}
+        onClose={() => setDeleteConfirmation(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Delete Student?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete {deleteConfirmation?.name || "this student"}?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmation(null)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={handleDelete}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={dialogOpen}
@@ -522,6 +671,15 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
         <DialogTitle sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 } }}>{editingStudent ? "Edit Student" : "Create Student"}</DialogTitle>
         <DialogContent dividers sx={{ overflowY: 'auto' }}>
           <Stack spacing={2} sx={{ mt: 1 }}>
+            {editingStudent ? (
+              <TextField
+                label="Enrollment ID"
+                value={editingStudent.id || ""}
+                fullWidth
+                InputProps={{ readOnly: true }}
+                size={isMobile ? "small" : "medium"}
+              />
+            ) : null}
             <TextField
               label="Full Name"
               value={form.name}
@@ -532,22 +690,22 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
             />
             {!editingStudent ? null : (
               <>
-                <TextField
+                {/* <TextField
                   label="Email"
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   fullWidth
                   size={isMobile ? "small" : "medium"}
-                />
-                <TextField
+                /> */}
+                {/* <TextField
                   label="Password"
                   type="password"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   fullWidth
                   helperText="Leave blank to keep the current password"
-                />
+                /> */}
               </>
             )}
             <TextField
@@ -571,59 +729,69 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
               value={resolveClassId(form.studyingClass)}
               onChange={(e) => setForm({ ...form, studyingClass: e.target.value })}
               fullWidth
+              required={!editingStudent}
             >
-              <MenuItem value="">None</MenuItem>
+              {editingStudent ? <MenuItem value="">None</MenuItem> : null}
               {classOptions.map((cls) => (
                 <MenuItem key={cls.id} value={cls.id}>
                   {cls.className}
                 </MenuItem>
               ))}
             </TextField>
-            {editingStudent ? (
-              <>
-                <TextField
-                  label="Date of Birth"
-                  type="date"
-                  value={form.dob}
-                  onChange={(e) => setForm({ ...form, dob: e.target.value })}
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  select
-                  label="Gender"
-                  value={form.gender}
-                  onChange={(e) => setForm({ ...form, gender: e.target.value })}
-                  fullWidth
-                >
-                  <MenuItem value="">None</MenuItem>
-                  <MenuItem value="Male">Male</MenuItem>
-                  <MenuItem value="Female">Female</MenuItem>
-                  <MenuItem value="Other">Other</MenuItem>
-                  <MenuItem value="Prefer not to say">Prefer not to say</MenuItem>
-                </TextField>
-                <TextField
-                  label="Phone Number"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  fullWidth
-                />
-                <TextField
-                  label="Address"
-                  value={form.address}
-                  onChange={(e) => setForm({ ...form, address: e.target.value })}
-                  fullWidth
-                  multiline
-                  rows={2}
-                />
-                <TextField
-                  label="School Name"
-                  value={form.schoolName}
-                  onChange={(e) => setForm({ ...form, schoolName: e.target.value })}
-                  fullWidth
-                />
-              </>
-            ) : null}
+            <TextField
+              label="Date of Birth"
+              type="date"
+              value={form.dob}
+              onChange={(e) => setForm({ ...form, dob: e.target.value })}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              select
+              label="Gender"
+              value={form.gender}
+              onChange={(e) => setForm({ ...form, gender: e.target.value })}
+              fullWidth
+            >
+              <MenuItem value="">None</MenuItem>
+              <MenuItem value="Male">Male</MenuItem>
+              <MenuItem value="Female">Female</MenuItem>
+              <MenuItem value="Other">Other</MenuItem>
+              <MenuItem value="Prefer not to say">Prefer not to say</MenuItem>
+            </TextField>
+            {/* <TextField
+              label="Phone Number"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              fullWidth
+            /> */}
+            {/* <TextField
+              label="Address"
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              fullWidth
+              multiline
+              rows={2}
+            /> */}
+            <TextField
+              label="School Name"
+              value={form.schoolName}
+              onChange={(e) => setForm({ ...form, schoolName: e.target.value })}
+              fullWidth
+            />
+
+            <TextField
+              label="Tea Garden"
+              value={form.teaGarden}
+              onChange={(e) => setForm({ ...form, teaGarden: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Guardian Name"
+              value={form.guardianName}
+              onChange={(e) => setForm({ ...form, guardianName: e.target.value })}
+              fullWidth
+            />
 
             <TextField
               select

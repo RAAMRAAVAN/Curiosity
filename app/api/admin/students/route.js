@@ -2,6 +2,7 @@ import { ApiResponse } from "@/utils/apiResponse";
 import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from '@/lib/adminRbac';
 import bcrypt from "bcryptjs";
+import { nextStudentId } from "@/lib/studentId";
 
 function formatDateValue(value) {
   if (!value) return "";
@@ -31,6 +32,8 @@ function mapStudent(user, classMap = {}) {
     phone: profile.phone || "",
     address: profile.address || "",
     schoolName: profile.schoolName || "",
+    teaGarden: profile.teaGarden || "",
+    guardianName: profile.guardianName || "",
     status: user.status,
   };
 }
@@ -122,19 +125,36 @@ export async function POST(req) {
       return ApiResponse.error('Forbidden: center is not assigned to this user.', 403);
     }
 
-    if (body.studyingClass) {
-      const selectedClass = await prisma.class.findUnique({
-        where: { id: body.studyingClass },
-        select: { id: true, centerId: true },
-      });
+    if (!finalCenterId) {
+      return ApiResponse.error("Center is required when registering a student", 400);
+    }
 
-      if (!selectedClass) {
-        return ApiResponse.error("Selected class does not exist", 400);
-      }
+    if (!body.studyingClass) {
+      return ApiResponse.error("Class is required when registering a student", 400);
+    }
 
-      if (finalCenterId && selectedClass.centerId && selectedClass.centerId !== finalCenterId) {
-        return ApiResponse.error("Selected class is outside the allowed center", 403);
-      }
+    const center = finalCenterId
+      ? await prisma.center.findUnique({
+          where: { id: finalCenterId },
+          select: { slug: true },
+        })
+      : null;
+
+    if (finalCenterId && !center) {
+      return ApiResponse.error("Selected center does not exist", 400);
+    }
+
+    const selectedClass = await prisma.class.findUnique({
+      where: { id: body.studyingClass },
+      select: { id: true, centerId: true, className: true },
+    });
+
+    if (!selectedClass) {
+      return ApiResponse.error("Selected class does not exist", 400);
+    }
+
+    if (finalCenterId && selectedClass.centerId && selectedClass.centerId !== finalCenterId) {
+      return ApiResponse.error("Selected class is outside the allowed center", 403);
     }
 
     const baseEmail = body.name
@@ -144,36 +164,46 @@ export async function POST(req) {
     const generatedEmail = `${baseEmail}@curiosity.com`;
     const generatedPassword = "123456";
 
-    let email = generatedEmail;
-    let counter = 1;
-    while (await prisma.user.findUnique({ where: { email } })) {
-      email = `${baseEmail}${counter}@curiosity.com`;
-      counter += 1;
-    }
-
     const hashedPassword = await bcrypt.hash(generatedPassword, 10);
-    const user = await prisma.user.create({
-      data: {
-        name: body.name,
-        email,
-        password: hashedPassword,
-        role: "STUDENT",
-        centerId: finalCenterId,
-        status: body.status !== undefined ? Boolean(body.status) : true,
-        student: {
-          create: {
-            centerId: finalCenterId,
-            studyingClass: body.studyingClass || null,
+    const user = await prisma.$transaction(async (tx) => {
+      let email = generatedEmail;
+      let counter = 1;
+      while (await tx.user.findUnique({ where: { email } })) {
+        email = `${baseEmail}${counter}@curiosity.com`;
+        counter += 1;
+      }
+
+      const studentId = await nextStudentId(tx, center.slug, selectedClass.className);
+
+      return tx.user.create({
+        data: {
+          ...(studentId ? { id: studentId } : {}),
+          name: body.name,
+          email,
+          password: hashedPassword,
+          role: "STUDENT",
+          centerId: finalCenterId,
+          status: body.status !== undefined ? Boolean(body.status) : true,
+          student: {
+            create: {
+              centerId: finalCenterId,
+              studyingClass: body.studyingClass || null,
+              dob: body.dob ? new Date(body.dob) : null,
+              gender: body.gender || null,
+              schoolName: body.schoolName?.trim() || null,
+              teaGarden: body.teaGarden?.trim() || null,
+              guardianName: body.guardianName?.trim() || null,
+            },
           },
         },
-      },
-      include: {
-        student: {
-          include: {
-            center: true,
+        include: {
+          student: {
+            include: {
+              center: true,
+            },
           },
         },
-      },
+      });
     });
 
     return ApiResponse.success(mapStudent(user), "Student created successfully.");
