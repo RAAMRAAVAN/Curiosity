@@ -1,0 +1,2 @@
+ALTER TYPE "StudentAttendanceStatus" ADD VALUE IF NOT EXISTS 'HOLIDAY';
+ALTER TYPE "StudentAttendanceStatus" ADD VALUE IF NOT EXISTS 'WEEKLY_OFF';

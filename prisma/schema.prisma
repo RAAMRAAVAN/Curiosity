@@ -568,6 +568,8 @@ enum AssessmentAttendanceStatus {
 enum StudentAttendanceStatus {
   PRESENT
   ABSENT
+  HOLIDAY
+  WEEKLY_OFF
 }
 
 model StudentAttendance {
