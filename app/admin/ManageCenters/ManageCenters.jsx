@@ -10,6 +10,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Fab,
   IconButton,
   Paper,
   Stack,
@@ -21,6 +22,7 @@ import {
   TableRow,
   TextField,
   Typography,
+  Tooltip,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
@@ -175,14 +177,14 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
   };
 
   return (
-    <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 3, flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
+    <Box sx={{ width: '100%', p: { xs: 0, sm: 2, md: 3 } }}>
+      <Box padding={1} sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 3, flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
         <Box>
           <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: 18, sm: 20, md: 24 } }}>Manage Centers</Typography>
           <Typography color="text.secondary" sx={{ fontSize: { xs: 12, sm: 14 } }}>Create, view, and edit centers.</Typography>
         </Box>
         {canCreateCenters ? (
-          <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+          <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' }, display: { xs: 'none', sm: 'inline-flex' } }}>
             Add Center
           </Button>
         ) : null}
@@ -245,6 +247,37 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {canCreateCenters ? (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            position: 'fixed',
+            right: 16,
+            bottom: 12,
+            zIndex: (theme) => theme.zIndex.fab,
+          }}
+        >
+          <Tooltip title="Create new center" arrow>
+            <Fab
+              color="primary"
+              aria-label="Create new center"
+              onClick={openCreateDialog}
+              disabled={loading}
+            >
+              <Add />
+            </Fab>
+          </Tooltip>
+          <Typography
+            variant="caption"
+            sx={{ mt: 0.5, fontWeight: 700, color: '#64748B' }}
+          >
+            Create New Center
+          </Typography>
+        </Box>
+      ) : null}
 
       <Dialog
         open={dialogOpen}

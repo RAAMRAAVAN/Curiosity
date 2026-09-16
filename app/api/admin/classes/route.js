@@ -1,6 +1,7 @@
 import { ApiResponse } from "@/utils/apiResponse";
 import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from '@/lib/adminRbac';
+import { getTeacherAssignedClassIds } from '@/lib/teacherClassAccess';
 
 export async function GET(req) {
   const auth = await requireAdminPermission(req, 'classes.view');
@@ -21,6 +22,12 @@ export async function GET(req) {
         const centerId = item?.centerId == null ? null : String(item.centerId).trim();
         return !centerId || accessibleCenterIds.has(centerId) || auth.actor.canAccessCenter(centerId);
       });
+    }
+    if (auth.actor.isTeacher) {
+      const assignedClassIds = await getTeacherAssignedClassIds(prisma, auth.actor.userId);
+      if (assignedClassIds) {
+        classes = classes.filter((item) => assignedClassIds.includes(item.id));
+      }
     }
     return ApiResponse.success(classes);
   } catch (err) {

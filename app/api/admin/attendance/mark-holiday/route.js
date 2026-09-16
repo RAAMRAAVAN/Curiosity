@@ -1,6 +1,7 @@
 import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from "@/lib/adminRbac";
 import { ApiResponse } from "@/utils/apiResponse";
+import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
 
 function dateValue(value) {
   const raw = String(value || "").trim();
@@ -10,7 +11,12 @@ function dateValue(value) {
 }
 
 function todayValue() {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 async function teacherCenterId(actor) {
@@ -59,22 +65,35 @@ export async function POST(req) {
     const centerIds = await attendanceScope(auth.actor, body.centerId);
     if (!centerIds) return ApiResponse.error("You are not assigned to a valid center.", 403);
 
-    const classRecord = await prisma.class.findFirst({
-      where: {
-        id: body.classId,
-        status: true,
-        OR: [{ centerId: { in: centerIds } }, { centerId: null }],
-      },
-      select: { id: true },
-    });
-    if (!classRecord) return ApiResponse.error("Class is not available for this center.", 403);
+    const assignedClassIds = auth.actor.isTeacher ? await getTeacherAssignedClassIds(prisma, auth.actor.userId) : null;
+    const isAllClasses = body.classId === "all";
+    if (!isAllClasses && assignedClassIds && !assignedClassIds.includes(body.classId)) {
+      return ApiResponse.error("Class is not available for this center.", 403);
+    }
+    if (!isAllClasses) {
+      const classRecord = await prisma.class.findFirst({
+        where: {
+          id: body.classId,
+          status: true,
+          OR: [{ centerId: { in: centerIds } }, { centerId: null }],
+        },
+        select: { id: true },
+      });
+      if (!classRecord) return ApiResponse.error("Class is not available for this center.", 403);
+    }
 
     const students = await prisma.user.findMany({
       where: {
         role: "STUDENT",
-        student: { centerId: { in: centerIds }, studyingClass: body.classId },
+        status: true,
+        student: {
+          centerId: { in: centerIds },
+          ...(isAllClasses
+            ? (assignedClassIds ? { studyingClass: { in: assignedClassIds } } : {})
+            : { studyingClass: body.classId }),
+        },
       },
-      select: { id: true, student: { select: { centerId: true } } },
+      select: { id: true, student: { select: { centerId: true, studyingClass: true } } },
     });
     if (!students.length) return ApiResponse.error("No visible students found for this filter.", 400);
 
@@ -86,14 +105,14 @@ export async function POST(req) {
           attendanceDate: date,
           studentId: student.id,
           centerId: student.student.centerId,
-          classId: classRecord.id,
+          classId: student.student.studyingClass,
           status,
           markedBy: auth.actor.userId,
           markedAt,
         },
         update: {
           centerId: student.student.centerId,
-          classId: classRecord.id,
+          classId: student.student.studyingClass,
           status,
           markedBy: auth.actor.userId,
           markedAt,

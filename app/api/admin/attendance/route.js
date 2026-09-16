@@ -1,6 +1,7 @@
 import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from "@/lib/adminRbac";
 import { ApiResponse } from "@/utils/apiResponse";
+import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
 
 function dateValue(value) {
   const raw = String(value || "").trim();
@@ -10,7 +11,29 @@ function dateValue(value) {
 }
 
 function todayValue() {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function sortClasses(classes) {
+  return [...classes].sort((a, b) => {
+    const aValue = String(a.className || "");
+    const bValue = String(b.className || "");
+    const aNum = Number.parseInt(aValue, 10);
+    const bNum = Number.parseInt(bValue, 10);
+    const aHasNumber = !Number.isNaN(aNum) && /\d/.test(aValue);
+    const bHasNumber = !Number.isNaN(bNum) && /\d/.test(bValue);
+
+    if (aHasNumber && bHasNumber) {
+      return aNum - bNum;
+    }
+
+    return aValue.localeCompare(bValue, undefined, { sensitivity: "base" });
+  });
 }
 
 async function teacherCenterId(actor) {
@@ -55,25 +78,34 @@ export async function GET(req) {
     if (!scope) return ApiResponse.error("You are not assigned to a valid center.", 403);
     if (!date) return ApiResponse.error("Invalid attendance date.", 400);
 
-    const classes = await prisma.class.findMany({
+    const rawClasses = await prisma.class.findMany({
       where: {
         status: true,
         OR: [{ centerId: { in: scope.centerIds } }, { centerId: null }],
       },
       select: { id: true, className: true, centerId: true },
-      orderBy: { className: "asc" },
     });
+    const assignedClassIds = auth.actor.isTeacher ? await getTeacherAssignedClassIds(prisma, auth.actor.userId) : null;
+    const classes = sortClasses(assignedClassIds ? rawClasses.filter((item) => assignedClassIds.includes(item.id)) : rawClasses);
     if (!classId) return ApiResponse.success({ center: scope.center, classes, students: [], date: dateText, today: todayValue() });
 
-    const selectedClass = classes.find((item) => item.id === classId);
+    const classMap = Object.fromEntries(classes.map((item) => [item.id, item.className]));
+    const isAllClasses = classId === "all";
+    const selectedClass = isAllClasses ? { id: "all", className: "All" } : classes.find((item) => item.id === classId);
     if (!selectedClass) return ApiResponse.error("Class is not available for this center.", 403);
 
     const users = await prisma.user.findMany({
       where: {
         role: "STUDENT",
-        student: { centerId: { in: scope.centerIds }, studyingClass: classId },
+        status: true,
+        student: {
+          centerId: { in: scope.centerIds },
+          ...(isAllClasses
+            ? (assignedClassIds ? { studyingClass: { in: assignedClassIds } } : {})
+            : { studyingClass: classId }),
+        },
       },
-      orderBy: { name: "asc" },
+      orderBy: { id: "asc" },
       select: {
         id: true,
         name: true,
@@ -100,7 +132,8 @@ export async function GET(req) {
         id: user.id,
         name: user.name,
         centerName: user.student?.center?.name || "-",
-        className: selectedClass.className,
+        classId: user.student?.studyingClass || null,
+        className: isAllClasses ? classMap[user.student?.studyingClass] || "-" : selectedClass.className,
         status: user.studentAttendances[0]?.status || null,
         markedAt: user.studentAttendances[0]?.markedAt || null,
         markedBy: user.studentAttendances[0]?.markedBy || null,
@@ -133,6 +166,12 @@ export async function POST(req) {
 
     const scope = await attendanceScope(auth.actor, body.centerId);
     if (!scope) return ApiResponse.error("You are not assigned to a valid center.", 403);
+    if (auth.actor.isTeacher) {
+      const assignedClassIds = await getTeacherAssignedClassIds(prisma, auth.actor.userId);
+      if (assignedClassIds && !assignedClassIds.includes(body.classId)) {
+        return ApiResponse.error("Class is not available for this center.", 403);
+      }
+    }
     const classRecord = await prisma.class.findFirst({
       where: { id: body.classId, status: true, OR: [{ centerId: { in: scope.centerIds } }, { centerId: null }] },
       select: { id: true },

@@ -1,14 +1,17 @@
-import { Delete, Edit } from "@mui/icons-material";
-import { Button, CircularProgress, Typography, IconButton, Stack, TableCell, TableRow } from "@mui/material";
+import { Delete, Edit, MenuBook, School } from "@mui/icons-material";
+import { Button, CircularProgress, Typography, IconButton, Stack, TableCell, TableRow, Tooltip } from "@mui/material";
 import { useEffect, useState } from "react";
 import TeacherSubjectDialog from "./TeacherSubjectDialog";
+import TeacherClassDialog from "./TeacherClassDialog";
 
-const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeacher, canEditTeachers = false, canDeleteTeachers = false, canMapSubjects = false }) => {
+const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeacher, canEditTeachers = false, canDeleteTeachers = false, canMapSubjects = false, canMapClasses = false }) => {
 
     const [subjects, setSubjects] = useState([]);
     const [subjectLoading, setSubjectsLoading] = useState(false);
     const [subjectDialog, setSubjectDialog] = useState(false);
     const [selectedTeacher, setSelectedTeacher] = useState(null);
+    const [classDialog, setClassDialog] = useState(false);
+    const [selectedClassTeacher, setSelectedClassTeacher] = useState(null);
 
 
     const FetchAllSubjects = async () => {
@@ -115,8 +118,6 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
 
                     <TableCell>{teacher.name}</TableCell>
 
-                    <TableCell>{teacher.email}</TableCell>
-
                     <TableCell>{teacher.centerName || "—"}</TableCell>
 
                     {/* <TableCell>{teacher.classNames?.join(", ") || "—"}</TableCell>
@@ -130,31 +131,62 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
 
                     <TableCell>
 
+                        {canMapClasses ? (
+                            <Tooltip title="Map classes" arrow>
+                                <IconButton
+                                    color="primary"
+                                    size="small"
+                                    aria-label={`Map classes for ${teacher.name}`}
+                                    onClick={() => {
+                                        setSelectedClassTeacher(teacher.id);
+                                        setClassDialog(true);
+                                    }}
+                                >
+                                    <School fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                        ) : (
+                            <Typography variant="caption" color="text.secondary">—</Typography>
+                        )}
+
+                    </TableCell>
+
+                    <TableCell>
+
                         {canMapSubjects ? (
                             subjectLoading ?
 
-                                <Button
-                                    variant="outlined"
+                                <IconButton
+                                    color="primary"
+                                    size="small"
                                     disabled
-                                    startIcon={<CircularProgress size={16} />}
                                 >
-                                    Loading
-                                </Button>
+                                    <CircularProgress size={18} />
+                                </IconButton>
 
                                 :
 
-                                <Button onClick={() => {
-                                    setSelectedTeacher(teacher.id);
-                                    setSubjectDialog(true);
-                                }}>
-                                    Click Here
-                                </Button>
+                                <Tooltip title="Map subjects" arrow>
+                                    <IconButton
+                                        color="primary"
+                                        size="small"
+                                        aria-label={`Map subjects for ${teacher.name}`}
+                                        onClick={() => {
+                                            setSelectedTeacher(teacher.id);
+                                            setSubjectDialog(true);
+                                        }}
+                                    >
+                                        <MenuBook fontSize="small" />
+                                    </IconButton>
+                                </Tooltip>
                         ) : (
                             <Typography variant="caption" color="text.secondary">—</Typography>
                         )}
 
 
                     </TableCell>
+
+                    <TableCell>{teacher.email}</TableCell>
 
 
                     <TableCell>
@@ -206,6 +238,13 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
                 setPageLoading={setPageLoading}
 
 
+            />
+
+            <TeacherClassDialog
+                open={classDialog}
+                setOpen={setClassDialog}
+                teacherId={selectedClassTeacher}
+                setPageLoading={setPageLoading}
             />
 
         </>

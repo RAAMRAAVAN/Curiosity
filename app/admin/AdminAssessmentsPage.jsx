@@ -124,11 +124,11 @@ const AdminAssessmentsPage = () => {
   }, []);
 
   return (
-    <Box sx={{ width: '100%' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 2 }}>
+    <Box sx={{ width: { xs: 'calc(100% + 32px)', sm: '100%' }, ml: { xs: -2, sm: 0 }, p: { xs: 0, sm: 2, md: 3 } }}>
+      <Box paddingX={2} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 2 }}>
         <Box>
-          <Typography variant="h5" fontWeight={700} sx={{ mb: 1 }}>View Assessments</Typography>
-          <Typography color="text.secondary">Review and manage assessments across all available subjects.</Typography>
+          <Typography variant="h6" fontWeight={700} sx={{ mb: 1, fontSize: { xs: 16, sm: 20 } }}>View Assessments</Typography>
+          <Typography color="text.secondary" sx={{ fontSize: { xs: 12, sm: 16 } }}>Review and manage assessments across all available subjects.</Typography>
         </Box>
         {canCreateAssessments ? (
           <Button variant="contained" startIcon={<AddCircleOutline />} onClick={handleOpenCreate} disabled={!selectedSubjectId}>
@@ -164,6 +164,7 @@ const AdminAssessmentsPage = () => {
         allowSubjectSelection
         assessmentSubjectOptions={assessmentSubjects}
         assessmentVisibleClassOptions={assessmentClasses}
+        fullWidth
         onAssessmentSubjectChange={handleAssessmentSubjectChange}
         onAllowedClassIdsChange={handleVisibleClassIdsChange}
       />

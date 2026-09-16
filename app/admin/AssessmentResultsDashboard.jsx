@@ -29,6 +29,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { Assessment, BarChart, TrendingUp } from '@mui/icons-material';
+import * as XLSX from 'xlsx-js-style';
 
 const AssessmentResultsDashboard = ({ assessmentId }) => {
   const ALL_CENTERS = 'ALL';
@@ -46,6 +47,8 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
   const [absentDialogOpen, setAbsentDialogOpen] = useState(false);
   const [absentStudents, setAbsentStudents] = useState([]);
   const [absentLoading, setAbsentLoading] = useState(false);
+  const [pendingSearch, setPendingSearch] = useState('');
+  const [absentSearch, setAbsentSearch] = useState('');
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailResults, setDetailResults] = useState([]);
   const [detailAssessmentTitle, setDetailAssessmentTitle] = useState('');
@@ -87,6 +90,20 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
     if (selectedCenter === ALL_CENTERS) return detailResults;
     return detailResults.filter((item) => (item.studentCenterName || 'N/A') === selectedCenter);
   }, [detailResults, selectedCenter, canUseCenterFilter]);
+
+  const filterGroupsByName = (groups, search) => {
+    const query = search.trim().toLowerCase();
+    if (!query) return groups;
+    return groups
+      .map((group) => ({
+        ...group,
+        students: (group.students || []).filter((student) => String(student.name || '').toLowerCase().includes(query)),
+      }))
+      .filter((group) => group.students.length > 0);
+  };
+
+  const filteredPendingStudents = useMemo(() => filterGroupsByName(pendingStudents, pendingSearch), [pendingStudents, pendingSearch]);
+  const filteredAbsentStudents = useMemo(() => filterGroupsByName(absentStudents, absentSearch), [absentStudents, absentSearch]);
 
   const detailStats = useMemo(() => {
     if (!filteredDetailResults.length) {
@@ -305,10 +322,12 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
           centerName: student.student?.center?.centerName || student.centerName || 'N/A',
         })),
       })));
+      setPendingSearch('');
       setPendingDialogOpen(true);
     } catch (error) {
       console.error(error);
       setPendingStudents([]);
+      setPendingSearch('');
       setPendingDialogOpen(true);
     } finally {
       setPendingLoading(false);
@@ -335,10 +354,12 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
         })),
       }));
       setAbsentStudents(groups);
+      setAbsentSearch('');
       setAbsentDialogOpen(true);
     } catch (error) {
       console.error(error);
       setAbsentStudents([]);
+      setAbsentSearch('');
       setAbsentDialogOpen(true);
     } finally {
       setAbsentLoading(false);
@@ -361,54 +382,88 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
 
   const escapeValue = (value) => String(value).replace(/"/g, '""');
 
-  const downloadAbsentStudentsExcel = (groups = absentStudents, fileName = 'absent-students') => {
+  const exportStudentGroupsToExcel = (groups, fileName, { includeReason = false } = {}) => {
     if (!Array.isArray(groups) || groups.length === 0) {
       return;
     }
 
-    const headers = ['S.No', 'Student', 'Center Name', 'Class', 'Email', 'Reason', 'Marked At'];
-    const rows = groups
-      .flatMap((group) => (group.students || []).map((student) => ({
-        ...student,
-        centerName: student.student?.center?.centerName || student.centerName || 'N/A',
-        className: group.className || student.studentClassName || student.student?.className || student.className || 'N/A',
-      })))
-      .map((student, index) => [
-        index + 1,
-        student.name || '',
-        student.centerName || 'N/A',
-        student.className || 'N/A',
-        student.email || 'No email',
-        student.reason || '—',
-        student.markedAt ? new Date(student.markedAt).toLocaleString() : '—',
-      ]);
+    const headers = ['S.No', 'Student Name', 'Enrollment ID', 'Center Name', 'Class', ...(includeReason ? ['Reason', 'Marked At'] : [])];
 
-    const headerRow = headers
-      .map((header) => `<th style="border:1px solid #666; padding:8px; font-weight:bold; background:#f9e4e4;">${escapeValue(header)}</th>`)
-      .join('');
+    const students = groups.flatMap((group) => (group.students || []).map((student) => ({
+      ...student,
+      centerName: student.centerName || student.student?.center?.centerName || 'N/A',
+      className: group.className || student.studentClassName || student.student?.className || student.className || 'N/A',
+    })));
 
-    const bodyRows = rows
-      .map(
-        (row) =>
-          `<tr>${row
-            .map(
-              (cell) => `<td style="border:1px solid #666; padding:8px; text-align:left;">${escapeValue(cell)}</td>`
-            )
-            .join('')}</tr>`
-      )
-      .join('');
+    const rows = students.map((student, index) => [
+      index + 1,
+      student.name || '',
+      student.id || 'N/A',
+      student.centerName || 'N/A',
+      student.className || 'N/A',
+      ...(includeReason ? [student.reason || '—', student.markedAt ? new Date(student.markedAt).toLocaleString() : '—'] : []),
+    ]);
 
-    const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><h2 style="margin-bottom:12px;">${escapeValue(fileName)}</h2><table style="border-collapse:collapse; width:100%;"><thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table></body></html>`;
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
 
-    const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${String(fileName).replace(/[^a-z0-9-_ ]/gi, '') || 'absent-students'}.xls`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    const headerStyle = {
+      font: { bold: true, color: { rgb: 'FFFFFFFF' } },
+      fill: { patternType: 'solid', fgColor: { rgb: 'FF1F4E78' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: {
+        top: { style: 'thin', color: { rgb: 'FFB7C3D0' } },
+        bottom: { style: 'thin', color: { rgb: 'FFB7C3D0' } },
+        left: { style: 'thin', color: { rgb: 'FFB7C3D0' } },
+        right: { style: 'thin', color: { rgb: 'FFB7C3D0' } },
+      },
+    };
+    headers.forEach((_, colIndex) => {
+      const cellRef = XLSX.utils.encode_cell({ r: 0, c: colIndex });
+      if (worksheet[cellRef]) worksheet[cellRef].s = headerStyle;
+    });
+
+    const bodyBorder = {
+      top: { style: 'thin', color: { rgb: 'FFD9E0E7' } },
+      bottom: { style: 'thin', color: { rgb: 'FFD9E0E7' } },
+      left: { style: 'thin', color: { rgb: 'FFD9E0E7' } },
+      right: { style: 'thin', color: { rgb: 'FFD9E0E7' } },
+    };
+    rows.forEach((row, rowIndex) => {
+      const fillColor = rowIndex % 2 === 0 ? 'FFFFFFFF' : 'FFF3F6FA';
+      row.forEach((_, colIndex) => {
+        const cellRef = XLSX.utils.encode_cell({ r: rowIndex + 1, c: colIndex });
+        if (worksheet[cellRef]) {
+          worksheet[cellRef].s = {
+            border: bodyBorder,
+            alignment: { vertical: 'center', horizontal: colIndex === 0 ? 'center' : 'left' },
+            fill: { patternType: 'solid', fgColor: { rgb: fillColor } },
+          };
+        }
+      });
+    });
+
+    worksheet['!cols'] = [
+      { wch: 6 },
+      { wch: 26 },
+      { wch: 22 },
+      { wch: 24 },
+      { wch: 14 },
+      ...(includeReason ? [{ wch: 26 }, { wch: 20 }] : []),
+    ];
+    worksheet['!rows'] = [{ hpx: 22 }];
+    worksheet['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(headers.length - 1)}1` };
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
+    XLSX.writeFile(workbook, `${String(fileName).replace(/[^a-z0-9-_ ]/gi, '') || 'students'}.xlsx`);
+  };
+
+  const downloadPendingStudentsExcel = (groups = filteredPendingStudents, fileName = 'pending-students') => {
+    exportStudentGroupsToExcel(groups, fileName);
+  };
+
+  const downloadAbsentStudentsExcel = (groups = filteredAbsentStudents, fileName = 'absent-students') => {
+    exportStudentGroupsToExcel(groups, fileName, { includeReason: true });
   };
 
   const downloadDetailResults = () => {
@@ -679,22 +734,30 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
       >
         <DialogTitle>Pending Students</DialogTitle>
         <DialogContent>
+          <TextField
+            label="Search by Name"
+            value={pendingSearch}
+            onChange={(event) => setPendingSearch(event.target.value)}
+            fullWidth
+            size="small"
+            sx={{ mb: 2 }}
+          />
           {pendingLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
-          ) : pendingStudents.length === 0 ? (
-            <Typography color="text.secondary">No pending students found for this assessment.</Typography>
+          ) : filteredPendingStudents.length === 0 ? (
+            <Typography color="text.secondary">{pendingStudents.length === 0 ? 'No pending students found for this assessment.' : 'No students match your search.'}</Typography>
           ) : (
             <List>
-              {pendingStudents.map((group) => (
+              {filteredPendingStudents.map((group) => (
                 <Box key={group.className} sx={{ mb: 2 }}>
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
-                    {group.className}
+                    Class {group.className}
                   </Typography>
                   {group.students?.map((student) => (
                     <ListItem key={student.id} disablePadding>
                       <ListItemText
                         primary={student.name || 'Unnamed student'}
-                        secondary={`${student.email || 'No email'} • Center: ${student.centerName || student.student?.center?.centerName || 'N/A'}`}
+                        secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.centerName || student.student?.center?.centerName || 'N/A'}`}
                       />
                     </ListItem>
                   ))}
@@ -703,7 +766,10 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
             </List>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+          <Button variant="contained" color="success" onClick={() => downloadPendingStudentsExcel()} disabled={pendingLoading || pendingStudents.length === 0}>
+            Export Excel
+          </Button>
           <Button onClick={() => setPendingDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
@@ -725,16 +791,24 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
       >
         <DialogTitle>Absent Students</DialogTitle>
         <DialogContent>
+          <TextField
+            label="Search by Name"
+            value={absentSearch}
+            onChange={(event) => setAbsentSearch(event.target.value)}
+            fullWidth
+            size="small"
+            sx={{ mb: 2 }}
+          />
           {absentLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
-          ) : absentStudents.length === 0 ? (
-            <Typography color="text.secondary">No absent students found for this assessment.</Typography>
+          ) : filteredAbsentStudents.length === 0 ? (
+            <Typography color="text.secondary">{absentStudents.length === 0 ? 'No absent students found for this assessment.' : 'No students match your search.'}</Typography>
           ) : (
             <List>
-              {absentStudents.map((group) => (
+              {filteredAbsentStudents.map((group) => (
                 <Box key={group.className} sx={{ mb: 2 }}>
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
-                    {group.className}
+                    Class {group.className}
                   </Typography>
                   {group.students?.map((student) => (
                     <ListItem key={student.id || student.attendanceId} disablePadding>
@@ -743,7 +817,7 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
                         secondary={
                           <>
                             <Typography component="span" variant="body2" color="text.secondary">
-                              {student.email || 'No email'} • Center: {student.centerName || student.student?.center?.centerName || 'N/A'}
+                              Enrollment ID: {student.id || 'N/A'} • Center: {student.centerName || student.student?.center?.centerName || 'N/A'}
                             </Typography>
                             {student.reason ? (
                               <>

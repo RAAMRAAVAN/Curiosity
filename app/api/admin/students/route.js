@@ -3,6 +3,7 @@ import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from '@/lib/adminRbac';
 import bcrypt from "bcryptjs";
 import { nextStudentId } from "@/lib/studentId";
+import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
 
 function formatDateValue(value) {
   if (!value) return "";
@@ -47,6 +48,7 @@ export async function GET(req) {
   try {
     const teacherRole = auth.actor.isTeacher;
     let scopedCenterId = null;
+    let assignedClassIds = null;
 
     if (teacherRole) {
       const teacherProfile = await prisma.teacher.findUnique({
@@ -55,6 +57,7 @@ export async function GET(req) {
       });
 
       scopedCenterId = teacherProfile?.centerId || null;
+      assignedClassIds = await getTeacherAssignedClassIds(prisma, auth.actor.userId);
     }
 
     let [users, classes] = await Promise.all([
@@ -65,6 +68,7 @@ export async function GET(req) {
             ? {
                 student: {
                   centerId: scopedCenterId || "__NO_CENTER__",
+                  ...(assignedClassIds ? { studyingClass: { in: assignedClassIds } } : {}),
                 },
               }
             : {}),
@@ -155,6 +159,13 @@ export async function POST(req) {
 
     if (finalCenterId && selectedClass.centerId && selectedClass.centerId !== finalCenterId) {
       return ApiResponse.error("Selected class is outside the allowed center", 403);
+    }
+
+    if (auth.actor.isTeacher) {
+      const assignedClassIds = await getTeacherAssignedClassIds(prisma, auth.actor.userId);
+      if (assignedClassIds && !assignedClassIds.includes(selectedClass.id)) {
+        return ApiResponse.error("Selected class is not assigned to you", 403);
+      }
     }
 
     const baseEmail = body.name

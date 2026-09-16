@@ -2,6 +2,7 @@ import * as XLSX from "xlsx-js-style";
 import { prisma } from "@/server/prisma";
 import { ApiResponse } from "@/utils/apiResponse";
 import { requireAdminPermission } from '@/lib/adminRbac';
+import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
 
 function formatDateForExport(value) {
   if (!value) return "";
@@ -21,6 +22,7 @@ export async function GET(req) {
     const adminOrManagement = auth.actor.isAdmin || auth.actor.isManagement;
 
     let scopedCenterId = null;
+    let assignedClassIds = null;
     if (teacherRole) {
       const teacherProfile = await prisma.teacher.findUnique({
         where: { userId: auth.actor.userId },
@@ -32,6 +34,7 @@ export async function GET(req) {
       }
 
       scopedCenterId = teacherProfile.centerId;
+      assignedClassIds = await getTeacherAssignedClassIds(prisma, auth.actor.userId);
     }
 
     let [users, classes] = await Promise.all([
@@ -42,6 +45,7 @@ export async function GET(req) {
             ? {
                 student: {
                   centerId: scopedCenterId,
+                  ...(assignedClassIds ? { studyingClass: { in: assignedClassIds } } : {}),
                 },
               }
             : {}),
@@ -59,7 +63,7 @@ export async function GET(req) {
 
     if (!teacherRole && !auth.actor.isAdmin) {
       users = users.filter((user) => auth.actor.canAccessCenter(user.student?.centerId));
-      classes = classes.filter((item) => auth.actor.canAccessCenter(item.centerId));
+      classes = classes.filter((item) => !item.centerId || auth.actor.canAccessCenter(item.centerId));
     }
 
     const classMap = Object.fromEntries(classes.map((item) => [item.id, item.className]));
@@ -67,7 +71,7 @@ export async function GET(req) {
     const rows = users.map((user) => {
       const profile = user.student || {};
       const className = profile.studyingClass
-        ? classMap[profile.studyingClass] || profile.studyingClass
+        ? classMap[profile.studyingClass] || ""
         : "";
 
       return {

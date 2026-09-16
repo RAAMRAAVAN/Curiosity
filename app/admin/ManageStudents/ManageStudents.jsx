@@ -10,6 +10,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Fab,
   IconButton,
   MenuItem,
   Paper,
@@ -21,6 +22,7 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
@@ -28,6 +30,7 @@ import {
 import { Delete, Edit, Add } from "@mui/icons-material";
 
 const ALL_CENTERS = "ALL";
+const ALL_CLASSES = "ALL";
 
 export default function ManageStudents({ setMessage, role, permissions = [] }) {
   const theme = useTheme();
@@ -48,6 +51,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   const [importMessage, setImportMessage] = useState(null);
   const fileInputRef = useRef(null);
   const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
+  const [selectedClassFilter, setSelectedClassFilter] = useState(ALL_CLASSES);
   const [studentSearch, setStudentSearch] = useState("");
   const [form, setForm] = useState({
     name: "",
@@ -457,6 +461,19 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
     return [{ id: ALL_CENTERS, name: "All" }, ...knownCenters, ...dynamicCenters];
   }, [centers, students]);
 
+  const classFilterOptions = useMemo(() => {
+    const knownClasses = classes
+      .filter((item) => item?.id)
+      .map((item) => ({ id: item.id, name: item.className || item.id }));
+
+    const knownClassIds = new Set(knownClasses.map((item) => item.id));
+    const dynamicClasses = students
+      .filter((student) => student?.studyingClass && !knownClassIds.has(student.studyingClass))
+      .map((student) => ({ id: student.studyingClass, name: student.className || student.studyingClass }));
+
+    return [{ id: ALL_CLASSES, name: "All" }, ...knownClasses, ...dynamicClasses];
+  }, [classes, students]);
+
   const filteredStudents = useMemo(() => {
     const search = studentSearch.trim().toLowerCase();
 
@@ -464,13 +481,15 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
       const matchesCenter = !canUseCenterFilter
         || selectedCenter === ALL_CENTERS
         || (student.centerId || "") === selectedCenter;
+      const matchesClass = selectedClassFilter === ALL_CLASSES
+        || (student.studyingClass || "") === selectedClassFilter;
       const matchesSearch = !search
         || String(student.name || "").toLowerCase().includes(search)
         || String(student.id || "").toLowerCase().includes(search);
 
-      return matchesCenter && matchesSearch;
+      return matchesCenter && matchesClass && matchesSearch;
     });
-  }, [students, canUseCenterFilter, selectedCenter, studentSearch]);
+  }, [students, canUseCenterFilter, selectedCenter, selectedClassFilter, studentSearch]);
 
   const centerOptions = useMemo(() => {
     if (!teacherLocked) return centers;
@@ -507,12 +526,12 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   }, [dialogOpen, classes, form.studyingClass]);
 
   return (
-    <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 3, flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
+    <Box sx={{ width: '100%', p: { xs: 0, sm: 2, md: 3 } }}>
+      <Box padding={1} sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 3, flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
         <Box>
-          <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: 18, sm: 20, md: 24 } }}>Manage Students</Typography>
+          <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: 16, sm: 18, md: 20 } }}>Manage Students</Typography>
         </Box>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 2, sm: 1 }} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           <TextField
             size="small"
             label="Search Students"
@@ -528,7 +547,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
               label="Filter By Center"
               value={selectedCenter}
               onChange={(event) => setSelectedCenter(event.target.value)}
-              sx={{ minWidth: 220, width: { xs: '100%', sm: 'auto' }, mt: { xs: 1, sm: 0 } }}
+              sx={{ minWidth: 220, width: { xs: '100%', sm: 'auto' } }}
               InputLabelProps={{ shrink: true }}
             >
               {centerFilterOptions.map((center) => (
@@ -538,11 +557,26 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
               ))}
             </TextField>
           ) : null}
-          <Button variant="outlined" onClick={handleDownloadStudents} disabled={exporting || loading} size={isMobile ? "small" : "medium"} sx={{ display: { xs: 'none', sm: 'inline-flex' }, width: { xs: '100%', sm: 'auto' } }}>
+          <TextField
+            select
+            size="small"
+            label="Filter By Class"
+            value={selectedClassFilter}
+            onChange={(event) => setSelectedClassFilter(event.target.value)}
+            sx={{ minWidth: 180, width: { xs: '100%', sm: 'auto' } }}
+            InputLabelProps={{ shrink: true }}
+          >
+            {classFilterOptions.map((item) => (
+              <MenuItem key={item.id} value={item.id}>
+                {item.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          <Button variant="outlined" onClick={handleDownloadStudents} disabled={exporting || loading} size="small" sx={{ display: { xs: 'none', sm: 'inline-flex' }, width: { xs: '100%', sm: 'auto' }, fontSize: 12, py: 0.5, px: 1.5 }}>
             {exporting ? "Exporting..." : "Export Students"}
           </Button>
           {canCreateStudents ? (
-            <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog} size="small" sx={{ width: { xs: '100%', sm: 'auto' }, display: { xs: 'none', sm: 'inline-flex' }, fontSize: 12, py: 0.5, px: 1.5 }}>
               Add Student
             </Button>
           ) : null}
@@ -559,6 +593,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
         <Table sx={{ minWidth: { xs: 600, sm: 720 } }}>
           <TableHead sx={{ backgroundColor: "#f5f8ff" }}>
             <TableRow>
+              <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 }, whiteSpace: 'nowrap' }}>Enrollment ID</TableCell>
               <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Name</TableCell>
               {/* <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Email</TableCell> */}
               <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Center</TableCell>
@@ -570,13 +605,13 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={isMobile ? 4 : isTablet ? 5 : 6} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={isMobile ? 5 : isTablet ? 6 : 7} align="center" sx={{ py: 4 }}>
                   Loading students...
                 </TableCell>
               </TableRow>
             ) : filteredStudents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isMobile ? 4 : isTablet ? 5 : 6} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={isMobile ? 5 : isTablet ? 6 : 7} align="center" sx={{ py: 4 }}>
                   {students.length === 0
                     ? "No students found."
                     : studentSearch.trim()
@@ -587,6 +622,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
             ) : (
               filteredStudents.map((student) => (
                 <TableRow key={student.id} hover sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}>
+                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, whiteSpace: 'nowrap' }}>{student.id || "—"}</TableCell>
                   <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{student.name}</TableCell>
                   {/* <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{student.email}</TableCell> */}
                   <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{student.centerName || "—"}</TableCell>
@@ -614,6 +650,37 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {canCreateStudents ? (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            position: 'fixed',
+            right: 16,
+            bottom: 12,
+            zIndex: (theme) => theme.zIndex.fab,
+          }}
+        >
+          <Tooltip title="Create new student" arrow>
+            <Fab
+              color="primary"
+              aria-label="Create new student"
+              onClick={openCreateDialog}
+              disabled={loading}
+            >
+              <Add />
+            </Fab>
+          </Tooltip>
+          <Typography
+            variant="caption"
+            sx={{ mt: 0.5, fontWeight: 700, color: '#64748B' }}
+          >
+            Add New Student
+          </Typography>
+        </Box>
+      ) : null}
 
       {canCreateStudents ? (
         <Stack

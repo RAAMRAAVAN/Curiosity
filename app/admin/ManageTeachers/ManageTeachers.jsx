@@ -9,6 +9,8 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
+    Fab,
+    IconButton,
     MenuItem,
     Stack,
     Table,
@@ -18,12 +20,15 @@ import {
     TableHead,
     TableRow,
     TextField,
+    Tooltip,
     Typography,
     useMediaQuery,
     useTheme,
 } from "@mui/material";
 
 import { useEffect, useMemo, useState } from "react";
+import AddIcon from "@mui/icons-material/Add";
+import CloseIcon from "@mui/icons-material/Close";
 import DisplayTeachers from "./DisplayTeachers";
 import TeacherSubjectDialog from "./TeacherSubjectDialog";
 
@@ -76,6 +81,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
     const canEditTeachers = hasPermission('teachers.edit');
     const canDeleteTeachers = hasPermission('teachers.delete');
     const canMapSubjects = hasPermission('teachers.edit');
+    const canMapClasses = hasPermission('classes.mapping') || hasPermission('teachers.edit');
 
     const teacherLocked = authUser?.role === "TEACHER";
 
@@ -355,7 +361,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
     }, [canUseCenterFilter, centerFilterOptions, selectedCenter]);
 
     return (
-        <Box sx={{ width: '100%', p: { xs: 1, sm: 2, md: 3 } }}>
+        <Box sx={{ width: { xs: 'calc(100% + 32px)', sm: '100%' }, ml: { xs: -2, sm: 0 }, p: { xs: 0, sm: 2, md: 3 } }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', p: { xs: 2, sm: 3 }, borderRadius: 3, backgroundColor: 'white', boxShadow: 3 }}>
                 <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
                     <Typography fontWeight='bold' sx={{ fontSize: { xs: 14, sm: 16 } }}>Teachers</Typography>
@@ -375,11 +381,11 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                                 ))}
                             </TextField>
                         ) : null}
-                        <Button variant='outlined' onClick={handleDownloadTeachers} disabled={exporting || pageLoading} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                        <Button variant='outlined' onClick={handleDownloadTeachers} disabled={exporting || pageLoading} size={isMobile ? "small" : "medium"} sx={{ display: { xs: 'none', sm: 'inline-flex' }, width: { xs: '100%', sm: 'auto' } }}>
                             {exporting ? "Exporting..." : "Download Excel"}
                         </Button>
                         {canCreateTeachers ? (
-                            <Button variant='contained' onClick={openCreateDialog} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>Add New Teacher</Button>
+                            <Button variant='contained' onClick={openCreateDialog} size={isMobile ? "small" : "medium"} sx={{ display: { xs: 'none', sm: 'inline-flex' }, width: { xs: '100%', sm: 'auto' } }}>Add New Teacher</Button>
                         ) : null}
                     </Stack>
                 </Box>
@@ -389,13 +395,14 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                             <TableHead sx={{ backgroundColor: "#f5f8ff" }}>
                                 <TableRow>
                                     <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Name</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Email</TableCell>
                                     <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Center</TableCell>
                                     {/* {!isTablet && <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Classes</TableCell>}
                                     {!isTablet && <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Gender</TableCell>}
                                     {!isMobile && <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Phone</TableCell>}
                                     {!isMobile && <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>DOB</TableCell>} */}
+                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Map Classes</TableCell>
                                     <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Map Subjects</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Email</TableCell>
                                     <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Edit / Delete</TableCell>
                                     {/* <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Delete</TableCell> */}
                                 </TableRow>
@@ -409,12 +416,44 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                                 canEditTeachers={canEditTeachers}
                                 canDeleteTeachers={canDeleteTeachers}
                                 canMapSubjects={canMapSubjects}
+                                canMapClasses={canMapClasses}
                             />
                             </TableBody>
                         </Table>
                     </TableContainer>
                 </Box>
             </Box>
+
+            {canCreateTeachers ? (
+                <Box
+                    sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        position: 'fixed',
+                        right: 16,
+                        bottom: 12,
+                        zIndex: (theme) => theme.zIndex.fab,
+                    }}
+                >
+                    <Tooltip title="Add new teacher" arrow>
+                        <Fab
+                            color="primary"
+                            aria-label="Add new teacher"
+                            onClick={openCreateDialog}
+                            disabled={pageLoading}
+                        >
+                            <AddIcon />
+                        </Fab>
+                    </Tooltip>
+                    <Typography
+                        variant="caption"
+                        sx={{ mt: 0.5, fontWeight: 700, color: '#64748B' }}
+                    >
+                        Add Teacher
+                    </Typography>
+                </Box>
+            ) : null}
 
             <Dialog
                 open={open}
@@ -431,7 +470,16 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                     },
                 } : {}}
             >
-                <DialogTitle sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 } }}>{editingTeacher ? "Edit Teacher" : "Add Teacher"}</DialogTitle>
+                <DialogTitle sx={{ position: 'relative', pr: 6, fontWeight: 700, fontSize: { xs: 14, sm: 16 } }}>
+                    {editingTeacher ? "Edit Teacher" : "Add Teacher"}
+                    <IconButton
+                        aria-label="Close"
+                        onClick={() => setOpen(false)}
+                        sx={{ position: 'absolute', top: 6, right: 8 }}
+                    >
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
                 <DialogContent dividers sx={{ overflowY: 'auto' }}>
                     <Stack spacing={2} sx={{ mt: 1 }}>
                         <TextField 
@@ -541,9 +589,10 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                         ) : null}
                     </Stack>
                 </DialogContent>
-                <DialogActions sx={{ gap: 1, px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 2 } }}>
-                    <Button onClick={() => setOpen(false)} size={isMobile ? "small" : "medium"}>Cancel</Button>
-                    <Button variant="contained" onClick={handleSubmit} disabled={pageLoading} size={isMobile ? "small" : "medium"}>{editingTeacher ? "Save Changes" : "Create Teacher"}</Button>
+                <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 2 } }}>
+                    <Button variant="contained" onClick={handleSubmit} disabled={pageLoading} size={isMobile ? "small" : "medium"}>
+                        {editingTeacher ? "Save Changes" : "Create Teacher"}
+                    </Button>
                 </DialogActions>
             </Dialog>
 

@@ -4,6 +4,7 @@ import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from "@/lib/adminRbac";
 import { ApiResponse } from "@/utils/apiResponse";
 import { nextStudentId } from "@/lib/studentId";
+import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_GENDERS = new Set(["Male", "Female", "Other", "Prefer not to say"]);
@@ -53,9 +54,15 @@ export async function POST(req) {
       ? centers
       : centers.filter((center) => auth.actor.canAccessCenter(center.id));
     const visibleCenterIds = new Set(visibleCenters.map((center) => center.id));
-    const visibleClasses = auth.actor.isAdmin
+    let visibleClasses = auth.actor.isAdmin
       ? classes
       : classes.filter((item) => !item.centerId || visibleCenterIds.has(item.centerId));
+    if (auth.actor.isTeacher) {
+      const assignedClassIds = await getTeacherAssignedClassIds(prisma, auth.actor.userId);
+      if (assignedClassIds) {
+        visibleClasses = visibleClasses.filter((item) => assignedClassIds.includes(item.id));
+      }
+    }
     const centerByName = new Map(visibleCenters.map((center) => [center.name.trim().toLowerCase(), center]));
     const classByName = new Map(visibleClasses.map((item) => [item.className.trim().toLowerCase(), item]));
 

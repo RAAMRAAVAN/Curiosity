@@ -86,7 +86,8 @@ function formatTeacherResponse(teacher, classIds = [], classNames = []) {
 }
 
 export async function GET(req, { params }) {
-    const auth = await requireAdminPermission(req, 'teachers.view');
+    const viewAuth = await requireAdminPermission(req, 'teachers.view');
+    const auth = viewAuth.ok ? viewAuth : await requireAdminPermission(req, 'classes.mapping');
     if (!auth.ok) {
         return ApiResponse.error(auth.message, auth.status);
     }
@@ -132,12 +133,27 @@ export async function GET(req, { params }) {
 }
 
 export async function PATCH(req, { params }) {
-    const auth = await requireAdminPermission(req, 'teachers.edit');
-    if (!auth.ok) {
-        return ApiResponse.error(auth.message, auth.status);
+    const mappingAuth = await requireAdminPermission(req, 'classes.mapping');
+    const editAuth = mappingAuth.ok ? mappingAuth : await requireAdminPermission(req, 'teachers.edit');
+    if (!editAuth.ok) {
+        return ApiResponse.error(editAuth.message, editAuth.status);
     }
 
+    const auth = editAuth;
+    const canEditTeacherDetails = auth.actor.hasPermission('teachers.edit');
+
     try {
+        const { id } = await params;
+        const body = await req.json();
+
+        if (!canEditTeacherDetails) {
+            const allowedKeys = new Set(['classIds']);
+            const hasDisallowedField = Object.keys(body).some((key) => !allowedKeys.has(key));
+            if (hasDisallowedField) {
+                return ApiResponse.error("You are not authorized to edit teacher details.", 403);
+            }
+        }
+
         const teacherRole = auth.actor.isTeacher;
         let scopedCenterId = null;
 
@@ -154,8 +170,6 @@ export async function PATCH(req, { params }) {
             scopedCenterId = actorTeacherProfile.centerId;
         }
 
-        const { id } = await params;
-        const body = await req.json();
         const teacher = await prisma.teacher.findUnique({
             where: { id },
             include: { user: true },
@@ -178,7 +192,7 @@ export async function PATCH(req, { params }) {
         const normalizedCenterId = teacherRole
             ? scopedCenterId
             : (body.centerId || null);
-        if (!auth.actor.isAdmin && !teacherRole && !auth.actor.canAccessCenter(normalizedCenterId)) {
+        if (hasCenterUpdate && !auth.actor.isAdmin && !teacherRole && !auth.actor.canAccessCenter(normalizedCenterId)) {
             return ApiResponse.error('Forbidden: center is not assigned to this user.', 403);
         }
         if (body.name !== undefined) teacherUpdateData.name = body.name;

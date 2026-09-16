@@ -48,11 +48,12 @@ export default function AdminPage() {
   const [admin, setAdmin] = useState(null);
   const [authorized, setAuthorized] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [drawerOpen, setDrawerOpen] = useState(!isMobile);
+  const [drawerOpen, setDrawerOpen] = useState(true);
   const [adminView, setAdminView] = useState("users");
   const [message, setMessage] = useState(null);
   const [hasAnyAdminPermission, setHasAnyAdminPermission] = useState(true);
   const router = useRouter();
+  const panelRole = admin?.customRole?.name || admin?.customRoleName || admin?.role || 'Admin';
 
   const getCombinedPermissions = (userData) => {
     const direct = Array.isArray(userData?.permissions) ? userData.permissions : [];
@@ -245,14 +246,14 @@ export default function AdminPage() {
   }
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "#f5f8ff" }}>
+    <Box sx={{ minHeight: "100vh", width: "100vw", overflowX: "hidden", bgcolor: "#f5f8ff" }}>
       {/* Responsive Header with Menu Button */}
       <Box
         sx={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          px: { xs: 2, sm: 3, md: 4 },
+          px: { xs: adminView === "users" ? 1 : 2, sm: 3, md: 4 },
           py: 2,
           backgroundColor: '#fff',
           borderBottom: '1px solid rgba(15, 23, 42, 0.08)',
@@ -270,9 +271,9 @@ export default function AdminPage() {
             flex: 1,
           }}
         >
-          Admin Panel
+          {panelRole}'s Panel
         </Typography>
-        {isMobile && (
+        {(isMobile || !drawerOpen) && (
           <IconButton
             onClick={() => setDrawerOpen(true)}
             sx={{ color: 'inherit' }}
@@ -301,8 +302,11 @@ export default function AdminPage() {
         sx={{
           ml: { xs: 0, md: drawerOpen ? 30 : 0 },
           transition: 'margin-left 0.3s ease-in-out',
-          py: { xs: 2, sm: 3, md: 4 },
-          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: ['users', 'centers', 'students', 'roles'].includes(adminView) ? 0 : 2, sm: 3, md: 4 },
+          px: { xs: ['users', 'centers', 'students', 'roles'].includes(adminView) ? 0 : 2, sm: 3, md: 4 },
+          bgcolor: ['users', 'centers', 'students', 'roles'].includes(adminView) ? '#fff' : 'transparent',
+          width: { xs: ['users', 'centers', 'students', 'roles'].includes(adminView) ? '100vw' : 'auto', md: 'auto' },
+          boxSizing: 'border-box',
           minHeight: 'calc(100vh - 64px)',
         }}
       >
@@ -371,7 +375,7 @@ export default function AdminPage() {
         </>): null}
 
         {adminView === "centers" ? (
-          <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+          <Paper sx={{ p: { xs: 0, sm: 3 }, borderRadius: { xs: 0, sm: 3 }, boxShadow: { xs: 'none', sm: "0 20px 48px rgba(15, 23, 42, 0.08)" } }}>
             <ManageCenters
               setMessage={setMessage}
               role={admin?.role}
@@ -381,7 +385,7 @@ export default function AdminPage() {
         ) : null}
 
         {adminView === "students" ? (
-          <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+          <Paper sx={{ p: { xs: 0, sm: 3 }, borderRadius: { xs: 0, sm: 3 }, boxShadow: { xs: 'none', sm: "0 20px 48px rgba(15, 23, 42, 0.08)" } }}>
             <ManageStudents
               setMessage={setMessage}
               role={admin?.role}
@@ -409,7 +413,7 @@ export default function AdminPage() {
         ) : null}
 
         {adminView === 'roles' ? (
-          <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+          <Paper sx={{ p: { xs: 0, sm: 3 }, borderRadius: { xs: 0, sm: 3 }, boxShadow: { xs: 'none', sm: "0 20px 48px rgba(15, 23, 42, 0.08)" } }}>
             <ManageRoles
               setMessage={setMessage}
               role={admin?.role}

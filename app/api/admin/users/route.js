@@ -142,7 +142,11 @@ export async function POST(req) {
   const body = await req.json();
   body.userType = body.userType?.toLowerCase() || "student";
 
-  await validateSignup(body, { allowRoles: validRoles });
+  try {
+    await validateSignup(body, { allowRoles: validRoles });
+  } catch (error) {
+    return ApiResponse.error(error.message || "Invalid user details.", 400);
+  }
 
   const existing = await prisma.user.findUnique({
     where: { email: body.email },

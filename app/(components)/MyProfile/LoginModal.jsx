@@ -16,6 +16,7 @@ import {
   IconButton,
   InputAdornment,
   CircularProgress,
+  useMediaQuery,
 } from "@mui/material";
 
 import CloseIcon from "@mui/icons-material/Close";
@@ -26,9 +27,20 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { setAuthUser } from "@/redux/features/authSlice";
 import { setDefaultClass } from "@/redux/features/classSlice";
 
-const LoginModal = ({ open, onClose, onSignupClick }) => {
+const LoginModal = ({
+  open,
+  onClose,
+  onSignupClick,
+  fullScreen = false,
+  showSignup = true,
+  showForgotPassword = true,
+}) => {
   const dispatch = useDispatch();
   const router = useRouter();
+  const isSmallScreen = useMediaQuery("(max-width:899px)", {
+    noSsr: true,
+  });
+  const useFullScreenLayout = fullScreen && isSmallScreen;
 
   const [form, setForm] = useState({
     email: "",
@@ -107,17 +119,27 @@ const LoginModal = ({ open, onClose, onSignupClick }) => {
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={(event, reason) => {
+        if (fullScreen && (reason === "backdropClick" || reason === "escapeKeyDown")) {
+          return;
+        }
+
+        onClose();
+      }}
+      disableEscapeKeyDown={fullScreen}
+      fullScreen={useFullScreenLayout}
       maxWidth="xs"
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: 5,
+          borderRadius: useFullScreenLayout ? 0 : 5,
           overflow: "hidden",
           boxShadow: "0 30px 80px rgba(0,0,0,.25)",
           display: "flex",
-          width: "100vw",
-          margin: '10px',
+          height: fullScreen ? "100vh" : "auto",
+          maxHeight: fullScreen ? "100vh" : "calc(100% - 64px)",
+          width: useFullScreenLayout ? "100%" : "100vw",
+          margin: fullScreen ? 0 : "10px",
         },
       }}
     >
@@ -133,17 +155,19 @@ const LoginModal = ({ open, onClose, onSignupClick }) => {
           position: "relative",
         }}
       >
-        <IconButton
-          onClick={onClose}
-          sx={{
-            position: "absolute",
-            right: 10,
-            top: 10,
-            color: "white",
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
+        {!fullScreen && (
+          <IconButton
+            onClick={onClose}
+            sx={{
+              position: "absolute",
+              right: 10,
+              top: 10,
+              color: "white",
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        )}
 
         <Box
           sx={{
@@ -226,62 +250,68 @@ const LoginModal = ({ open, onClose, onSignupClick }) => {
             }}
           />
 
-          <Box textAlign="right">
+          {showForgotPassword && (
+            <Box textAlign="right">
+              <Button
+                size="small"
+                sx={{
+                  textTransform: "none",
+                }}
+              >
+                Forgot Password?
+              </Button>
+            </Box>
+          )}
+        </Box>
+
+        {showSignup && (
+          <Box
+            display="flex"
+            alignItems="center"
+            my={3}
+          >
+            <Box flex={1} height={1} bgcolor="#E5E7EB" />
+
+            <Typography
+              mx={2}
+              color="text.secondary"
+              fontSize={13}
+            >
+              OR
+            </Typography>
+
+            <Box flex={1} height={1} bgcolor="#E5E7EB" />
+          </Box>
+        )}
+
+        {showSignup && (
+          <Box
+            sx={{
+              bgcolor: "#F8FAFC",
+              borderRadius: 3,
+              p: 2.5,
+              textAlign: "center",
+            }}
+          >
+            <Typography variant="body2">
+              Don't have an account?
+            </Typography>
+
             <Button
-              size="small"
+              onClick={() => {
+                onClose();
+                onSignupClick?.();
+              }}
               sx={{
+                mt: 1,
                 textTransform: "none",
+                fontWeight: 700,
               }}
             >
-              Forgot Password?
+              Create Free Account
             </Button>
           </Box>
-        </Box>
-
-        <Box
-          display="flex"
-          alignItems="center"
-          my={3}
-        >
-          <Box flex={1} height={1} bgcolor="#E5E7EB" />
-
-          <Typography
-            mx={2}
-            color="text.secondary"
-            fontSize={13}
-          >
-            OR
-          </Typography>
-
-          <Box flex={1} height={1} bgcolor="#E5E7EB" />
-        </Box>
-
-        <Box
-          sx={{
-            bgcolor: "#F8FAFC",
-            borderRadius: 3,
-            p: 2.5,
-            textAlign: "center",
-          }}
-        >
-          <Typography variant="body2">
-            Don't have an account?
-          </Typography>
-
-          <Button
-            onClick={() => {
-              onClose();
-              onSignupClick?.();
-            }}
-            sx={{
-              mt: 1,
-              textTransform: "none",
-              fontWeight: 700,
-            }}
-          >
-            Create Free Account
-          </Button>
-        </Box>
+        )}
 
       </DialogContent>
 

@@ -84,7 +84,7 @@ const ResetPassword = () => {
   };
 
   return (
-    <Box sx={{ width: '100%', maxWidth: 720, mx: 'auto' }}>
+    <Box sx={{ width: { xs: 'calc(100% + 32px)', sm: '100%' }, maxWidth: { xs: 'none', sm: 720 }, ml: { xs: -2, sm: 'auto' }, mr: { xs: 0, sm: 'auto' }, p: { xs: 0, sm: 2, md: 3 } }}>
       <Paper
         component="form"
         onSubmit={handleSubmit}

@@ -2,6 +2,7 @@ import { ApiResponse } from "@/utils/apiResponse";
 import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from '@/lib/adminRbac';
 import bcrypt from "bcryptjs";
+import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
 
 function formatDateValue(value) {
   if (!value) return "";
@@ -47,6 +48,7 @@ export async function GET(req, { params }) {
     const { id } = await params;
     const teacherRole = auth.actor.isTeacher;
     let scopedCenterId = null;
+    let assignedClassIds = null;
 
     if (teacherRole) {
       const actorTeacherProfile = await prisma.teacher.findUnique({
@@ -59,6 +61,7 @@ export async function GET(req, { params }) {
       }
 
       scopedCenterId = actorTeacherProfile.centerId;
+      assignedClassIds = await getTeacherAssignedClassIds(prisma, auth.actor.userId);
     }
 
     const studentUser = await prisma.user.findUnique({
@@ -77,6 +80,10 @@ export async function GET(req, { params }) {
     }
 
     if (teacherRole && studentUser.student?.centerId !== scopedCenterId) {
+      return ApiResponse.error("Forbidden", 403);
+    }
+
+    if (teacherRole && assignedClassIds && !assignedClassIds.includes(studentUser.student?.studyingClass)) {
       return ApiResponse.error("Forbidden", 403);
     }
 
@@ -104,6 +111,7 @@ export async function PATCH(req, { params }) {
     const { id } = await params;
     const teacherRole = auth.actor.isTeacher;
     let scopedCenterId = null;
+    let assignedClassIds = null;
 
     if (teacherRole) {
       const actorTeacherProfile = await prisma.teacher.findUnique({
@@ -116,6 +124,7 @@ export async function PATCH(req, { params }) {
       }
 
       scopedCenterId = actorTeacherProfile.centerId;
+      assignedClassIds = await getTeacherAssignedClassIds(prisma, auth.actor.userId);
     }
 
     const targetUser = await prisma.user.findUnique({
@@ -130,6 +139,10 @@ export async function PATCH(req, { params }) {
     }
 
     if (teacherRole && targetUser.student?.centerId !== scopedCenterId) {
+      return ApiResponse.error("Forbidden", 403);
+    }
+
+    if (teacherRole && assignedClassIds && !assignedClassIds.includes(targetUser.student?.studyingClass)) {
       return ApiResponse.error("Forbidden", 403);
     }
 
@@ -184,6 +197,10 @@ export async function PATCH(req, { params }) {
 
       if (selectedClass.centerId && selectedClass.centerId !== scopedCenterId) {
         return ApiResponse.error("Selected class is outside the allowed center", 403);
+      }
+
+      if (assignedClassIds && !assignedClassIds.includes(selectedClass.id)) {
+        return ApiResponse.error("Selected class is not assigned to you", 403);
       }
     }
 

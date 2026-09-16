@@ -12,6 +12,7 @@ import Awards from "./Awards";
 import Footer from "../Footer/Footer";
 import { useDispatch, useSelector } from "react-redux";
 import SignupModal from "@/app/(components)/MyProfile/SignupModal";
+import LoginModal from "@/app/(components)/MyProfile/LoginModal";
 import {
     setAuthUser,
     clearAuthUser,
@@ -25,6 +26,7 @@ const HomePage = () => {
     const user = useSelector((state) => state.auth.user);
     const loggedIn = useSelector((state) => state.auth.loggedIn);
     const [openSignup, setOpenSignup] = useState(false);
+    const [openLogin, setOpenLogin] = useState(false);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -33,6 +35,7 @@ const HomePage = () => {
 
         if (!auth) {
             dispatch(clearAuthUser());
+            setOpenLogin(true);
             return;
         }
 
@@ -43,11 +46,19 @@ const HomePage = () => {
                 dispatch(setAuthUser(parsed.user));
             } else {
                 dispatch(clearAuthUser());
+                setOpenLogin(true);
             }
         } catch (error) {
             dispatch(clearAuthUser());
+            setOpenLogin(true);
         }
     }, [dispatch]);
+
+    useEffect(() => {
+        if (typeof window !== "undefined" && !sessionStorage.getItem("authDetails")) {
+            setOpenLogin(true);
+        }
+    }, []);
 
     const handleLogout = () => {
         sessionStorage.removeItem("authDetails");
@@ -59,7 +70,28 @@ const HomePage = () => {
         <>
             <HomeBroucher />
 
-            <Box marginTop="170px" display="flex" justifyContent="center" alignItems="center">
+            {/* <SignupModal
+                open={openSignup}
+                onClose={() => setOpenSignup(false)}
+                onLoginClick={() => {
+                    setOpenSignup(false);
+                    setOpenLogin(true);
+                }}
+            /> */}
+
+            <LoginModal
+                open={openLogin}
+                fullScreen
+                showSignup={false}
+                showForgotPassword={false}
+                onClose={() => setOpenLogin(false)}
+                onSignupClick={() => {
+                    setOpenLogin(false);
+                    setOpenSignup(true);
+                }}
+            />
+
+            {/* <Box marginTop="170px" display="flex" justifyContent="center" alignItems="center">
                 <Typography color="gray">
                     Trusted by Millions of Students
                 </Typography>
@@ -90,9 +122,9 @@ const HomePage = () => {
                         Start learning for free
                     </Button>
                 )}
-            </Box>
+            </Box> */}
 
-            <Features />
+            {/* <Features />
 
             <Box display="flex" width="100%" justifyContent="center" mt={5}>
                 {loggedIn ? (
@@ -187,6 +219,16 @@ const HomePage = () => {
                     setOpenLogin(true);
                 }}
             />
+
+            <LoginModal
+                open={openLogin}
+                fullScreen
+                onClose={() => setOpenLogin(false)}
+                onSignupClick={() => {
+                    setOpenLogin(false);
+                    setOpenSignup(true);
+                }}
+            /> */}
         </>
     );
 };

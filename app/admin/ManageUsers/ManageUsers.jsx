@@ -1,7 +1,8 @@
 'use client'
 
-import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, ListItemText, MenuItem, OutlinedInput, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, useMediaQuery, useTheme } from "@mui/material"
+import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, Fab, FormControl, InputLabel, ListItemText, MenuItem, OutlinedInput, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography, useMediaQuery, useTheme } from "@mui/material"
 import { useEffect, useMemo, useState } from "react";
+import AddIcon from "@mui/icons-material/Add";
 
 const emptyUserForm = {
     name: "",
@@ -142,6 +143,11 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
       return;
     }
 
+    if (!userForm.name?.trim() || !userForm.email?.trim() || (!selectedUserId && !userForm.password?.trim())) {
+      setMessage("Name, email, and password are required.");
+      return;
+    }
+
     const endpoint = selectedUserId
       ? `/api/admin/users/${selectedUserId}`
       : "/api/admin/users";
@@ -265,14 +271,14 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
     return roles.filter((item) => item.status !== false && String(item.name || '').trim().toLowerCase() !== 'teachers');
   }, [roles]);
 
-    return (<Box>
+    return (<Box sx={{ width: { xs: 'calc(100% + 32px)', sm: '100%' }, ml: { xs: -2, sm: 0 } }}>
         <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 4, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: { xs: 1, sm: 2 }, mb: 2 }}>
+            <Box padding={1} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: { xs: 1, sm: 2 }, mb: 2 }}>
                 <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 14, sm: 16 } }}>
                     Users
                 </Typography>
                 {canCreateUsers ? (
-                  <Button variant="contained" onClick={startNewUser} size={isMobile ? "small" : "medium"}>
+                  <Button variant="contained" onClick={startNewUser} size={isMobile ? "small" : "medium"} sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
                       Create New User
                   </Button>
                 ) : null}
@@ -283,10 +289,10 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
                     <TableHead sx={{ backgroundColor: "#f5f8ff" }}>
                         <TableRow>
                             <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Name</TableCell>
-                            <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Email</TableCell>
-                            <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Role</TableCell>
-                            {!isMobile && <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Custom Role</TableCell>}
+                            {!isMobile && <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Role</TableCell>}
+                            <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Custom Role</TableCell>
                             {!isTablet && <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Centers</TableCell>}
+                            <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Email</TableCell>
                             <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Actions</TableCell>
                         </TableRow>
                     </TableHead>
@@ -294,14 +300,14 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
                         {filteredUsers.map((user) => (
                             <TableRow key={user.id} sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}>
                                 <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{user.name}</TableCell>
-                                <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{user.email}</TableCell>
-                                <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{user.role}</TableCell>
-                                {!isMobile && <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{user.customRoleName || '-'}</TableCell>}
+                                {!isMobile && <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{user.role}</TableCell>}
+                                <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{user.customRoleName || '-'}</TableCell>
                                 {!isTablet && <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>
                                   {Array.isArray(user.assignedCenterIds) && user.assignedCenterIds.length
                                     ? user.assignedCenterIds.map((centerId) => centerNameById[centerId] || centerId).join(', ')
                                     : '-'}
                                 </TableCell>}
+                                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{user.email}</TableCell>
                                 
                                 <TableCell>
                                     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
@@ -331,6 +337,37 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
             </TableContainer>
         </Paper>
 
+        {canCreateUsers ? (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              position: 'fixed',
+              right: 16,
+              bottom: 12,
+              zIndex: (theme) => theme.zIndex.fab,
+            }}
+          >
+            <Tooltip title="Create new user" arrow>
+              <Fab
+                color="primary"
+                aria-label="Create new user"
+                onClick={startNewUser}
+                disabled={loading}
+              >
+                <AddIcon />
+              </Fab>
+            </Tooltip>
+            <Typography
+              variant="caption"
+              sx={{ mt: 0.5, fontWeight: 700, color: '#64748B' }}
+            >
+              Create New User
+            </Typography>
+          </Box>
+        ) : null}
+
         <Dialog 
             open={openUserModal} 
             onClose={() => setOpenUserModal(false)} 
@@ -356,8 +393,8 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
                         : "Create a new user account with required profile details."}
                 </Typography>
                 <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(auto-fit, minmax(240px, 1fr))" } }}>
-                    <TextField label="Name" name="name" value={userForm.name} onChange={handleUserFormChange} fullWidth size={isMobile ? "small" : "medium"} />
-                    <TextField label="Email" name="email" value={userForm.email} onChange={handleUserFormChange} fullWidth size={isMobile ? "small" : "medium"} />
+                    <TextField label="Name" name="name" value={userForm.name} onChange={handleUserFormChange} fullWidth required size={isMobile ? "small" : "medium"} />
+                    <TextField label="Email" name="email" value={userForm.email} onChange={handleUserFormChange} fullWidth required size={isMobile ? "small" : "medium"} />
                     <TextField
                         label="Password"
                         name="password"
@@ -365,6 +402,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
                         value={userForm.password}
                         onChange={handleUserFormChange}
                         fullWidth
+                        required={!selectedUserId}
                         size={isMobile ? "small" : "medium"}
                         helperText={selectedUserId ? "Leave blank to keep current password." : "Set a password for the new user."}
                     />

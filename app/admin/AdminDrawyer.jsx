@@ -32,7 +32,7 @@ import {
 } from "@mui/icons-material";
 
 const drawerWidth = 260;
-const mobileDrawerWidth = 240;
+const mobileDrawerWidth = "90vw";
 
 const AdminDrawer = ({
   drawerOpen,
@@ -57,6 +57,7 @@ const AdminDrawer = ({
     ? customRolePermissions.map((item) => String(item || '').toLowerCase())
     : [];
   const allPermissions = Array.from(new Set([...normalizedPermissions, ...normalizedCustomRolePermissions]));
+  const panelRole = customRoleName || role || "Admin";
 
   const hasPermission = (permission) => {
     if (!permission) return true;
@@ -167,8 +168,8 @@ const AdminDrawer = ({
         px={3}
         py={2}
       >
-        <Typography fontWeight={700} fontSize={20}>
-          Admin Panel
+        <Typography fontWeight={700} fontSize={16}>
+          {panelRole}'s Panel
         </Typography>
 
         <IconButton onClick={() => setDrawerOpen(false)}>

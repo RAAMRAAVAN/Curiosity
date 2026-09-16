@@ -42,7 +42,7 @@ const permissionGroups = [
   },
   {
     title: 'Classes',
-    permissions: ['classes.view', 'classes.create', 'classes.edit', 'classes.delete', 'class_content.edit'],
+    permissions: ['classes.view', 'classes.create', 'classes.edit', 'classes.delete', 'classes.mapping', 'class_content.edit'],
   },
   {
     title: 'Subjects',
@@ -279,7 +279,7 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
   };
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', p: { xs: 0, sm: 2, md: 3 } }}>
       {localMessage ? (
         <Alert severity={localMessage.severity} sx={{ mb: 2 }} onClose={() => setLocalMessage(null)}>
           {localMessage.message}

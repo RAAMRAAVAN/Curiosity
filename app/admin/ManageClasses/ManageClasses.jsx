@@ -1,7 +1,8 @@
 'use client'
-import { Paper, Typography, Box, Button, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem, useMediaQuery, useTheme } from "@mui/material";
+import { Paper, Typography, Box, Button, Fab, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem, Tooltip, useMediaQuery, useTheme } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import AddIcon from "@mui/icons-material/Add";
 import { setDefaultClass } from "@/redux/features/classSlice";
 import { buildClassSlug } from "@/lib/classSlug";
 import { useDispatch } from "react-redux";
@@ -83,8 +84,9 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
 
     const startNewClass = () => {
         setMessage(null);
-        setAdminView("classes");
-        setDrawerOpen(true);
+        setEditingClassId(null);
+        setClassForm({ className: "", icon: "" });
+        setOpenClassModal(true);
     };
 
     const openEditClass = (c) => {
@@ -212,7 +214,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
         router.push(`/admin/ManageClasses/ManageSubjects/${c.id}/home`);
     };
 
-    return (<>
+    return (<Box sx={{ width: { xs: 'calc(100% + 32px)', sm: '100%' }, ml: { xs: -2, sm: 0 } }}>
         <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 4, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 2, flexDirection: { xs: "column", sm: "row" }, gap: { xs: 2, sm: 1 } }}>
                 <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 14, sm: 16 } }}>Classes</Typography>
@@ -224,7 +226,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                             <MenuItem value="assessments">Assessments</MenuItem>
                         </Select>
                     </FormControl> : null}
-                    {isAdminRole ? <Button variant="outlined" size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }} onClick={async () => {
+                    {/* {isAdminRole ? <Button variant="outlined" size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }} onClick={async () => {
                         if (!confirm("Seed classes 1-12?")) return;
                         setLoading(true);
                         try {
@@ -236,11 +238,8 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                             } else setMessage(d.message || 'Seed failed');
                         } catch (e) { console.error(e); setMessage('Seed failed'); }
                         setLoading(false);
-                    }}>Seed Classes</Button> : null}
-                    {canCreateClasses ? <Button variant="contained" size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }} onClick={() => {
-                        const name = prompt("Class name (e.g. Class 1, BSc Computer Science, 4th sem):");
-                        if (name) handleCreateClass(name);
-                    }}>Create Class</Button> : null}
+                    }}>Seed Classes</Button> : null} */}
+                    {canCreateClasses ? <Button variant="contained" size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' }, display: { xs: 'none', sm: 'inline-flex' } }} onClick={startNewClass}>Create Class</Button> : null}
                 </Box> : null}
             </Box>
             <TableContainer sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
@@ -257,7 +256,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                     <TableBody>
                         {classes.map((c) => (
                             <TableRow key={c.id} sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}>
-                                <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{c.className}</TableCell>
+                                <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>Class {c.className}</TableCell>
                                 {/* {!isMobile && <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{c.icon || "-"}</TableCell>} */}
                                 <TableCell>
                                         {canEditClasses ? <Button size="small" onClick={() => openEditClass(c)} sx={{ fontSize: { xs: 10, sm: 12 } }}>Edit</Button> : null}
@@ -301,6 +300,36 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                 </DialogActions>
             </Dialog>
         </Paper>
-    </>);
+        {canCreateClasses ? (
+            <Box
+                sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    position: 'fixed',
+                    right: 16,
+                    bottom: 12,
+                    zIndex: (theme) => theme.zIndex.fab,
+                }}
+            >
+                <Tooltip title="Create new class" arrow>
+                    <Fab
+                        color="primary"
+                        aria-label="Create new class"
+                        onClick={startNewClass}
+                        disabled={loading}
+                    >
+                        <AddIcon />
+                    </Fab>
+                </Tooltip>
+                <Typography
+                    variant="caption"
+                    sx={{ mt: 0.5, fontWeight: 700, color: '#64748B' }}
+                >
+                    Create New Class
+                </Typography>
+            </Box>
+        ) : null}
+    </Box>);
 }
 export default ManageClasses;

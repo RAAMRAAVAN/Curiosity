@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from "@/lib/adminRbac";
 import { ApiResponse } from "@/utils/apiResponse";
+import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
 
 const columns = [
   { header: "Name", key: "name", width: 28 },
@@ -27,9 +28,15 @@ export async function GET(req) {
 
     const visibleCenters = auth.actor.isAdmin ? centers : centers.filter((center) => auth.actor.canAccessCenter(center.id));
     const visibleCenterIds = new Set(visibleCenters.map((center) => center.id));
-    const visibleClasses = auth.actor.isAdmin
+    let visibleClasses = auth.actor.isAdmin
       ? classes
       : classes.filter((item) => !item.centerId || visibleCenterIds.has(item.centerId));
+    if (auth.actor.isTeacher) {
+      const assignedClassIds = await getTeacherAssignedClassIds(prisma, auth.actor.userId);
+      if (assignedClassIds) {
+        visibleClasses = visibleClasses.filter((item) => assignedClassIds.includes(item.id));
+      }
+    }
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = "Curiosity";

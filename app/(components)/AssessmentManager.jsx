@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Box,
@@ -33,7 +33,7 @@ import {
 } from '@mui/material';
 import { AddCircleOutline, CheckCircleOutline, Close, DeleteOutline, RadioButtonUnchecked, Quiz, SaveOutlined } from '@mui/icons-material';
 
-const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessments, loading, addQuestion, subjectId, classId, chapterId, title, setTitle, description, setDescription, type, setType, questions, setQuestions, feedback, setFeedback, editingAssessment, setEditingAssessment, open, setOpen, saving, setSaving, allowSubjectSelection = false, assessmentSubjectOptions = [], assessmentVisibleClassOptions = [], onAssessmentSubjectChange, onAllowedClassIdsChange }) => {
+const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessments, loading, addQuestion, subjectId, classId, chapterId, title, setTitle, description, setDescription, type, setType, questions, setQuestions, feedback, setFeedback, editingAssessment, setEditingAssessment, open, setOpen, saving, setSaving, allowSubjectSelection = false, assessmentSubjectOptions = [], assessmentVisibleClassOptions = [], onAssessmentSubjectChange, onAllowedClassIdsChange, fullWidth = false }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const defaultGradeBands = [
@@ -73,6 +73,9 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
   const [absentCounts, setAbsentCounts] = useState({});
   const [absentCountsLoading, setAbsentCountsLoading] = useState(false);
   const [selectedStudentsForAbsent, setSelectedStudentsForAbsent] = useState(new Set());
+  const [pendingSearch, setPendingSearch] = useState('');
+  const [appearedSearch, setAppearedSearch] = useState('');
+  const [absentSearch, setAbsentSearch] = useState('');
   const [markingAbsentLoading, setMarkingAbsentLoading] = useState(false);
   const [operationSteps, setOperationSteps] = useState([]);
   const [showOperationLoader, setShowOperationLoader] = useState(false);
@@ -326,6 +329,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
 
       setPendingStudents(result.data || []);
       setSelectedAssessment(assessment);
+      setPendingSearch('');
       setPendingDialogOpen(true);
     } catch (error) {
       console.error(error);
@@ -381,6 +385,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
 
       setAppearedStudents(result.data || []);
       setSelectedAssessment(assessment);
+      setAppearedSearch('');
       setAppearedDialogOpen(true);
     } catch (error) {
       console.error(error);
@@ -406,6 +411,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
 
       setAbsentStudents(result.data || []);
       setSelectedAssessment(assessment);
+      setAbsentSearch('');
       setAbsentDialogOpen(true);
     } catch (error) {
       console.error(error);
@@ -538,6 +544,21 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
     }
     setSelectedStudentsForAbsent(newSet);
   };
+
+  const filterGroupsByName = (groups, search) => {
+    const query = search.trim().toLowerCase();
+    if (!query) return groups;
+    return groups
+      .map((group) => ({
+        ...group,
+        students: (group.students || []).filter((student) => String(student.name || '').toLowerCase().includes(query)),
+      }))
+      .filter((group) => group.students.length > 0);
+  };
+
+  const filteredPendingStudents = useMemo(() => filterGroupsByName(pendingStudents, pendingSearch), [pendingStudents, pendingSearch]);
+  const filteredAppearedStudents = useMemo(() => filterGroupsByName(appearedStudents, appearedSearch), [appearedStudents, appearedSearch]);
+  const filteredAbsentStudents = useMemo(() => filterGroupsByName(absentStudents, absentSearch), [absentStudents, absentSearch]);
 
   const fetchAbsentCount = async (id) => {
     if (!id) return 0;
@@ -678,7 +699,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
   };
 
   return (
-    <Box sx={{ mt: 4, px: { xs: 2, sm: 3, md: 4 }, width: '100%', maxWidth: 1400, mx: 'auto' }}>
+    <Box sx={{ mt: 4, px: fullWidth ? { xs: 0, sm: 3, md: 4 } : { xs: 2, sm: 3, md: 4 }, width: '100%', maxWidth: fullWidth ? { xs: 'none', sm: 1400 } : 1400, mx: 'auto' }}>
       {saving && editingAssessment ? (
         <Box
           sx={{
@@ -875,15 +896,23 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
       >
         <DialogTitle>Pending Students</DialogTitle>
         <DialogContent dividers sx={{ overflowY: 'auto' }}>
+          <TextField
+            label="Search by Name"
+            value={pendingSearch}
+            onChange={(event) => setPendingSearch(event.target.value)}
+            fullWidth
+            size="small"
+            sx={{ mb: 2 }}
+          />
           {pendingLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress />
             </Box>
-          ) : pendingStudents.length === 0 ? (
-            <Typography color="text.secondary">No pending students found for this assessment.</Typography>
+          ) : filteredPendingStudents.length === 0 ? (
+            <Typography color="text.secondary">{pendingStudents.length === 0 ? 'No pending students found for this assessment.' : 'No students match your search.'}</Typography>
           ) : (
             <Stack spacing={2}>
-              {pendingStudents.map((group) => (
+              {filteredPendingStudents.map((group) => (
                 <Box key={group.className}>
                   <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
                     Class {group.className}
@@ -904,7 +933,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                         <ListItemButton onClick={() => handleOpenPendingStudentAttempt(student)}>
                           <ListItemText 
                             primary={student.name} 
-                            secondary={`${student.email} • Center: ${student.student?.center?.centerName || 'N/A'}`}
+                            secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || 'N/A'}`}
                           />
                         </ListItemButton>
                       </ListItem>
@@ -959,15 +988,23 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
       >
         <DialogTitle>Appeared Students</DialogTitle>
         <DialogContent dividers sx={{ overflowY: 'auto' }}>
+          <TextField
+            label="Search by Name"
+            value={appearedSearch}
+            onChange={(event) => setAppearedSearch(event.target.value)}
+            fullWidth
+            size="small"
+            sx={{ mb: 2 }}
+          />
           {appearedLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress />
             </Box>
-          ) : appearedStudents.length === 0 ? (
-            <Typography color="text.secondary">No appeared students found for this assessment.</Typography>
+          ) : filteredAppearedStudents.length === 0 ? (
+            <Typography color="text.secondary">{appearedStudents.length === 0 ? 'No appeared students found for this assessment.' : 'No students match your search.'}</Typography>
           ) : (
             <Stack spacing={2}>
-              {appearedStudents.map((group) => (
+              {filteredAppearedStudents.map((group) => (
                 <Box key={group.className}>
                   <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
                     Class {group.className}
@@ -976,7 +1013,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                     {group.students.map((student) => (
                       <ListItem key={student.id} disablePadding>
                         <ListItemButton onClick={() => handleOpenAppearedStudentAttempt(student)}>
-                          <ListItemText primary={student.name} secondary={`${student.email || 'No email'} • Center: ${student.student?.center?.centerName || student.centerName || 'N/A'}`} />
+                          <ListItemText primary={student.name} secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || student.centerName || 'N/A'}`} />
                         </ListItemButton>
                       </ListItem>
                     ))}
@@ -1008,15 +1045,23 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
       >
         <DialogTitle>Absent Students</DialogTitle>
         <DialogContent dividers sx={{ overflowY: 'auto' }}>
+          <TextField
+            label="Search by Name"
+            value={absentSearch}
+            onChange={(event) => setAbsentSearch(event.target.value)}
+            fullWidth
+            size="small"
+            sx={{ mb: 2 }}
+          />
           {absentLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress />
             </Box>
-          ) : absentStudents.length === 0 ? (
-            <Typography color="text.secondary">No absent students found for this assessment.</Typography>
+          ) : filteredAbsentStudents.length === 0 ? (
+            <Typography color="text.secondary">{absentStudents.length === 0 ? 'No absent students found for this assessment.' : 'No students match your search.'}</Typography>
           ) : (
             <Stack spacing={2}>
-              {absentStudents.map((group) => (
+              {filteredAbsentStudents.map((group) => (
                 <Box key={group.className}>
                   <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
                     Class {group.className}
@@ -1039,7 +1084,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                           secondary={
                             <>
                               <Typography component="span" variant="body2" color="text.secondary">
-                                {student.email} • Center: {student.student?.center?.centerName || 'N/A'}
+                                Enrollment ID: {student.id || 'N/A'} • Center: {student.student?.center?.centerName || 'N/A'}
                               </Typography>
                               {student.reason && (
                                 <>

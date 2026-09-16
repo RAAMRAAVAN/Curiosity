@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from "@/lib/adminRbac";
+import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
 
 function dateValue(value) {
   const raw = String(value || "").trim();
@@ -10,7 +11,12 @@ function dateValue(value) {
 }
 
 function todayValue() {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 function toExcelLocalDate(value) {
@@ -70,26 +76,51 @@ export async function GET(req) {
     if (!date) return new Response("Invalid attendance date.", { status: 400 });
     if (!classId) return new Response("A class must be selected before exporting.", { status: 400 });
 
-    const classRecord = await prisma.class.findFirst({
-      where: {
-        id: classId,
-        status: true,
-        OR: [{ centerId: { in: scope.centerIds } }, { centerId: null }],
-      },
-      select: { id: true, className: true },
-    });
+    const assignedClassIds = auth.actor.isTeacher ? await getTeacherAssignedClassIds(prisma, auth.actor.userId) : null;
+    const isAllClasses = classId === "all";
+    if (!isAllClasses && assignedClassIds && !assignedClassIds.includes(classId)) {
+      return new Response("Class is not available for this center.", { status: 403 });
+    }
+
+    const classRecord = isAllClasses
+      ? { id: "all", className: "All" }
+      : await prisma.class.findFirst({
+          where: {
+            id: classId,
+            status: true,
+            OR: [{ centerId: { in: scope.centerIds } }, { centerId: null }],
+          },
+          select: { id: true, className: true },
+        });
     if (!classRecord) return new Response("Class is not available for this center.", { status: 403 });
+
+    const classMap = isAllClasses
+      ? Object.fromEntries(
+          (
+            await prisma.class.findMany({
+              where: { status: true, OR: [{ centerId: { in: scope.centerIds } }, { centerId: null }] },
+              select: { id: true, className: true },
+            })
+          ).map((item) => [item.id, item.className])
+        )
+      : {};
 
     const users = await prisma.user.findMany({
       where: {
         role: "STUDENT",
-        student: { centerId: { in: scope.centerIds }, studyingClass: classId },
+        status: true,
+        student: {
+          centerId: { in: scope.centerIds },
+          ...(isAllClasses
+            ? (assignedClassIds ? { studyingClass: { in: assignedClassIds } } : {})
+            : { studyingClass: classId }),
+        },
       },
-      orderBy: { name: "asc" },
+      orderBy: { id: "asc" },
       select: {
         id: true,
         name: true,
-        student: { select: { center: { select: { name: true } } } },
+        student: { select: { studyingClass: true, center: { select: { name: true } } } },
         studentAttendances: {
           where: { attendanceDate: date },
           select: {
@@ -123,7 +154,7 @@ export async function GET(req) {
         id: user.id,
         name: user.name,
         centerName: user.student?.center?.name || "-",
-        className: classRecord.className,
+        className: isAllClasses ? classMap[user.student?.studyingClass] || "-" : classRecord.className,
         date,
         status: attendance?.status || "Not marked",
         markedBy: attendance?.marker?.name || "-",
