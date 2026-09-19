@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Alert,
   Box,
@@ -20,11 +20,12 @@ import { Menu } from "@mui/icons-material";
 import ManageTeachersPage from "./ManageTeachers/ManageTeachers";
 import AssessmentResultsDashboard from "./AssessmentResultsDashboard";
 import AdminAssessmentsPage from './AdminAssessmentsPage';
+import AdminAssessments316Page from './AdminAssessments316Page';
 import ManageCenters from "./ManageCenters/ManageCenters";
 import ManageStudents from "./ManageStudents/ManageStudents";
 import ManageRoles from './ManageRoles/ManageRoles';
 import ResetPassword from './ResetPassword';
-import AttendanceManager from './Attendance/AttendanceManager';
+import AttendanceManager from './attendance/AttendanceManager';
 
 const hasPermission = (permissions, permission, role) => {
   if (String(role || '').toUpperCase() === 'ADMIN') return true;
@@ -39,7 +40,8 @@ const hasPermission = (permissions, permission, role) => {
     || normalized.some((item) => item.endsWith('.*') && permission.startsWith(`${item.slice(0, -2)}.`));
 };
 
-export default function AdminPage() {
+export default function AdminPage(props) {
+  const initialView = props?.initialView ?? null;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
@@ -49,10 +51,11 @@ export default function AdminPage() {
   const [authorized, setAuthorized] = useState(null);
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(true);
-  const [adminView, setAdminView] = useState("users");
+  const [adminView, setAdminView] = useState(initialView || "users");
   const [message, setMessage] = useState(null);
   const [hasAnyAdminPermission, setHasAnyAdminPermission] = useState(true);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const panelRole = admin?.customRole?.name || admin?.customRoleName || admin?.role || 'Admin';
 
   const getCombinedPermissions = (userData) => {
@@ -60,6 +63,19 @@ export default function AdminPage() {
     const custom = Array.isArray(userData?.customRole?.permissions) ? userData.customRole.permissions : [];
     return Array.from(new Set([...direct, ...custom]));
   };
+
+  useEffect(() => {
+    const requestedView = searchParams?.get('view');
+    if (requestedView) {
+      setAdminView(requestedView);
+      return;
+    }
+
+    if (window.location.pathname === '/admin') {
+      const userRole = String(admin?.role || '').toUpperCase();
+      router.replace(userRole === 'ADMIN' ? '/admin/users' : '/admin/attendance');
+    }
+  }, [searchParams, router, admin?.role]);
 
   useEffect(() => {
     const restoreSession = async () => {
@@ -88,54 +104,67 @@ export default function AdminPage() {
             { key: 'users', allowed: hasPermission(combinedPermissions, 'users.view', data.data?.role) },
             { key: 'classes', allowed: hasPermission(combinedPermissions, 'classes.view', data.data?.role) },
             { key: 'assessments', allowed: hasPermission(combinedPermissions, 'assessments.view', data.data?.role) },
+            { key: 'assessments-3-16', allowed: hasPermission(combinedPermissions, 'assessments316.view', data.data?.role) },
             { key: 'teachers', allowed: hasPermission(combinedPermissions, 'teachers.view', data.data?.role) },
             { key: 'centers', allowed: hasPermission(combinedPermissions, 'centers.view', data.data?.role) },
             { key: 'students', allowed: hasPermission(combinedPermissions, 'students.view', data.data?.role) },
             { key: 'attendance', allowed: hasPermission(combinedPermissions, 'attendance.view', data.data?.role) },
             { key: 'roles', allowed: hasPermission(combinedPermissions, 'roles.view', data.data?.role) },
             { key: 'results', allowed: hasPermission(combinedPermissions, 'results.view', data.data?.role) },
+            { key: 'results-3-16', allowed: hasPermission(combinedPermissions, 'results.view', data.data?.role) },
             { key: 'reset-password', allowed: true },
           ];
           const anyPermission = availableViews.some((item) => item.allowed);
           setHasAnyAdminPermission(anyPermission);
 
           const userRole = String(data.data?.role || '').toUpperCase();
-          let defaultView;
+          let defaultView = initialView && availableViews.some((item) => item.key === initialView && item.allowed)
+            ? initialView
+            : null;
 
-          if (userRole === 'MANAGEMENT') {
-            // For management users, prioritize Assessment Results
-            defaultView =
-              availableViews.find((item) => item.key === 'results' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'teachers' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'classes' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'assessments' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'roles' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'centers' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'students' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'attendance' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'users' && item.allowed)?.key ||
-              'none';
-          } else {
-            defaultView =
-              availableViews.find((item) => item.key === 'users' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'teachers' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'classes' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'assessments' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'results' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'roles' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'centers' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'students' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'attendance' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'reset-password' && item.allowed)?.key ||
-              availableViews.find((item) => item.key === 'reset-password' && item.allowed)?.key ||
-              'none';
+          if (!defaultView) {
+            if (userRole === 'MANAGEMENT') {
+              // For management users, prioritize Assessment Results
+              defaultView =
+                availableViews.find((item) => item.key === 'results' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'results-3-16' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'teachers' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'classes' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'assessments' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'assessments-3-16' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'roles' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'centers' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'students' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'attendance' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'users' && item.allowed)?.key ||
+                'none';
+            } else {
+              defaultView =
+                availableViews.find((item) => item.key === 'users' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'teachers' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'classes' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'assessments' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'assessments-3-16' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'results' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'results-3-16' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'roles' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'centers' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'students' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'attendance' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'reset-password' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'reset-password' && item.allowed)?.key ||
+                'none';
+            }
           }
 
           if (defaultView === 'users') {
             setAdminView('users');
-          } else {
+          } else if (defaultView) {
             setUsers([]);
             setAdminView(defaultView);
+          } else {
+            setUsers([]);
+            setAdminView('users');
           }
         } else {
           sessionStorage.removeItem("authDetails");
@@ -331,6 +360,15 @@ export default function AdminPage() {
           </Paper>
         ) : null}
 
+        {adminView === "assessments-3-16" ? (
+          <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+            <AdminAssessments316Page
+              role={admin?.role}
+              permissions={admin?.permissions || []}
+            />
+          </Paper>
+        ) : null}
+
 
 
         {adminView === "users" ? (
@@ -403,6 +441,14 @@ export default function AdminPage() {
             <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>Assessment Results</Typography>
             <Typography color="text.secondary" sx={{ mb: 3 }}>Review live submissions from students across subjects.</Typography>
             <AssessmentResultsDashboard assessmentId="" />
+          </Paper>
+        ) : null}
+
+        {adminView === "results-3-16" ? (
+          <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+            <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>Assessment Results (3-16 years)</Typography>
+            <Typography color="text.secondary" sx={{ mb: 3 }}>Review checklist submissions for the standalone 3–16 assessment flow.</Typography>
+            <AssessmentResultsDashboard assessmentId="" assessmentType="3-16" />
           </Paper>
         ) : null}
 

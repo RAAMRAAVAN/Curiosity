@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AssessmentManager from "@/app/(components)/AssessmentManager";
-import AttendanceManager from "@/app/admin/Attendance/AttendanceManager";
+import AttendanceManager from "@/app/admin/attendance/AttendanceManager";
 import {
   Box,
   Button,

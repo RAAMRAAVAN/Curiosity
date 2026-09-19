@@ -62,6 +62,20 @@ const permissionGroups = [
     ],
   },
   {
+    title: 'Assessment (3-16 years)',
+    permissions: [
+      'assessments316.view',
+      'assessments316.create',
+      'assessments316.edit',
+      'assessments316.delete',
+      'assessments316.pending.view',
+      'assessments316.appeared.view',
+      'assessments316.absent.view',
+      'assessments316.absent.mark',
+      'assessments316.absent.revoke',
+    ],
+  },
+  {
     title: 'Teachers',
     permissions: ['teachers.view', 'teachers.create', 'teachers.edit', 'teachers.delete', 'teachers.export'],
   },

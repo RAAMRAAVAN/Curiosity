@@ -99,10 +99,13 @@ const LoginModal = ({
         const userRole = (authData.user?.role || authData.user?.userType || "")
           .toString()
           .toUpperCase();
+        const isAdminUser = userRole === "ADMIN";
         const redirectPath =
-          userRole === "TEACHER" || userRole === "ADMIN" || userRole === "MANAGEMENT"
-            ? "/admin"
-            : `/courses/${authData.user.studyingClass || 1}/home`;
+          userRole === "ADMIN"
+            ? "/admin/users"
+            : userRole === "TEACHER" || userRole === "MANAGEMENT"
+              ? "/admin/attendance"
+              : `/courses/${authData.user.studyingClass || 1}/home`;
 
         router.push(redirectPath);
       } else {

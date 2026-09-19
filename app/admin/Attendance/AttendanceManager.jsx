@@ -41,7 +41,7 @@ function hasPermission(permissions, permission, role) {
   return values.includes("*") || values.includes(permission) || values.some((item) => item.endsWith(".*") && permission.startsWith(`${item.slice(0, -2)}.`));
 }
 
-export default function AttendanceManager({ role, permissions = [] }) {
+export default function AttendanceManager({ admin, role, permissions = [] }) {
   const [centers, setCenters] = useState([]);
   const [centerId, setCenterId] = useState("");
   const [selectedCenterName, setSelectedCenterName] = useState("");
@@ -107,17 +107,16 @@ export default function AttendanceManager({ role, permissions = [] }) {
   };
 
   useEffect(() => {
-    Promise.all([loadCenters(), fetch("/api/admin/me", { credentials: "include" }).then((response) => response.json())])
-      .then(([, me]) => {
-        const fixedCenter = me.data?.centerId || me.data?.teacher?.centerId || "";
-        const firstCenter = fixedCenter || me.data?.assignedCenterIds?.[0] || "";
-        setSelectedCenterName(me.data?.centerName || "");
-        if (firstCenter) {
-          setCenterId(firstCenter);
-        }
-      })
-      .catch((error) => setMessage({ severity: "error", text: error.message || "Unable to load attendance." }));
-  }, []);
+    const me = admin || {};
+    const fixedCenter = me.centerId || me.teacher?.centerId || "";
+    const firstCenter = fixedCenter || me.assignedCenterIds?.[0] || "";
+    setSelectedCenterName(me.centerName || "");
+    if (firstCenter) {
+      setCenterId(firstCenter);
+    }
+
+    loadCenters().catch((error) => setMessage({ severity: "error", text: error.message || "Unable to load attendance." }));
+  }, [admin]);
 
   useEffect(() => {
     if (centerId) {

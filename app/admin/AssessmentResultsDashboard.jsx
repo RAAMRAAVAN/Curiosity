@@ -31,7 +31,7 @@ import {
 import { Assessment, BarChart, TrendingUp } from '@mui/icons-material';
 import * as XLSX from 'xlsx-js-style';
 
-const AssessmentResultsDashboard = ({ assessmentId }) => {
+const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
   const ALL_CENTERS = 'ALL';
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -49,10 +49,18 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
   const [absentLoading, setAbsentLoading] = useState(false);
   const [pendingSearch, setPendingSearch] = useState('');
   const [absentSearch, setAbsentSearch] = useState('');
+  const [appearedDialogOpen, setAppearedDialogOpen] = useState(false);
+  const [appearedStudents, setAppearedStudents] = useState([]);
+  const [appearedLoading, setAppearedLoading] = useState(false);
+  const [appearedSearch, setAppearedSearch] = useState('');
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailResults, setDetailResults] = useState([]);
   const [detailAssessmentTitle, setDetailAssessmentTitle] = useState('');
   const [detailAbsentStudents, setDetailAbsentStudents] = useState([]);
+  const [resultDialogOpen, setResultDialogOpen] = useState(false);
+  const [resultDialogRows, setResultDialogRows] = useState([]);
+  const [resultDialogTitle, setResultDialogTitle] = useState('');
+  const [resultDialogLoading, setResultDialogLoading] = useState(false);
   const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
   const [canUseCenterFilter, setCanUseCenterFilter] = useState(false);
 
@@ -104,6 +112,20 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
 
   const filteredPendingStudents = useMemo(() => filterGroupsByName(pendingStudents, pendingSearch), [pendingStudents, pendingSearch]);
   const filteredAbsentStudents = useMemo(() => filterGroupsByName(absentStudents, absentSearch), [absentStudents, absentSearch]);
+  const filteredAppearedStudents = useMemo(() => filterGroupsByName(appearedStudents, appearedSearch), [appearedStudents, appearedSearch]);
+
+  const resultDialogStats = useMemo(() => {
+    if (!resultDialogRows.length) {
+      return { attempts: 0, avg: 0, top: 0, absent: 0 };
+    }
+
+    const values = resultDialogRows.map((row) => Number(row.percentage ?? row.score ?? 0));
+    const attempts = resultDialogRows.length;
+    const avg = values.reduce((sum, value) => sum + value, 0) / attempts;
+    const top = Math.max(...values);
+
+    return { attempts, avg: Math.round(avg * 100) / 100, top, absent: 0 };
+  }, [resultDialogRows]);
 
   const detailStats = useMemo(() => {
     if (!filteredDetailResults.length) {
@@ -131,10 +153,10 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
   const fetchResults = async () => {
     try {
       setLoading(true);
-      const query = assessmentId ? `?assessmentId=${assessmentId}` : '';
-      const res = await fetch(`/api/assessments/results${query}`, {
-        credentials: 'include',
-      });
+      const endpoint = assessmentType === '3-16'
+        ? '/api/assessments-3-16/results'
+        : `/api/assessments/results${assessmentId ? `?assessmentId=${assessmentId}` : ''}`;
+      const res = await fetch(endpoint, { credentials: 'include' });
       const response = await res.json();
       if (!response.success) throw new Error(response.message || 'Unable to load results');
       setResults(response.data || []);
@@ -149,9 +171,10 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
   const fetchPendingCount = async (id) => {
     if (!id) return 0;
     try {
-      const res = await fetch(`/api/assessments/${id}/pending-students`, {
-        credentials: 'include',
-      });
+      const endpoint = assessmentType === '3-16'
+        ? `/api/assessments-3-16/${encodeURIComponent(id)}/pending-students`
+        : `/api/assessments/${id}/pending-students`;
+      const res = await fetch(endpoint, { credentials: 'include' });
       const response = await res.json();
       if (!response.success) throw new Error(response.message || 'Unable to load pending counts');
       const count = Array.isArray(response.data)
@@ -169,9 +192,10 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
   const fetchAbsentStudents = async (id) => {
     if (!id) return [];
     try {
-      const res = await fetch(`/api/assessments/${id}/absent-students`, {
-        credentials: 'include',
-      });
+      const endpoint = assessmentType === '3-16'
+        ? `/api/assessments-3-16/${encodeURIComponent(id)}/absent-students`
+        : `/api/assessments/${id}/absent-students`;
+      const res = await fetch(endpoint, { credentials: 'include' });
       const response = await res.json();
       if (!response.success) throw new Error(response.message || 'Unable to load absent students');
       const data = Array.isArray(response.data) ? response.data : [];
@@ -198,7 +222,369 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
 
   useEffect(() => {
     fetchResults();
-  }, [assessmentId]);
+  }, [assessmentId, assessmentType]);
+
+  const handleOpenPendingDialog = async (id) => {
+    if (!id) return;
+
+    try {
+      setPendingLoading(true);
+      const endpoint = assessmentType === '3-16'
+        ? `/api/assessments-3-16/${encodeURIComponent(id)}/pending-students`
+        : `/api/assessments/${id}/pending-students`;
+      const res = await fetch(endpoint, { credentials: 'include' });
+      const response = await res.json();
+      if (!response.success) throw new Error(response.message || 'Unable to load pending students');
+      setPendingStudents((response.data || []).map((group) => ({
+        ...group,
+        students: (group.students || []).map((student) => ({
+          ...student,
+          centerName: student.student?.center?.centerName || student.centerName || 'N/A',
+        })),
+      })));
+      setPendingSearch('');
+      setPendingDialogOpen(true);
+    } catch (error) {
+      console.error(error);
+      setPendingStudents([]);
+      setPendingSearch('');
+      setPendingDialogOpen(true);
+    } finally {
+      setPendingLoading(false);
+    }
+  };
+
+  const handleOpenAbsentDialog = async (id) => {
+    if (!id) return;
+
+    try {
+      setAbsentLoading(true);
+      const endpoint = assessmentType === '3-16'
+        ? `/api/assessments-3-16/${encodeURIComponent(id)}/absent-students`
+        : `/api/assessments/${id}/absent-students`;
+      const res = await fetch(endpoint, { credentials: 'include' });
+      const response = await res.json();
+      if (!response.success) throw new Error(response.message || 'Unable to load absent students');
+      const groups = (response.data || []).map((group) => ({
+        ...group,
+        className: group.className || 'N/A',
+        students: (group.students || []).map((student) => ({
+          ...student,
+          centerName: student.student?.center?.centerName || student.centerName || 'N/A',
+          className: group.className || student.studentClassName || student.student?.className || student.className || 'N/A',
+        })),
+      }));
+      setAbsentStudents(groups);
+      setAbsentSearch('');
+      setAbsentDialogOpen(true);
+    } catch (error) {
+      console.error(error);
+      setAbsentStudents([]);
+      setAbsentSearch('');
+      setAbsentDialogOpen(true);
+    } finally {
+      setAbsentLoading(false);
+    }
+  };
+
+  const handleOpenAppearedDialog = async (id) => {
+    if (!id) return;
+
+    try {
+      setAppearedLoading(true);
+      const endpoint = assessmentType === '3-16'
+        ? `/api/assessments-3-16/${encodeURIComponent(id)}/appeared-students`
+        : `/api/assessments/${id}/appeared-students`;
+      const res = await fetch(endpoint, { credentials: 'include' });
+      const response = await res.json();
+      if (!response.success) throw new Error(response.message || 'Unable to load appeared students');
+      setAppearedStudents(response.data || []);
+      setAppearedSearch('');
+      setAppearedDialogOpen(true);
+    } catch (error) {
+      console.error(error);
+      setAppearedStudents([]);
+      setAppearedSearch('');
+      setAppearedDialogOpen(true);
+    } finally {
+      setAppearedLoading(false);
+    }
+  };
+
+  const handleOpenAssessment316ResultDialog = async (summary) => {
+    if (!summary?.id) return;
+    try {
+      setResultDialogLoading(true);
+      const res = await fetch(`/api/assessments-3-16/${encodeURIComponent(summary.id)}/results`, { credentials: 'include' });
+      const response = await res.json();
+      if (!response.success) throw new Error(response.message || 'Unable to load student results');
+
+      setResultDialogRows(Array.isArray(response.data) ? response.data : []);
+      setResultDialogTitle(summary.title || 'Assessment Results');
+      setResultDialogOpen(true);
+    } catch (error) {
+      console.error(error);
+      setResultDialogRows([]);
+      setResultDialogTitle(summary.title || 'Assessment Results');
+      setResultDialogOpen(true);
+    } finally {
+      setResultDialogLoading(false);
+    }
+  };
+
+  function export316ResultRowsToExcel() {
+    if (!Array.isArray(resultDialogRows) || resultDialogRows.length === 0) {
+      return;
+    }
+
+    const headers = ['S.No', 'Student', 'Center', 'Class', 'Subject', 'Result', 'Submitted At'];
+    const rows = resultDialogRows.map((row, index) => [
+      index + 1,
+      row.user?.name || 'Unknown',
+      row.studentCenterName || 'N/A',
+      row.studentClassName || 'N/A',
+      row.subjectName || 'N/A',
+      row.resultSummary || 'No data',
+      row.submittedAt ? new Date(row.submittedAt).toLocaleString() : 'N/A',
+    ]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    worksheet['!cols'] = [
+      { wch: 6 },
+      { wch: 24 },
+      { wch: 22 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 42 },
+      { wch: 24 },
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, '3-16 Results');
+    XLSX.writeFile(workbook, `${String(resultDialogTitle || 'assessment-results').replace(/[^a-z0-9-_ ]/gi, '') || 'assessment-results'}.xlsx`);
+  }
+
+  if (assessmentType === '3-16') {
+    return (
+      <Box sx={{ mt: 2 }}>
+        <TableContainer component={Paper} variant="outlined">
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Assessment Name</TableCell>
+                <TableCell>Class</TableCell>
+                <TableCell>Subject</TableCell>
+                <TableCell>Appeared</TableCell>
+                <TableCell>Pending</TableCell>
+                <TableCell>Absent</TableCell>
+                <TableCell>View</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} sx={{ py: 4 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center' }}><CircularProgress size={24} /></Box>
+                  </TableCell>
+                </TableRow>
+              ) : results.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} sx={{ color: 'text.secondary' }}>No assessment results found.</TableCell>
+                </TableRow>
+              ) : (
+                results.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.title || 'Untitled assessment'}</TableCell>
+                    <TableCell>{item.className || 'N/A'}</TableCell>
+                    <TableCell>{item.subjectName || 'N/A'}</TableCell>
+                    <TableCell>
+                      <Button variant="text" size="small" onClick={() => handleOpenAppearedDialog(item.id)}>
+                        {item.appearedCount ?? 0}
+                      </Button>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="text" size="small" onClick={() => handleOpenPendingDialog(item.id)}>
+                        {item.pendingCount ?? 0}
+                      </Button>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="text" size="small" color="error" onClick={() => handleOpenAbsentDialog(item.id)}>
+                        {item.absentCount ?? 0}
+                      </Button>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="contained" size="small" onClick={() => handleOpenAssessment316ResultDialog(item)}>
+                        View Results
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <Dialog open={pendingDialogOpen} onClose={() => setPendingDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Pending Students</DialogTitle>
+          <DialogContent dividers sx={{ overflowY: 'auto' }}>
+            <TextField label="Search by Name" value={pendingSearch} onChange={(event) => setPendingSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
+            {pendingLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+            ) : filteredPendingStudents.length === 0 ? (
+              <Typography color="text.secondary">{pendingStudents.length === 0 ? 'No pending students found for this assessment.' : 'No students match your search.'}</Typography>
+            ) : (
+              <List dense disablePadding>
+                {filteredPendingStudents.map((group) => (
+                  <Box key={group.className} sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Class {group.className}</Typography>
+                    {group.students.map((student) => (
+                      <ListItem key={student.id} disablePadding>
+                        <ListItemText primary={student.name} secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || student.centerName || 'N/A'}`} />
+                      </ListItem>
+                    ))}
+                  </Box>
+                ))}
+              </List>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setPendingDialogOpen(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog open={absentDialogOpen} onClose={() => setAbsentDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Absent Students</DialogTitle>
+          <DialogContent dividers sx={{ overflowY: 'auto' }}>
+            <TextField label="Search by Name" value={absentSearch} onChange={(event) => setAbsentSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
+            {absentLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+            ) : filteredAbsentStudents.length === 0 ? (
+              <Typography color="text.secondary">{absentStudents.length === 0 ? 'No absent students found for this assessment.' : 'No students match your search.'}</Typography>
+            ) : (
+              <List dense disablePadding>
+                {filteredAbsentStudents.map((group) => (
+                  <Box key={group.className} sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Class {group.className}</Typography>
+                    {group.students.map((student) => (
+                      <ListItem key={student.id || student.attendanceId} disablePadding>
+                        <ListItemText primary={student.name} secondary={student.reason ? `Reason: ${student.reason}` : `Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || student.centerName || 'N/A'}`} />
+                      </ListItem>
+                    ))}
+                  </Box>
+                ))}
+              </List>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setAbsentDialogOpen(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog open={appearedDialogOpen} onClose={() => setAppearedDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Appeared Students</DialogTitle>
+          <DialogContent dividers sx={{ overflowY: 'auto' }}>
+            <TextField label="Search by Name" value={appearedSearch} onChange={(event) => setAppearedSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
+            {appearedLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+            ) : filteredAppearedStudents.length === 0 ? (
+              <Typography color="text.secondary">{appearedStudents.length === 0 ? 'No appeared students found for this assessment.' : 'No students match your search.'}</Typography>
+            ) : (
+              <List dense disablePadding>
+                {filteredAppearedStudents.map((group) => (
+                  <Box key={group.className} sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Class {group.className}</Typography>
+                    {group.students.map((student) => (
+                      <ListItem key={student.id} disablePadding>
+                        <ListItemText primary={student.name} secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || 'N/A'}`} />
+                      </ListItem>
+                    ))}
+                  </Box>
+                ))}
+              </List>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setAppearedDialogOpen(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog open={resultDialogOpen} onClose={() => setResultDialogOpen(false)} maxWidth="lg" fullWidth>
+          <DialogTitle>{resultDialogTitle}</DialogTitle>
+          <DialogContent dividers sx={{ overflowY: 'auto' }}>
+            {resultDialogLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+            ) : resultDialogRows.length === 0 ? (
+              <Typography color="text.secondary">No student results found for this assessment.</Typography>
+            ) : (
+              <>
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
+                  <Card sx={{ flex: 1, bgcolor: '#f3f4f6', borderRadius: 3 }} variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary">Attempts</Typography>
+                      <Typography variant="h5" fontWeight={700}>{resultDialogStats.attempts}</Typography>
+                    </CardContent>
+                  </Card>
+                  <Card sx={{ flex: 1, bgcolor: '#eef7ed', borderRadius: 3 }} variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary">Average Score</Typography>
+                      <Typography variant="h5" fontWeight={700}>{resultDialogStats.avg}%</Typography>
+                    </CardContent>
+                  </Card>
+                  <Card sx={{ flex: 1, bgcolor: '#fff4e5', borderRadius: 3 }} variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary">Top Score</Typography>
+                      <Typography variant="h5" fontWeight={700}>{resultDialogStats.top}%</Typography>
+                    </CardContent>
+                  </Card>
+                  <Card sx={{ flex: 1, bgcolor: '#fff1f2', borderRadius: 3 }} variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary">Absent</Typography>
+                      <Typography variant="h5" fontWeight={700}>{resultDialogStats.absent}</Typography>
+                    </CardContent>
+                  </Card>
+                </Stack>
+
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>S.No</TableCell>
+                        <TableCell>Student</TableCell>
+                        <TableCell>Center</TableCell>
+                        <TableCell>Class</TableCell>
+                        <TableCell>Subject</TableCell>
+                        <TableCell>Result</TableCell>
+                        <TableCell>Submitted At</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {resultDialogRows.map((row, index) => (
+                        <TableRow key={row.id || `${row.userId}-${index}`}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{row.user?.name || 'Unknown'}</TableCell>
+                          <TableCell>{row.studentCenterName || 'N/A'}</TableCell>
+                          <TableCell>{row.studentClassName || 'N/A'}</TableCell>
+                          <TableCell>{row.subjectName || 'N/A'}</TableCell>
+                          <TableCell>{row.resultSummary || 'No data'}</TableCell>
+                          <TableCell>{row.submittedAt ? new Date(row.submittedAt).toLocaleString() : 'N/A'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+            <Button variant="contained" color="primary" onClick={export316ResultRowsToExcel} disabled={resultDialogRows.length === 0}>
+              Download Excel
+            </Button>
+            <Button onClick={() => setResultDialogOpen(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    );
+  }
 
   useEffect(() => {
     if (!assessmentId) return;
@@ -273,7 +659,7 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
   }, [results, assessmentId]);
 
   useEffect(() => {
-    if (assessmentId || !assessmentSummaries.length) return;
+    if (assessmentId || !assessmentSummaries.length || assessmentType === '3-16') return;
 
     const loadSummaryCounts = async () => {
       setPendingCountsLoading(true);
@@ -297,74 +683,13 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
     };
 
     loadSummaryCounts();
-  }, [assessmentSummaries, assessmentId]);
+  }, [assessmentSummaries, assessmentId, assessmentType]);
 
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>;
   }
 
   const pendingCount = assessmentId ? pendingCounts[assessmentId] || 0 : 0;
-
-  const handleOpenPendingDialog = async (id) => {
-    if (!id) return;
-
-    try {
-      setPendingLoading(true);
-      const res = await fetch(`/api/assessments/${id}/pending-students`, {
-        credentials: 'include',
-      });
-      const response = await res.json();
-      if (!response.success) throw new Error(response.message || 'Unable to load pending students');
-      setPendingStudents((response.data || []).map((group) => ({
-        ...group,
-        students: (group.students || []).map((student) => ({
-          ...student,
-          centerName: student.student?.center?.centerName || student.centerName || 'N/A',
-        })),
-      })));
-      setPendingSearch('');
-      setPendingDialogOpen(true);
-    } catch (error) {
-      console.error(error);
-      setPendingStudents([]);
-      setPendingSearch('');
-      setPendingDialogOpen(true);
-    } finally {
-      setPendingLoading(false);
-    }
-  };
-
-  const handleOpenAbsentDialog = async (id) => {
-    if (!id) return;
-
-    try {
-      setAbsentLoading(true);
-      const res = await fetch(`/api/assessments/${id}/absent-students`, {
-        credentials: 'include',
-      });
-      const response = await res.json();
-      if (!response.success) throw new Error(response.message || 'Unable to load absent students');
-      const groups = (response.data || []).map((group) => ({
-        ...group,
-        className: group.className || 'N/A',
-        students: (group.students || []).map((student) => ({
-          ...student,
-          centerName: student.student?.center?.centerName || student.centerName || 'N/A',
-          className: group.className || student.studentClassName || student.student?.className || student.className || 'N/A',
-        })),
-      }));
-      setAbsentStudents(groups);
-      setAbsentSearch('');
-      setAbsentDialogOpen(true);
-    } catch (error) {
-      console.error(error);
-      setAbsentStudents([]);
-      setAbsentSearch('');
-      setAbsentDialogOpen(true);
-    } finally {
-      setAbsentLoading(false);
-    }
-  };
 
   const handleOpenAssessmentDetailDialog = async (summary) => {
     if (!summary?.id) return;
@@ -570,11 +895,11 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
 
   return (
     <Box sx={{ mt: 4 }}>
-      <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+      {/* <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
         Assessment Results Dashboard
-      </Typography>
+      </Typography> */}
 
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
+      {/* <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
         <Card sx={{ flex: 1, bgcolor: 'linear-gradient(135deg, #4F46E5, #7C3AED)' }} variant="outlined">
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -602,7 +927,7 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
             <Typography variant="h4" fontWeight={700} sx={{ mt: 1 }}>{stats.top}</Typography>
           </CardContent>
         </Card>
-      </Stack>
+      </Stack> */}
 
       {!assessmentId && assessmentSummaries.length > 0 ? (
         <Box sx={{ mb: 3 }}>
@@ -930,38 +1255,66 @@ const AssessmentResultsDashboard = ({ assessmentId }) => {
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: '#f3f4f6' }}>
-                  <TableCell sx={{ fontWeight: 700 }}>S.No</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Student</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Center Name</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Class</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Subject</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Correct</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Wrong</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Marks Obtained</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Total Marks</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Percentage</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Grade</TableCell>
+                  {assessmentType === '3-16' ? (
+                    <>
+                      <TableCell sx={{ fontWeight: 700 }}>S.No</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Student</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Center Name</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Class</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Subject</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Selected Result</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Submitted At</TableCell>
+                    </>
+                  ) : (
+                    <>
+                      <TableCell sx={{ fontWeight: 700 }}>S.No</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Student</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Center Name</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Class</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Subject</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Correct</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Wrong</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Marks Obtained</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Total Marks</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Percentage</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Grade</TableCell>
+                    </>
+                  )}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredDetailResults.map((result, index) => (
-                  <TableRow key={result.id} sx={getResultRowStyles(result.percentage)}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{result.user?.name || 'Unknown'}</TableCell>
-                    <TableCell>{result.studentCenterName || 'N/A'}</TableCell>
-                    <TableCell>{result.studentClassName || result.user?.studyingClass || 'N/A'}</TableCell>
-                    <TableCell>{result.assessment?.subject?.subjectName || 'N/A'}</TableCell>
-                    <TableCell>{result.correctAttempts ?? 0}</TableCell>
-                    <TableCell>{result.wrongAttempts ?? 0}</TableCell>
-                    <TableCell>{result.score ?? 0}</TableCell>
-                    <TableCell>{result.totalMarks ?? result.totalQuestions ?? 0}</TableCell>
-                    <TableCell>{result.percentage ?? 0}%</TableCell>
-                    <TableCell>{result.grade || '—'}</TableCell>
-                  </TableRow>
-                ))}
+                {assessmentType === '3-16' ? (
+                  filteredDetailResults.map((result, index) => (
+                    <TableRow key={result.id}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>{result.user?.name || 'Unknown'}</TableCell>
+                      <TableCell>{result.studentCenterName || 'N/A'}</TableCell>
+                      <TableCell>{result.studentClassName || result.user?.studyingClass || 'N/A'}</TableCell>
+                      <TableCell>{result.subjectName || result.assessment?.subject?.subjectName || 'N/A'}</TableCell>
+                      <TableCell>{result.resultSummary || 'No data'}</TableCell>
+                      <TableCell>{result.submittedAt ? new Date(result.submittedAt).toLocaleString() : 'N/A'}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  filteredDetailResults.map((result, index) => (
+                    <TableRow key={result.id} sx={getResultRowStyles(result.percentage)}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>{result.user?.name || 'Unknown'}</TableCell>
+                      <TableCell>{result.studentCenterName || 'N/A'}</TableCell>
+                      <TableCell>{result.studentClassName || result.user?.studyingClass || 'N/A'}</TableCell>
+                      <TableCell>{result.assessment?.subject?.subjectName || 'N/A'}</TableCell>
+                      <TableCell>{result.correctAttempts ?? 0}</TableCell>
+                      <TableCell>{result.wrongAttempts ?? 0}</TableCell>
+                      <TableCell>{result.score ?? 0}</TableCell>
+                      <TableCell>{result.totalMarks ?? result.totalQuestions ?? 0}</TableCell>
+                      <TableCell>{result.percentage ?? 0}%</TableCell>
+                      <TableCell>{result.grade || '—'}</TableCell>
+                    </TableRow>
+                  ))
+                )}
                 {filteredDetailResults.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} align="center">
+                    <TableCell colSpan={assessmentType === '3-16' ? 7 : 11} align="center">
                       <Typography color="text.secondary">No student results available for the selected center.</Typography>
                     </TableCell>
                   </TableRow>

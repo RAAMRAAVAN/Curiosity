@@ -9,12 +9,13 @@ const normalizeStudentCenter = (studentRecord) => {
   const center = studentRecord.student.center
     ? {
         ...studentRecord.student.center,
-        centerName: studentRecord.student.center.name || null,
+        centerName: studentRecord.student.center.name || studentRecord.student.center.centerName || 'N/A',
       }
     : null;
 
   return {
     ...studentRecord,
+    centerName: center?.centerName || studentRecord.centerName || 'N/A',
     student: {
       ...studentRecord.student,
       center,

@@ -1,7 +1,7 @@
 'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Box,
   Divider,
@@ -29,9 +29,15 @@ import {
   Security,
   LockReset,
   EventAvailable,
+  ExpandLess,
+  ExpandMore,
+  Checklist,
+  FactCheck,
+  AssignmentTurnedIn,
+  Summarize,
 } from "@mui/icons-material";
 
-const drawerWidth = 260;
+const drawerWidth = 320;
 const mobileDrawerWidth = "90vw";
 
 const AdminDrawer = ({
@@ -47,6 +53,7 @@ const AdminDrawer = ({
   customRoleName,
 }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -58,10 +65,11 @@ const AdminDrawer = ({
     : [];
   const allPermissions = Array.from(new Set([...normalizedPermissions, ...normalizedCustomRolePermissions]));
   const panelRole = customRoleName || role || "Admin";
+  const isAdminUser = String(role || '').toUpperCase() === 'ADMIN';
 
   const hasPermission = (permission) => {
     if (!permission) return true;
-    if (String(role || '').toUpperCase() === 'ADMIN') return true;
+    if (isAdminUser) return true;
 
     if (allPermissions.includes('*')) return true;
     if (allPermissions.includes(permission)) return true;
@@ -75,6 +83,48 @@ const AdminDrawer = ({
     });
   };
 
+  const routeMap = {
+    users: '/admin/users',
+    classes: '/admin/classes',
+    teachers: '/admin/teachers',
+    centers: '/admin/centers',
+    students: '/admin/students',
+    attendance: '/admin/attendance',
+    roles: '/admin/roles',
+    'reset-password': '/admin/reset-password',
+    assessments: '/admin/view_assessments',
+    'assessments-3-16': '/admin/assessments-3-16',
+    results: '/admin/assessment-results',
+    'results-3-16': '/admin/assessment-results-3-16',
+  };
+
+  const assessmentSubmenuItems = [
+    {
+      title: "View Assessments",
+      value: "assessments",
+      icon: <Checklist />,
+      permission: 'assessments.view',
+    },
+    {
+      title: "Assessment (3-16 years)",
+      value: "assessments-3-16",
+      icon: <AssignmentTurnedIn />,
+      permission: 'assessments316.view',
+    },
+    {
+      title: "Assessment Results",
+      value: "results",
+      icon: <FactCheck />,
+      permission: 'results.view',
+    },
+    {
+      title: "Assessment Results (3-16 years)",
+      value: "results-3-16",
+      icon: <Summarize />,
+      permission: 'results.view',
+    },
+  ];
+
   const menuItems = [
     {
       title: "Manage Users",
@@ -87,12 +137,6 @@ const AdminDrawer = ({
       value: "classes",
       icon: <School />,
       permission: 'classes.view',
-    },
-    {
-      title: "View Assessments",
-      value: "assessments",
-      icon: <Assessment />,
-      permission: 'assessments.view',
     },
     {
       title: "Manage Teachers",
@@ -125,12 +169,6 @@ const AdminDrawer = ({
       permission: 'roles.view',
     },
     {
-      title: "Assessment Results",
-      value: "results",
-      icon: <Assessment />,
-      permission: 'results.view',
-    },
-    {
       title: "Reset Password",
       value: "reset-password",
       icon: <LockReset />,
@@ -138,12 +176,61 @@ const AdminDrawer = ({
     },
   ];
 
-  const visibleMenuItems = menuItems.filter((item) => hasPermission(item.permission));
+  const visibleAssessmentItems = assessmentSubmenuItems.filter((item) => hasPermission(item.permission));
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (!item.permission) return true;
+    return hasPermission(item.permission);
+  });
+  const shouldShowAssessmentModule = visibleAssessmentItems.length > 0;
+  const isAssessmentViewActive = visibleAssessmentItems.some((item) => item.value === adminView);
+  const isAssessmentRouteActive = typeof pathname === 'string' && (
+    pathname === '/admin/view_assessments' ||
+    pathname === '/admin/assessments-3-16' ||
+    pathname === '/admin/assessment-results' ||
+    pathname === '/admin/assessment-results-3-16'
+  );
+  const [assessmentModuleOpen, setAssessmentModuleOpen] = useState(Boolean(isAssessmentViewActive || isAssessmentRouteActive));
+
+  useEffect(() => {
+    if (isAssessmentViewActive || isAssessmentRouteActive) {
+      setAssessmentModuleOpen(true);
+    }
+  }, [adminView, pathname, isAssessmentViewActive, isAssessmentRouteActive]);
 
   const handleMenuItemClick = () => {
     if (isMobile) {
       setDrawerOpen(false);
     }
+  };
+
+  const handleAssessmentNavigation = (value) => {
+    const targetRoute = routeMap[value];
+
+    if (targetRoute) {
+      router.push(targetRoute);
+      if (isMobile) {
+        setDrawerOpen(false);
+      }
+      return;
+    }
+
+    setAdminView(value);
+    handleMenuItemClick();
+  };
+
+  const handleMenuNavigation = (value) => {
+    const targetRoute = routeMap[value];
+
+    if (targetRoute) {
+      router.push(targetRoute);
+      if (isMobile) {
+        setDrawerOpen(false);
+      }
+      return;
+    }
+
+    setAdminView(value);
+    handleMenuItemClick();
   };
 
   return (
@@ -184,10 +271,7 @@ const AdminDrawer = ({
           <ListItem key={item.value} disablePadding>
             <ListItemButton
               selected={adminView === item.value}
-              onClick={() => {
-                setAdminView(item.value);
-                handleMenuItemClick();
-              }}
+              onClick={() => handleMenuNavigation(item.value)}
               sx={{
                 mx: 1,
                 my: 0.5,
@@ -226,6 +310,65 @@ const AdminDrawer = ({
             </ListItemButton>
           </ListItem>
         ))}
+
+        {shouldShowAssessmentModule ? (
+          <>
+            <ListItem disablePadding>
+              <ListItemButton
+                onClick={() => setAssessmentModuleOpen((prev) => !prev)}
+                sx={{
+                  mx: 1,
+                  my: 0.5,
+                  borderRadius: 2,
+                  bgcolor: visibleAssessmentItems.some((item) => item.value === adminView) ? "#F3F8FF" : "transparent",
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 42, color: "text.secondary" }}>
+                  <Assessment />
+                </ListItemIcon>
+                <ListItemText primary="Assessment module" primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }} />
+                {assessmentModuleOpen ? <ExpandLess /> : <ExpandMore />}
+              </ListItemButton>
+            </ListItem>
+
+            {assessmentModuleOpen ? (
+              <Box sx={{ pl: 2, pr: 1, pb: 0.5 }}>
+                {visibleAssessmentItems.map((item) => (
+                  <ListItem key={item.value} disablePadding>
+                    <ListItemButton
+                      selected={adminView === item.value}
+                      onClick={() => handleAssessmentNavigation(item.value)}
+                      sx={{
+                        mx: 0,
+                        my: 0.5,
+                        borderRadius: 2,
+                        pl: 2,
+                        "&.Mui-selected": {
+                          bgcolor: "#E3F2FD",
+                          color: "primary.main",
+                        },
+                        "&.Mui-selected:hover": {
+                          bgcolor: "#BBDEFB",
+                        },
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 36, color: adminView === item.value ? 'primary.main' : 'text.secondary' }}>
+                        {item.icon}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={item.title}
+                        primaryTypographyProps={{
+                          fontSize: 13,
+                          fontWeight: adminView === item.value ? 600 : 400,
+                        }}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </Box>
+            ) : null}
+          </>
+        ) : null}
       </List>
 
       <Box sx={{ mt: "auto", p: 2 }}>

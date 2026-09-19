@@ -13,7 +13,7 @@ const emptyQuestion = () => ({
   options: ['', '', '', ''],
 });
 
-const AdminAssessmentsPage = () => {
+const AdminAssessmentsPage = ({ heading = 'View Assessments', moduleDescription = 'Review and manage assessments across all available subjects.' }) => {
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
@@ -127,8 +127,8 @@ const AdminAssessmentsPage = () => {
     <Box sx={{ width: { xs: 'calc(100% + 32px)', sm: '100%' }, ml: { xs: -2, sm: 0 }, p: { xs: 0, sm: 2, md: 3 } }}>
       <Box paddingX={2} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 2 }}>
         <Box>
-          <Typography variant="h6" fontWeight={700} sx={{ mb: 1, fontSize: { xs: 16, sm: 20 } }}>View Assessments</Typography>
-          <Typography color="text.secondary" sx={{ fontSize: { xs: 12, sm: 16 } }}>Review and manage assessments across all available subjects.</Typography>
+          <Typography variant="h6" fontWeight={700} sx={{ mb: 1, fontSize: { xs: 16, sm: 20 } }}>{heading}</Typography>
+          <Typography color="text.secondary" sx={{ fontSize: { xs: 12, sm: 16 } }}>{moduleDescription}</Typography>
         </Box>
         {canCreateAssessments ? (
           <Button variant="contained" startIcon={<AddCircleOutline />} onClick={handleOpenCreate} disabled={!selectedSubjectId}>

@@ -3,6 +3,26 @@ import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { teacherCanAccessAssessment } from '@/lib/teacherAssessmentAccess';
 
+const normalizeStudentCenter = (studentRecord) => {
+  if (!studentRecord || !studentRecord.student) return studentRecord;
+
+  const center = studentRecord.student.center
+    ? {
+        ...studentRecord.student.center,
+        centerName: studentRecord.student.center.name || studentRecord.student.center.centerName || 'N/A',
+      }
+    : null;
+
+  return {
+    ...studentRecord,
+    centerName: center?.centerName || studentRecord.centerName || 'N/A',
+    student: {
+      ...studentRecord.student,
+      center,
+    },
+  };
+};
+
 export async function GET(req, { params }) {
   try {
     const auth = await requireAdminPermission(req, 'assessments.appeared.view');
@@ -128,7 +148,9 @@ export async function GET(req, { params }) {
       return acc;
     }, {});
 
-    const groupedStudents = students.reduce((acc, student) => {
+    const normalizedStudents = students.map(normalizeStudentCenter);
+
+    const groupedStudents = normalizedStudents.reduce((acc, student) => {
       const studyingClassId = student.student?.studyingClass?.trim();
       const classLabel = studyingClassId
         ? classNameMap[studyingClassId] || studyingClassId

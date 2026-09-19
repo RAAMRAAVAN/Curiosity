@@ -53,6 +53,7 @@ model Center {
   managements        Management[]
   parents            Parent[]
   studentAttendances StudentAttendance[]
+  assessments316     Assessment316[]
 }
 
 //
@@ -85,14 +86,17 @@ model User {
   classAccesses               UserClassAccess[]
   subjectAccesses             UserSubjectAccess[]
   teacherSubjectAccesses      UserTeacherSubjectAccess[]
-  assessmentResults           AssessmentResult[]
-  assessmentReattemptRequests AssessmentReattemptRequest[]
-  assessmentsModified         Assessment[]                  @relation("AssessmentLastModifiedBy")
-  allowedClassesModified      AllowedClassesForAssessment[] @relation("AllowedClassLastModifiedBy")
-  assessmentAttendances       AssessmentAttendance[]
-  assessmentAttendancesMarked AssessmentAttendance[]        @relation("AssessmentAttendanceMarkedBy")
-  studentAttendances          StudentAttendance[]
-  studentAttendancesMarked    StudentAttendance[]           @relation("StudentAttendanceMarker")
+  assessmentResults            AssessmentResult[]
+  assessmentReattemptRequests  AssessmentReattemptRequest[]
+  assessmentsModified          Assessment[]                  @relation("AssessmentLastModifiedBy")
+  allowedClassesModified       AllowedClassesForAssessment[] @relation("AllowedClassLastModifiedBy")
+  assessmentAttendances        AssessmentAttendance[]
+  assessmentAttendancesMarked  AssessmentAttendance[]        @relation("AssessmentAttendanceMarkedBy")
+  assessment316Responses       Assessment316Response[]
+  assessment316Attendances     Assessment316Attendance[]
+  assessment316AttendancesMarked Assessment316Attendance[]    @relation("Assessment316AttendanceMarkedBy")
+  studentAttendances           StudentAttendance[]
+  studentAttendancesMarked     StudentAttendance[]           @relation("StudentAttendanceMarker")
 }
 
 model AppSetting {
@@ -128,6 +132,7 @@ model Class {
   userAccesses       UserClassAccess[]
   assessments        Assessment[]
   allowedClasses     AllowedClassesForAssessment[]
+  assessments316     Assessment316Class[]
   studentAttendances StudentAttendance[]
 }
 
@@ -159,6 +164,7 @@ model Subject {
   userAccesses    UserSubjectAccess[]
   chapters        Chapter[]
   assessments     Assessment[]
+  assessments316  Assessment316Subject[]
 
   @@unique([classId, subjectName])
 }
@@ -402,6 +408,151 @@ enum AssessmentReattemptStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+model Assessment316 {
+  id          String  @id @default(cuid())
+  title       String
+  description String? @db.Text
+
+  centerId String? @map("center_id")
+  center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
+
+  status    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  allowedClasses Assessment316Class[]
+  subjects       Assessment316Subject[]
+  checklist      Assessment316ChecklistItem[]
+  responses      Assessment316Response[]
+  attendances    Assessment316Attendance[]
+
+  @@index([centerId])
+  @@map("assessments_3_16")
+}
+
+model Assessment316Class {
+  id           String        @id @default(cuid())
+  assessmentId String        @map("assessment_id")
+  assessment   Assessment316 @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  classId      String        @map("class_id")
+  class        Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+
+  @@unique([assessmentId, classId])
+  @@index([classId])
+  @@map("assessment_3_16_classes")
+}
+
+model Assessment316Subject {
+  id           String        @id @default(cuid())
+  assessmentId String        @map("assessment_id")
+  assessment   Assessment316 @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  subjectId    String        @map("subject_id")
+  subject      Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+
+  @@unique([assessmentId, subjectId])
+  @@index([subjectId])
+  @@map("assessment_3_16_subjects")
+}
+
+model Assessment316ChecklistItem {
+  id           String        @id @default(cuid())
+  assessmentId String        @map("assessment_id")
+  assessment   Assessment316 @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  itemText     String        @map("item_text") @db.Text
+  displayOrder Int           @default(1) @map("display_order")
+  status       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  options      Assessment316ChecklistOption[]
+  responseItems Assessment316ResponseItem[]
+
+  @@index([assessmentId])
+  @@map("assessment_3_16_checklist_items")
+}
+
+model Assessment316ChecklistOption {
+  id            String                    @id @default(cuid())
+  checklistId   String                    @map("checklist_id")
+  checklist     Assessment316ChecklistItem @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  optionText    String                    @map("option_text")
+  displayOrder  Int                       @default(1) @map("display_order")
+  status        Boolean                   @default(true)
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+
+  responseItems Assessment316ResponseItem[]
+
+  @@index([checklistId])
+  @@map("assessment_3_16_checklist_options")
+}
+
+model Assessment316Response {
+  id           String                    @id @default(cuid())
+  assessmentId String                    @map("assessment_id")
+  assessment   Assessment316             @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  userId       String                    @map("user_id")
+  user         User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status       Boolean                   @default(true)
+  submittedAt  DateTime                  @default(now()) @map("submitted_at")
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+
+  items        Assessment316ResponseItem[]
+
+  @@unique([assessmentId, userId])
+  @@index([userId])
+  @@map("assessment_3_16_responses")
+}
+
+enum Assessment316AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+model Assessment316Attendance {
+  id           String                        @id @default(cuid())
+  assessmentId String                        @map("assessment_id")
+  assessment   Assessment316                 @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  userId       String                        @map("user_id")
+  user         User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status       Assessment316AttendanceStatus @default(PRESENT)
+  reason       String?                       @db.Text
+
+  markedBy     String? @map("marked_by")
+  markedByUser User?   @relation("Assessment316AttendanceMarkedBy", fields: [markedBy], references: [id], onDelete: SetNull)
+
+  markedAt     DateTime? @map("marked_at")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([assessmentId, userId])
+  @@index([assessmentId])
+  @@index([userId])
+  @@index([status])
+  @@map("assessment_3_16_attendances")
+}
+
+model Assessment316ResponseItem {
+  id          String                    @id @default(cuid())
+  responseId  String                    @map("response_id")
+  response    Assessment316Response    @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  checklistId String                    @map("checklist_id")
+  checklist   Assessment316ChecklistItem @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  optionId    String                    @map("option_id")
+  option      Assessment316ChecklistOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+
+  @@unique([responseId, checklistId])
+  @@index([optionId])
+  @@map("assessment_3_16_response_items")
 }
 
 model Assessment {
