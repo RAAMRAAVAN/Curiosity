@@ -1,8 +1,11 @@
 'use client'
 
-import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, Fab, FormControl, InputLabel, ListItemText, MenuItem, OutlinedInput, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography, useMediaQuery, useTheme } from "@mui/material"
+import { Alert, Autocomplete, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Fab, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography, useMediaQuery, useTheme } from "@mui/material"
 import { useEffect, useMemo, useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import CloseIcon from "@mui/icons-material/Close";
 
 const emptyUserForm = {
     name: "",
@@ -14,7 +17,7 @@ const emptyUserForm = {
     address: "",
     schoolName: "",
     studyingClass: "",
-    userType: "student",
+    userType: "",
     customRoleId: "",
     assignedCenterIds: [],
 };
@@ -62,8 +65,9 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
 
     const startNewUser = () => {
         setSelectedUserId(null);
-        setUserForm(emptyUserForm);
+      setUserForm({ ...emptyUserForm, email: "" });
         setMessage(null);
+      setFormMessage(null);
         setOpenUserModal(true);
     };
 
@@ -109,6 +113,9 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
     const [userForm, setUserForm] = useState(emptyUserForm);
     const [selectedUserId, setSelectedUserId] = useState(null);
     const [openUserModal, setOpenUserModal] = useState(false);
+    const [formMessage, setFormMessage] = useState(null);
+    const [userToDelete, setUserToDelete] = useState(null);
+    const [deletingUserId, setDeletingUserId] = useState(null);
 
     
 
@@ -129,22 +136,38 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
       assignedCenterIds: Array.isArray(user.assignedCenterIds) ? user.assignedCenterIds : [],
     });
     setMessage(null);
+    setFormMessage(null);
     setOpenUserModal(true);
   };
 
   const handleSaveUser = async () => {
+    setFormMessage(null);
+
     if (selectedUserId && !canEditUsers) {
-      setMessage("You are not authorized to perform this operation.");
+      const message = "You are not authorized to perform this operation.";
+      setMessage(message);
+      setFormMessage({ severity: "error", message });
       return;
     }
 
     if (!selectedUserId && !canCreateUsers) {
-      setMessage("You are not authorized to perform this operation.");
+      const message = "You are not authorized to perform this operation.";
+      setMessage(message);
+      setFormMessage({ severity: "error", message });
       return;
     }
 
-    if (!userForm.name?.trim() || !userForm.email?.trim() || (!selectedUserId && !userForm.password?.trim())) {
-      setMessage("Name, email, and password are required.");
+    if (
+      !userForm.name?.trim()
+      || !userForm.email?.trim()
+      || !userForm.userType?.trim()
+      || !userForm.customRoleId?.trim()
+      || !userForm.assignedCenterIds?.length
+      || (!selectedUserId && !userForm.password?.trim())
+    ) {
+      const message = "Name, email, user type, role, center, and password are required.";
+      setMessage(message);
+      setFormMessage({ severity: "error", message });
       return;
     }
 
@@ -179,31 +202,42 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
       const data = await response.json();
 
       if (!data.success) {
-        setMessage(data.message || "Unable to save user.");
+        const message = data.message || "Unable to save user.";
+        setMessage(message);
+        setFormMessage({ severity: "error", message });
         return;
       }
 
-      setMessage(data.message);
+      const message = data.message || (selectedUserId ? "User updated successfully." : "User created successfully.");
+      setMessage(message);
+      setFormMessage({ severity: "success", message });
       await refreshUsers();
       setSelectedUserId(null);
       setUserForm(emptyUserForm);
     } catch (error) {
       console.error(error);
-      setMessage("Unable to save user.");
+      const message = "Unable to save user.";
+      setMessage(message);
+      setFormMessage({ severity: "error", message });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteUser = async (id) => {
+  const handleDeleteUser = (user) => {
     if (!canDeleteUsers) {
       setMessage("You are not authorized to perform this operation.");
       return;
     }
 
-    if (!confirm("Delete this user permanently?")) {
-      return;
-    }
+    setUserToDelete(user);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    const id = userToDelete.id;
+    setDeletingUserId(id);
 
     setLoading(true);
     setMessage(null);
@@ -231,6 +265,8 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
       setMessage("Unable to delete user.");
     } finally {
       setLoading(false);
+      setDeletingUserId(null);
+      setUserToDelete(null);
     }
   };
     const visibleUsers = useMemo(() => {
@@ -271,60 +307,110 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
     return roles.filter((item) => item.status !== false && String(item.name || '').trim().toLowerCase() !== 'teachers');
   }, [roles]);
 
+  const canSubmitUserForm = Boolean(
+    userForm.name?.trim()
+      && userForm.email?.trim()
+      && userForm.userType?.trim()
+      && userForm.customRoleId?.trim()
+      && userForm.assignedCenterIds?.length
+      && (selectedUserId || userForm.password?.trim())
+  );
+
     return (<Box sx={{ width: { xs: 'calc(100% + 32px)', sm: '100%' }, ml: { xs: -2, sm: 0 } }}>
-        <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 4, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
-            <Box padding={1} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: { xs: 1, sm: 2 }, mb: 2 }}>
+        <Paper sx={{ p: { xs: 2, sm: 0 }, mb: 4, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+            <Box padding={1} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", mb: 2 }}>
                 <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 14, sm: 16 } }}>
-                    Users
+                    Management Users
                 </Typography>
                 {canCreateUsers ? (
-                  <Button variant="contained" onClick={startNewUser} size={isMobile ? "small" : "medium"} sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
+                  <Button
+                    variant="contained"
+                    onClick={startNewUser}
+                    size={isMobile ? "small" : "medium"}
+                    sx={{
+                      display: { xs: 'none', sm: 'inline-flex' },
+                      backgroundColor: '#0a336b',
+                      color: '#ffffff',
+                      '&:hover': { backgroundColor: '#082b57' },
+                    }}
+                  >
                       Create New User
                   </Button>
                 ) : null}
             </Box>
 
-            <TableContainer sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
-                <Table sx={{ minWidth: { xs: 600, sm: 720 } }}>
-                    <TableHead sx={{ backgroundColor: "#f5f8ff" }}>
+            <TableContainer sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' }, background: 'linear-gradient(180deg, #edf7ff 0%, #eef6ff 35%, #f4ecff 100%)', border: '1px solid rgba(59, 130, 246, 0.18)' }}>
+                <Table sx={{ minWidth: { xs: 600, sm: 720 }, backgroundColor: '#f5f9ff', whiteSpace: 'nowrap' }}>
+                    <TableHead sx={{ background: '#0a336b' }}>
                         <TableRow>
-                            <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Name</TableCell>
-                            {!isMobile && <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Role</TableCell>}
-                            <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Custom Role</TableCell>
-                            {!isTablet && <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Centers</TableCell>}
-                            <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Email</TableCell>
-                            <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Actions</TableCell>
+                            <TableCell sx={{ fontWeight: 700, color: '#ffffff', fontSize: { xs: 12, sm: 14 } }}>Name</TableCell>
+                            {!isMobile && <TableCell sx={{ fontWeight: 700, color: '#ffffff', fontSize: { xs: 12, sm: 14 } }}>Role</TableCell>}
+                            <TableCell sx={{ fontWeight: 700, color: '#ffffff', fontSize: { xs: 12, sm: 14 } }}>Custom Role</TableCell>
+                            {!isTablet && <TableCell sx={{ fontWeight: 700, color: '#ffffff', fontSize: { xs: 12, sm: 14 } }}>Centers</TableCell>}
+                            <TableCell sx={{ fontWeight: 700, color: '#ffffff', fontSize: { xs: 12, sm: 14 } }}>Email</TableCell>
+                            <TableCell sx={{ fontWeight: 700, color: '#ffffff', fontSize: { xs: 12, sm: 14 } }}>Actions</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {filteredUsers.map((user) => (
-                            <TableRow key={user.id} sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}>
-                                <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{user.name}</TableCell>
-                                {!isMobile && <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{user.role}</TableCell>}
-                                <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{user.customRoleName || '-'}</TableCell>
-                                {!isTablet && <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>
+                        {filteredUsers.map((user, index) => {
+                          const rowTint = index % 2 === 0 ? '#f8fbff' : '#eef6ff';
+
+                          return (
+                            <TableRow
+                              key={user.id}
+                              sx={{
+                                backgroundColor: rowTint,
+                                '&:hover': { backgroundColor: '#eaf3ff' },
+                              }}
+                            >
+                                <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, backgroundColor: rowTint }}>{user.name}</TableCell>
+                                {!isMobile && <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, backgroundColor: rowTint }}>{user.role}</TableCell>}
+                                <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, backgroundColor: rowTint }}>{user.customRoleName || '-'}</TableCell>
+                                {!isTablet && <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, backgroundColor: rowTint }}>
                                   {Array.isArray(user.assignedCenterIds) && user.assignedCenterIds.length
                                     ? user.assignedCenterIds.map((centerId) => centerNameById[centerId] || centerId).join(', ')
                                     : '-'}
                                 </TableCell>}
-                                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{user.email}</TableCell>
+                                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, backgroundColor: rowTint }}>{user.email}</TableCell>
                                 
-                                <TableCell>
-                                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                                <TableCell sx={{ backgroundColor: rowTint }}>
+                                    <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'nowrap', alignItems: 'center' }}>
                                         {canEditUsers ? (
-                                          <Button size="small" onClick={() => handleEditUser(user)} sx={{ mr: 0.5, fontSize: { xs: 10, sm: 12 } }}>
-                                              Edit
-                                          </Button>
+                                          <Tooltip title="Edit user" arrow>
+                                            <IconButton
+                                              size="small"
+                                              onClick={() => handleEditUser(user)}
+                                              sx={{
+                                                backgroundColor: '#e0f2fe',
+                                                color: '#0a336b',
+                                                '&:hover': { backgroundColor: '#bae6fd' },
+                                              }}
+                                            >
+                                              <EditIcon fontSize="small" />
+                                            </IconButton>
+                                          </Tooltip>
                                         ) : null}
                                         {canDeleteUsers ? (
-                                          <Button size="small" color="error" onClick={() => handleDeleteUser(user.id)} sx={{ fontSize: { xs: 10, sm: 12 } }}>
-                                              Delete
-                                          </Button>
+                                          <Tooltip title="Delete user" arrow>
+                                            <IconButton
+                                              size="small"
+                                              onClick={() => handleDeleteUser(user)}
+                                              disabled={loading || deletingUserId === user.id}
+                                              sx={{
+                                                backgroundColor: '#fee2e2',
+                                                color: '#b91c1c',
+                                                '&:hover': { backgroundColor: '#fecaca' },
+                                              }}
+                                            >
+                                              {deletingUserId === user.id ? <CircularProgress size={18} color="inherit" /> : <DeleteIcon fontSize="small" />}
+                                            </IconButton>
+                                          </Tooltip>
                                         ) : null}
                                     </Box>
                                 </TableCell>
                             </TableRow>
-                        ))}
+                          );
+                        })}
                         {filteredUsers.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={isMobile ? 4 : isTablet ? 5 : 6} align="center" sx={{ py: 4 }}>
@@ -336,6 +422,52 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
                 </Table>
             </TableContainer>
         </Paper>
+
+        <Dialog
+          open={Boolean(userToDelete)}
+          onClose={() => {
+            if (!deletingUserId) setUserToDelete(null);
+          }}
+          maxWidth="xs"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              border: '1px solid rgba(185, 28, 28, 0.16)',
+              boxShadow: '0 20px 54px rgba(127, 29, 29, 0.22)',
+            },
+          }}
+        >
+          <DialogTitle sx={{ fontWeight: 700, color: '#7f1d1d' }}>
+            Delete user?
+          </DialogTitle>
+          <DialogContent>
+            <Alert severity="warning" sx={{ mb: 1.5 }}>
+              This action permanently removes the selected user account.
+            </Alert>
+            <Typography variant="body2" color="text.secondary">
+              {userToDelete?.name || userToDelete?.email || 'This user'} will be deleted.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+            <Button
+              onClick={() => setUserToDelete(null)}
+              disabled={Boolean(deletingUserId)}
+              color="inherit"
+            >
+              Keep User
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={confirmDeleteUser}
+              disabled={Boolean(deletingUserId)}
+              startIcon={deletingUserId ? <CircularProgress size={16} color="inherit" /> : <DeleteIcon />}
+            >
+              {deletingUserId ? 'Deleting...' : 'Delete User'}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {canCreateUsers ? (
           <Box
@@ -351,10 +483,14 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
           >
             <Tooltip title="Create new user" arrow>
               <Fab
-                color="primary"
                 aria-label="Create new user"
                 onClick={startNewUser}
                 disabled={loading}
+                sx={{
+                  backgroundColor: '#0a336b',
+                  color: '#ffffff',
+                  '&:hover': { backgroundColor: '#082b57' },
+                }}
               >
                 <AddIcon />
               </Fab>
@@ -372,29 +508,79 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
             open={openUserModal} 
             onClose={() => setOpenUserModal(false)} 
             fullWidth 
-            maxWidth={isMobile ? false : "lg"}
-            sx={isMobile ? { 
-                '& .MuiDialog-paper': {
-                    margin: 0,
-                    width: '100%',
-                    maxWidth: '100%',
-                    // height: '100%',
-                    // maxHeight: '100%'
-                }
-            } : {}}
+            maxWidth={isMobile ? false : "xl"}
+            slotProps={{
+              paper: {
+                component: 'form',
+                autoComplete: 'off',
+                onSubmit: (event) => event.preventDefault(),
+              },
+            }}
+            sx={{
+              '& .MuiDialog-paper': {
+                margin: isMobile ? 0 : 8,
+                width: isMobile ? '100%' : 'calc(100% - 16px)',
+                maxWidth: isMobile ? '100%' : 'none',
+                height: isMobile ? '100dvh' : 'auto',
+                maxHeight: isMobile ? '100dvh' : 'none',
+                display: isMobile ? 'flex' : 'block',
+                flexDirection: isMobile ? 'column' : 'row',
+                borderRadius: isMobile ? 0 : 3,
+                overflow: 'hidden',
+                border: '1px solid rgba(8, 43, 87, 0.16)',
+                boxShadow: '0 24px 70px rgba(2, 24, 54, 0.28)',
+              },
+            }}
         >
-            <DialogTitle sx={{ fontWeight: 700, pb: 0, fontSize: { xs: 14, sm: 18 } }}>
+            <DialogTitle sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              px: { xs: 2, sm: 3 },
+              py: { xs: 1.75, sm: 2.25 },
+              fontWeight: 700,
+              color: '#ffffff',
+              fontSize: { xs: 14, sm: 18 },
+              background: 'linear-gradient(135deg, #082b57 0%, #0d4678 100%)',
+              boxShadow: '0 4px 16px rgba(2, 24, 54, 0.2)',
+            }}>
                 {selectedUserId ? "Edit User" : "Create User"}
+                <IconButton
+                  aria-label="Close user dialog"
+                  onClick={() => setOpenUserModal(false)}
+                  disabled={loading}
+                  sx={{ color: '#ffffff' }}
+                >
+                  <CloseIcon />
+                </IconButton>
             </DialogTitle>
-            <DialogContent sx={{ pt: 2, maxHeight: isMobile ? 'calc(100vh - 120px)' : 'auto', overflowY: 'auto' }}>
+            <DialogContent sx={{
+              pt: 2.5,
+              flex: isMobile ? '1 1 auto' : '0 1 auto',
+              minHeight: 0,
+              maxHeight: isMobile ? 'none' : '70vh',
+              overflowY: 'auto',
+              backgroundColor: '#f8fbff',
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#ffffff',
+                transition: 'box-shadow 160ms ease, border-color 160ms ease',
+                '&:hover': { boxShadow: '0 4px 14px rgba(8, 43, 87, 0.08)' },
+                '&.Mui-focused': { boxShadow: '0 0 0 3px rgba(13, 70, 120, 0.14)' },
+              },
+            }}>
                 <Typography variant="body2" color="text.secondary" mb={3} sx={{ fontSize: { xs: 12, sm: 14 } }}>
                     {selectedUserId
                         ? "Update the user details and save changes."
                         : "Create a new user account with required profile details."}
                 </Typography>
-                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(auto-fit, minmax(240px, 1fr))" } }}>
-                    <TextField label="Name" name="name" value={userForm.name} onChange={handleUserFormChange} fullWidth required size={isMobile ? "small" : "medium"} />
-                    <TextField label="Email" name="email" value={userForm.email} onChange={handleUserFormChange} fullWidth required size={isMobile ? "small" : "medium"} />
+                {formMessage ? (
+                  <Alert severity={formMessage.severity} sx={{ mb: 2 }}>
+                    {formMessage.message}
+                  </Alert>
+                ) : null}
+                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(6, minmax(0, 1fr))" } }}>
+                  <TextField label="Name" name="name" value={userForm.name} onChange={handleUserFormChange} fullWidth required sx={{ gridColumn: { xs: 'auto', sm: 'span 2' } }} size={isMobile ? "small" : "medium"} />
+                  <TextField label="Email" name="email" value={userForm.email} onChange={handleUserFormChange} fullWidth required autoComplete="new-email" inputProps={{ autoComplete: 'new-email' }} sx={{ gridColumn: { xs: 'auto', sm: 'span 2' } }} size={isMobile ? "small" : "medium"} />
                     <TextField
                         label="Password"
                         name="password"
@@ -403,11 +589,14 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
                         onChange={handleUserFormChange}
                         fullWidth
                         required={!selectedUserId}
+                      autoComplete="new-password"
+                      inputProps={{ autoComplete: 'new-password' }}
+                        sx={{ gridColumn: { xs: 'auto', sm: 'span 2' } }}
                         size={isMobile ? "small" : "medium"}
                         helperText={selectedUserId ? "Leave blank to keep current password." : "Set a password for the new user."}
                     />
                     
-                    <FormControl fullWidth size={isMobile ? "small" : "medium"}>
+                    <FormControl fullWidth sx={{ gridColumn: { xs: 'auto', sm: 'span 3' } }} size={isMobile ? "small" : "medium"}>
                         <InputLabel>User Type</InputLabel>
                         <Select label="User Type" name="userType" value={userForm.userType} onChange={handleUserFormChange}>
                             {roleOptions.map((type) => (
@@ -420,7 +609,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
 
                     {String(userForm.userType || '').toLowerCase() === 'management' ? (
                       <>
-                        <FormControl fullWidth size={isMobile ? "small" : "medium"}>
+                        <FormControl fullWidth sx={{ gridColumn: { xs: 'auto', sm: 'span 3' } }} size={isMobile ? "small" : "medium"}>
                           <InputLabel>Custom Role</InputLabel>
                           <Select
                             label="Custom Role"
@@ -435,40 +624,120 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
                           </Select>
                         </FormControl>
 
-                        <FormControl fullWidth size={isMobile ? "small" : "medium"}>
-                          <InputLabel>Assigned Centers</InputLabel>
-                          <Select
-                            multiple
-                            name="assignedCenterIds"
-                            value={Array.isArray(userForm.assignedCenterIds) ? userForm.assignedCenterIds : []}
-                            onChange={(event) => {
-                              const value = event.target.value;
-                              setUserForm((prev) => ({
-                                ...prev,
-                                assignedCenterIds: typeof value === 'string' ? value.split(',') : value,
-                              }));
-                            }}
-                            input={<OutlinedInput label="Assigned Centers" />}
-                            renderValue={(selected) => selected.map((centerId) => centerNameById[centerId] || centerId).join(', ')}
-                          >
-                            {centers.map((center) => (
-                              <MenuItem key={center.id} value={center.id}>
-                                <Checkbox checked={Array.isArray(userForm.assignedCenterIds) && userForm.assignedCenterIds.indexOf(center.id) > -1} />
-                                <ListItemText primary={center.name || center.id} />
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
+                        <Autocomplete
+                          multiple
+                          fullWidth
+                          sx={{
+                            width: '100%',
+                            minWidth: 0,
+                            gridColumn: { xs: '1', sm: '1 / -1' },
+                            '& .MuiAutocomplete-inputRoot': {
+                              flexWrap: 'nowrap',
+                              overflowX: 'auto',
+                              '& .MuiAutocomplete-tag': {
+                                flexShrink: 0,
+                              },
+                              '& .MuiAutocomplete-input': {
+                                minWidth: 80,
+                              },
+                            },
+                          }}
+                          options={centers}
+                          value={centers.filter((center) => (
+                            Array.isArray(userForm.assignedCenterIds)
+                              && userForm.assignedCenterIds.some((centerId) => String(centerId) === String(center.id))
+                          ))}
+                          getOptionLabel={(center) => {
+                            const centerName = center.name || center.id || '';
+                            return center.slug ? `${center.slug} : ${centerName}` : centerName;
+                          }}
+                          renderOption={(props, center, state) => {
+                            const centerName = center.name || center.id || '';
+
+                            return (
+                              <li {...props}>
+                                <Checkbox
+                                  checked={state.selected}
+                                  disableRipple
+                                  sx={{
+                                    p: 0.5,
+                                    mr: 1,
+                                    color: '#0d4678',
+                                    '&.Mui-checked': { color: '#0a336b' },
+                                  }}
+                                />
+                                <Box component="span">
+                                  {center.slug ? (
+                                    <Typography component="span" fontWeight={700}>
+                                      {center.slug}
+                                    </Typography>
+                                  ) : null}
+                                  {center.slug ? ' : ' : ''}
+                                  {centerName}
+                                </Box>
+                              </li>
+                            );
+                          }}
+                          isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+                          onChange={(_, selectedCenters) => {
+                            setUserForm((prev) => ({
+                              ...prev,
+                              assignedCenterIds: selectedCenters.map((center) => center.id),
+                            }));
+                          }}
+                          disableCloseOnSelect
+                          slotProps={{
+                            paper: {
+                              sx: {
+                                mt: 1,
+                                minWidth: { xs: '100%', sm: 420 },
+                                maxWidth: 'calc(100vw - 48px)',
+                                borderRadius: 2.5,
+                                backgroundColor: '#f8fbff',
+                                border: '1px solid rgba(8, 43, 87, 0.14)',
+                                boxShadow: '0 20px 52px rgba(2, 24, 54, 0.3)',
+                                overflow: 'hidden',
+                              },
+                            },
+                            listbox: {
+                              sx: {
+                                maxHeight: 168,
+                                overflowY: 'auto',
+                                py: 0.75,
+                                '& .MuiAutocomplete-option': {
+                                  borderRadius: 1.5,
+                                  mx: 0.75,
+                                  my: 0.25,
+                                },
+                              },
+                            },
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Assigned Centers"
+                              required
+                              size={isMobile ? "small" : "medium"}
+                            />
+                          )}
+                        />
                       </>
                     ) : null}
                 </Box>
             </DialogContent>
-            <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 3 }, gap: 1, position: isMobile ? 'sticky' : 'relative', bottom: 0, backgroundColor: 'background.paper', borderTop: isMobile ? '1px solid rgba(15, 23, 42, 0.08)' : 'none' }}>
-                <Button onClick={() => setOpenUserModal(false)} color="inherit" size={isMobile ? "small" : "medium"}>
-                    Cancel
-                </Button>
-                <Button variant="contained" onClick={handleSaveUser} size={isMobile ? "small" : "medium"}>
-                    {selectedUserId ? "Save Changes" : "Create User"}
+            <DialogActions sx={{
+              px: { xs: 2, sm: 3 },
+              py: { xs: 1.5, sm: 2 },
+              gap: 1,
+              position: isMobile ? 'sticky' : 'relative',
+              bottom: 0,
+              flexShrink: 0,
+              backgroundColor: '#ffffff',
+              borderTop: '1px solid rgba(8, 43, 87, 0.1)',
+              boxShadow: '0 -5px 18px rgba(8, 43, 87, 0.06)',
+            }}>
+              <Button variant="contained" onClick={handleSaveUser} size={isMobile ? "small" : "medium"} disabled={loading || !canSubmitUserForm}>
+                {loading ? <CircularProgress size={20} color="inherit" /> : selectedUserId ? "Save Changes" : "Create User"}
                 </Button>
             </DialogActions>
         </Dialog>

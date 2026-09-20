@@ -1,6 +1,7 @@
 import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
+import { buildAssessment316ResultSummary } from '@/lib/assessment316Results';
 
 const getMostSelectedOption = (responses = []) => {
   const counts = new Map();
@@ -103,6 +104,14 @@ export async function GET(req) {
           (userId) => !absentUserIds.has(userId)
         ).length;
 
+        const firstResponseSummary = assessment.responses?.[0]
+          ? buildAssessment316ResultSummary(
+              assessment.responses[0].items || [],
+              new Map((assessment.responses[0].items || []).map((item) => [String(item?.checklistId || ''), item?.checklist?.itemText || 'Field'])),
+              new Map((assessment.responses[0].items || []).map((item) => [String(item?.optionId || ''), item?.option?.optionText || 'No value']))
+            )
+          : 'No data';
+
         return {
           id: assessment.id,
           title: assessment.title || 'Untitled assessment',
@@ -111,7 +120,7 @@ export async function GET(req) {
           appearedCount,
           pendingCount,
           absentCount: (assessment.attendances || []).length,
-          result: getMostSelectedOption(assessment.responses),
+          result: getMostSelectedOption(assessment.responses) || firstResponseSummary,
         };
       })
     );

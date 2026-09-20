@@ -20,11 +20,11 @@ import {
 import {
   Menu,
   People,
-  School,
   Person,
+  School,
+  SchoolOutlined,
   Assessment,
   Apartment,
-  SchoolOutlined,
   Logout,
   Security,
   LockReset,
@@ -207,7 +207,9 @@ const AdminDrawer = ({
     const targetRoute = routeMap[value];
 
     if (targetRoute) {
-      router.push(targetRoute);
+      if (targetRoute !== pathname) {
+        router.push(targetRoute, { scroll: false });
+      }
       if (isMobile) {
         setDrawerOpen(false);
       }
@@ -222,7 +224,9 @@ const AdminDrawer = ({
     const targetRoute = routeMap[value];
 
     if (targetRoute) {
-      router.push(targetRoute);
+      if (targetRoute !== pathname) {
+        router.push(targetRoute, { scroll: false });
+      }
       if (isMobile) {
         setDrawerOpen(false);
       }
@@ -245,6 +249,10 @@ const AdminDrawer = ({
           width: isMobile ? mobileDrawerWidth : drawerWidth,
           boxSizing: "border-box",
           marginTop: { xs: 0, md: 0 },
+          backgroundColor: "#082b57",
+          backgroundImage: "conic-gradient(from 30deg at 25% 25%, rgba(22,78,126,0.2) 0deg 60deg, rgba(2,23,49,0.24) 60deg 120deg, transparent 120deg 180deg, rgba(12,56,101,0.18) 180deg 240deg, transparent 240deg 360deg), conic-gradient(from 210deg at 75% 75%, rgba(35,98,145,0.13) 0deg 60deg, transparent 60deg 180deg, rgba(1,19,44,0.28) 180deg 240deg, transparent 240deg 360deg), linear-gradient(135deg, rgba(17,68,113,0.15) 0% 24%, transparent 24% 48%, rgba(2,27,58,0.26) 48% 72%, transparent 72%), linear-gradient(180deg, #041832 0%, #062a4a 52%, #083d63 100%)",
+          backgroundSize: "150px 150px, 180px 180px, 210px 210px, 100% 100%",
+          color: "#ffffff",
         },
       }}
     >
@@ -254,17 +262,18 @@ const AdminDrawer = ({
         justifyContent="space-between"
         px={3}
         py={2}
+        sx={{ color: "#ffffff" }}
       >
-        <Typography fontWeight={700} fontSize={16}>
+        <Typography fontWeight={700} fontSize={16} sx={{ color: "#ffffff" }}>
           {panelRole}'s Panel
         </Typography>
 
-        <IconButton onClick={() => setDrawerOpen(false)}>
+        <IconButton onClick={() => setDrawerOpen(false)} sx={{ color: "#ffffff" }}>
           <Menu />
         </IconButton>
       </Box>
 
-      <Divider />
+      <Divider sx={{ borderColor: "rgba(255,255,255,0.18)" }} />
 
       <List>
         {visibleMenuItems.map((item) => (
@@ -274,25 +283,23 @@ const AdminDrawer = ({
               onClick={() => handleMenuNavigation(item.value)}
               sx={{
                 mx: 1,
-                my: 0.5,
+                my: 0.25,
                 borderRadius: 2,
+                color: "#ffffff",
 
                 "&.Mui-selected": {
-                  bgcolor: "#E3F2FD",
-                  color: "primary.main",
+                  bgcolor: "rgba(255,255,255,0.12)",
+                  color: "#ffffff",
                 },
 
                 "&.Mui-selected:hover": {
-                  bgcolor: "#BBDEFB",
+                  bgcolor: "rgba(255,255,255,0.18)",
                 },
               }}
             >
               <ListItemIcon
                 sx={{
-                  color:
-                    adminView === item.value
-                      ? "primary.main"
-                      : "text.secondary",
+                  color: "#ffffff",
                   minWidth: 42,
                 }}
               >
@@ -305,6 +312,7 @@ const AdminDrawer = ({
                   fontSize: 14,
                   fontWeight:
                     adminView === item.value ? 600 : 400,
+                  color: "#ffffff",
                 }}
               />
             </ListItemButton>
@@ -318,21 +326,22 @@ const AdminDrawer = ({
                 onClick={() => setAssessmentModuleOpen((prev) => !prev)}
                 sx={{
                   mx: 1,
-                  my: 0.5,
+                  my: 0.25,
                   borderRadius: 2,
-                  bgcolor: visibleAssessmentItems.some((item) => item.value === adminView) ? "#F3F8FF" : "transparent",
+                  color: "#ffffff",
+                  bgcolor: visibleAssessmentItems.some((item) => item.value === adminView) ? "rgba(255,255,255,0.08)" : "transparent",
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 42, color: "text.secondary" }}>
+                <ListItemIcon sx={{ minWidth: 42, color: "#ffffff" }}>
                   <Assessment />
                 </ListItemIcon>
-                <ListItemText primary="Assessment module" primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }} />
-                {assessmentModuleOpen ? <ExpandLess /> : <ExpandMore />}
+                <ListItemText primary="Assessment module" primaryTypographyProps={{ fontSize: 14, fontWeight: 400, color: "#ffffff" }} />
+                {assessmentModuleOpen ? <ExpandLess sx={{ color: "#ffffff" }} /> : <ExpandMore sx={{ color: "#ffffff" }} />}
               </ListItemButton>
             </ListItem>
 
             {assessmentModuleOpen ? (
-              <Box sx={{ pl: 2, pr: 1, pb: 0.5 }}>
+              <Box sx={{ pl: 3, pr: 1, pb: 0.5 }}>
                 {visibleAssessmentItems.map((item) => (
                   <ListItem key={item.value} disablePadding>
                     <ListItemButton
@@ -340,26 +349,37 @@ const AdminDrawer = ({
                       onClick={() => handleAssessmentNavigation(item.value)}
                       sx={{
                         mx: 0,
-                        my: 0.5,
+                        my: 0.25,
                         borderRadius: 2,
                         pl: 2,
+                        color: "#ffffff",
                         "&.Mui-selected": {
-                          bgcolor: "#E3F2FD",
-                          color: "primary.main",
+                          bgcolor: "rgba(255,255,255,0.12)",
+                          color: "#ffffff",
                         },
                         "&.Mui-selected:hover": {
-                          bgcolor: "#BBDEFB",
+                          bgcolor: "rgba(255,255,255,0.18)",
                         },
                       }}
                     >
-                      <ListItemIcon sx={{ minWidth: 36, color: adminView === item.value ? 'primary.main' : 'text.secondary' }}>
-                        {item.icon}
+                      <ListItemIcon sx={{ minWidth: 24, color: "#ffffff" }}>
+                        <Box
+                          component="span"
+                          sx={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            backgroundColor: "#ffffff",
+                            display: "inline-block",
+                          }}
+                        />
                       </ListItemIcon>
                       <ListItemText
                         primary={item.title}
                         primaryTypographyProps={{
                           fontSize: 13,
                           fontWeight: adminView === item.value ? 600 : 400,
+                          color: "#ffffff",
                         }}
                       />
                     </ListItemButton>
@@ -379,18 +399,18 @@ const AdminDrawer = ({
             px: 1.5,
             py: 1.25,
             borderRadius: 2,
-            backgroundColor: "#f3f7ff",
-            border: "1px solid rgba(25, 118, 210, 0.12)",
+            backgroundColor: "rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.12)",
           }}
         >
-          <Typography variant="subtitle2" fontWeight={700} sx={{ lineHeight: 1.3 }}>
+          <Typography variant="subtitle2" fontWeight={700} sx={{ lineHeight: 1.3, color: "#ffffff" }}>
             {userName || "User"}
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+          <Typography variant="caption" sx={{ display: "block", mt: 0.25, color: "rgba(255,255,255,0.8)" }}>
             <Box component="span" fontWeight={700}>Role:</Box> {customRoleName || role || "No custom role"}
           </Typography>
           {String(role || '').toUpperCase() === 'TEACHER' ? (
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+            <Typography variant="caption" sx={{ display: "block", mt: 0.25, color: "rgba(255,255,255,0.8)" }}>
               <Box component="span" fontWeight={700}>Centre:</Box> {centerName || "No center assigned"}
             </Typography>
           ) : null}
@@ -403,12 +423,12 @@ const AdminDrawer = ({
               document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
               window.location.href = "/";
             }}
-            sx={{ mx: 1, borderRadius: 2 }}
+            sx={{ mx: 1, borderRadius: 2, color: "#ffffff" }}
           >
-            <ListItemIcon sx={{ minWidth: 42, color: "text.secondary" }}>
+            <ListItemIcon sx={{ minWidth: 42, color: "#ffffff" }}>
               <Logout />
             </ListItemIcon>
-            <ListItemText primary="Logout" />
+            <ListItemText primary="Logout" primaryTypographyProps={{ color: "#ffffff" }} />
           </ListItemButton>
         </ListItem>
       </Box>

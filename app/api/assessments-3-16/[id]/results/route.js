@@ -1,6 +1,7 @@
 import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
+import { buildAssessment316ResultSummary } from '@/lib/assessment316Results';
 
 const buildAssessmentMaps = (checklist = []) => {
   const checklistMap = new Map();
@@ -103,22 +104,8 @@ export async function GET(req, { params }) {
     }, {});
 
     const mappedResults = responses.map((response) => {
-      const selectedValues = (response.items || [])
-        .map((item) => {
-          const checklistId = String(item?.checklistId || '');
-          const optionId = String(item?.optionId || '');
-          const optionLabel = item?.option?.optionText || optionMap.get(optionId) || item?.optionId || 'No value';
-          const checklistLabel = item?.checklist?.itemText || checklistMap.get(checklistId) || 'Field';
-          return `${checklistLabel}: ${optionLabel}`;
-        })
-        .filter((value) => typeof value === 'string' && value.trim());
-
       const rawClassId = response.user?.student?.studyingClass;
-      const resultSummary = selectedValues.length
-        ? selectedValues.length === 1
-          ? selectedValues[0].replace(/^[^:]+:\s*/, '')
-          : selectedValues.join(' | ')
-        : 'No data';
+      const resultSummary = buildAssessment316ResultSummary(response.items || [], checklistMap, optionMap);
 
       const percentageValues = (response.items || [])
         .map((item) => {

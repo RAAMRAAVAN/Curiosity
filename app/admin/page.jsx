@@ -329,7 +329,7 @@ export default function AdminPage(props) {
       {/* Main Content */}
       <Box
         sx={{
-          ml: { xs: 0, md: drawerOpen ? 30 : 0 },
+          ml: { xs: 0, md: drawerOpen ? '320px' : 0 },
           transition: 'margin-left 0.3s ease-in-out',
           py: { xs: ['users', 'centers', 'students', 'roles'].includes(adminView) ? 0 : 2, sm: 3, md: 4 },
           px: { xs: ['users', 'centers', 'students', 'roles'].includes(adminView) ? 0 : 2, sm: 3, md: 4 },
@@ -339,7 +339,7 @@ export default function AdminPage(props) {
           minHeight: 'calc(100vh - 64px)',
         }}
       >
-        <Box sx={{ maxWidth: 1400, mx: "auto", width: '100%' }}>
+        <Box sx={{ width: '100%' }}>
 
         {adminView === 'none' || !hasAnyAdminPermission ? (
           <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, border: '1px solid rgba(15, 23, 42, 0.08)' }}>

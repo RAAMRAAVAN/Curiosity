@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Box, CircularProgress, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Backdrop, Box, CircularProgress, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { Menu } from '@mui/icons-material';
 import AdminDrawyer from './AdminDrawyer';
 import { AdminAuthProvider, useAdminAuth } from './AdminAuthContext';
@@ -44,13 +44,22 @@ function AdminLayoutContent({ children }) {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { admin, loading } = useAdminAuth();
   const [drawerOpen, setDrawerOpen] = useState(true);
+  const [isNavigating, startNavigation] = useTransition();
+  const [navigationPending, setNavigationPending] = useState(false);
 
   const activeView = useMemo(() => getActiveView(pathname), [pathname]);
+
+  useEffect(() => {
+    setNavigationPending(false);
+  }, [pathname]);
 
   const handleNavigation = (value) => {
     const route = routeValues[value] || '/admin';
     if (route !== pathname) {
-      router.push(route);
+      setNavigationPending(true);
+      startNavigation(() => {
+        router.push(route, { scroll: false });
+      });
     }
 
     if (isMobile) {
@@ -132,6 +141,7 @@ function AdminLayoutContent({ children }) {
 
       <Box
         sx={{
+          position: 'relative',
           ml: { xs: 0, md: drawerOpen ? 44 : 0 },
           transition: 'margin-left 0.3s ease-in-out',
           pt: 0,
@@ -143,6 +153,17 @@ function AdminLayoutContent({ children }) {
       >
         {children}
       </Box>
+
+      <Backdrop
+        open={navigationPending || isNavigating}
+        sx={{
+          zIndex: (theme) => theme.zIndex.drawer + 9999,
+          backgroundColor: 'rgba(255,255,255,0.65)',
+          backdropFilter: 'blur(4px)',
+        }}
+      >
+        <CircularProgress size={100} thickness={4} />
+      </Backdrop>
     </Box>
   );
 }
