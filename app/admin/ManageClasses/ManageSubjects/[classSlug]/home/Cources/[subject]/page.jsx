@@ -272,6 +272,7 @@ const Subject = () => {
                             onClick={() =>
                                 setOpen(true)
                             }
+                            sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}
                         >
                             <Add sx={{ mr: 1 }} />
                             Add New Chapter

@@ -11,6 +11,7 @@ import {
   DialogTitle,
   FormControlLabel,
   Grid,
+  IconButton,
   Paper,
   Stack,
   Switch,
@@ -26,6 +27,9 @@ import {
   useTheme,
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import Tooltip from '@mui/material/Tooltip';
 
 const permissionGroups = [
   {
@@ -313,20 +317,20 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
               <Button variant="outlined" onClick={openTeachersPreset} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>Teachers Preset</Button>
             ) : null}
             {canCreateRoles ? (
-              <Button variant="contained" onClick={startCreate} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>Create Role</Button>
+              <Button variant="contained" onClick={startCreate} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' }, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>Create Role</Button>
             ) : null}
           </Stack>
         </Box>
 
         <TableContainer sx={{ overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
           <Table sx={{ minWidth: { xs: 500, sm: 600 } }}>
-            <TableHead sx={{ backgroundColor: "#f5f8ff" }}>
+            <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff' } }}>
               <TableRow>
                 <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Role Name</TableCell>
                 {!isMobile && <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Description</TableCell>}
                 <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Permissions</TableCell>
                 <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Edit / Delete</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -341,10 +345,18 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
                   <TableCell>
                     <Stack direction="row" spacing={0.5}>
                       {canEditRoles ? (
-                        <Button size={isMobile ? "small" : "medium"} onClick={() => startEdit(role)} sx={{ fontSize: { xs: 10, sm: 12 } }}>Edit</Button>
+                        <Tooltip title="Edit role" arrow>
+                          <IconButton size="small" onClick={() => startEdit(role)} sx={{ backgroundColor: '#e0f2fe', color: '#0a336b', '&:hover': { backgroundColor: '#bae6fd' } }}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       ) : null}
                       {canDeleteRoles ? (
-                        <Button size={isMobile ? "small" : "medium"} color="error" onClick={() => deleteRole(role)} sx={{ fontSize: { xs: 10, sm: 12 } }}>Delete</Button>
+                        <Tooltip title="Delete role" arrow>
+                          <IconButton size="small" onClick={() => deleteRole(role)} sx={{ backgroundColor: '#fee2e2', color: '#b91c1c', '&:hover': { backgroundColor: '#fecaca' } }}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       ) : null}
                     </Stack>
                   </TableCell>
@@ -432,7 +444,7 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)} color="inherit">Cancel</Button>
-          <Button variant="contained" onClick={saveRole} disabled={saving}>{editingRole ? 'Save Changes' : 'Create Role'}</Button>
+          <Button variant="contained" onClick={saveRole} disabled={saving} sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>{editingRole ? 'Save Changes' : 'Create Role'}</Button>
         </DialogActions>
       </Dialog>
     </Box>

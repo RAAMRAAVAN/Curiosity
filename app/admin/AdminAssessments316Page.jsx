@@ -29,17 +29,22 @@ import {
   Stack,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
-import { AddCircleOutline, Close, DeleteOutline, EditOutlined } from '@mui/icons-material';
+import { AddCircleOutline, DeleteOutline, EditOutlined } from '@mui/icons-material';
 
 const emptyForm = { title: '', description: '', classIds: [], subjectIds: [], checklist: [{ itemText: 'Field 1', options: [''] }] };
 
 const AdminAssessments316Page = ({ role, permissions = [] }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteAssessment, setDeleteAssessment] = useState(null);
   const [editingAssessment, setEditingAssessment] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [classOptions, setClassOptions] = useState([]);
@@ -213,8 +218,6 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
   };
 
   const handleDelete = async (assessment) => {
-    if (!window.confirm(`Delete "${assessment.title}"?`)) return;
-
     try {
       const response = await fetch(`/api/admin/assessments-3-16/${encodeURIComponent(assessment.id)}`, {
         method: 'DELETE',
@@ -227,6 +230,22 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
     } catch (error) {
       setFeedback({ severity: 'error', message: error.message || 'Unable to delete assessment.' });
     }
+  };
+
+  const openDeleteConfirmation = (assessment) => {
+    setDeleteAssessment(assessment);
+  };
+
+  const closeDeleteConfirmation = () => {
+    setDeleteAssessment(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteAssessment) return;
+
+    const assessment = deleteAssessment;
+    closeDeleteConfirmation();
+    await handleDelete(assessment);
   };
 
   const filterGroupsByName = (groups, search) => {
@@ -486,14 +505,14 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
   const filteredAbsentStudents = filterGroupsByName(absentStudents, absentSearch);
 
   return (
-    <Box sx={{ width: '100%', p: { xs: 0, sm: 2, md: 3 } }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
+    <Box sx={{ width: { xs: '100%', sm: '100%' }, ml: { xs: 0, sm: 0 }, p: { xs: 1, sm: 2, md: 3 } }}>
+      <Box  sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
         <Box>
-          <Typography variant="h6" fontWeight={700}>Assessment (3-16 years)</Typography>
+          <Typography variant="h6" fontWeight={600}>Assessment (3-16 years)</Typography>
           <Typography color="text.secondary">Manage age-range assessment records.</Typography>
         </Box>
         {canCreate ? (
-          <Button variant="contained" startIcon={<AddCircleOutline />} onClick={openCreate}>
+          <Button variant="contained" startIcon={<AddCircleOutline />} onClick={openCreate} sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }} fullWidth={isMobile} >
             Add Assessment
           </Button>
         ) : null}
@@ -508,28 +527,45 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
       ) : (
         <Stack spacing={2}>
           {assessments.map((assessment) => (
-            <Card key={assessment.id} variant="outlined">
-              <CardContent sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: 'flex-start' }}>
-                <Box sx={{ minWidth: 0 }}>
+            <Card
+              key={assessment.id}
+              variant="outlined"
+              sx={{
+                width: '100%',
+                mx: 'auto',
+                backgroundColor: '#082b57',
+                backgroundImage: 'conic-gradient(from 30deg at 25% 25%, rgba(22,78,126,0.2) 0deg 60deg, rgba(2,23,49,0.24) 60deg 120deg, transparent 120deg 180deg, rgba(12,56,101,0.18) 180deg 240deg, transparent 240deg 360deg), conic-gradient(from 210deg at 75% 75%, rgba(35,98,145,0.13) 0deg 60deg, transparent 60deg 180deg, rgba(1,19,44,0.28) 180deg 240deg, transparent 240deg 360deg), linear-gradient(135deg, rgba(17,68,113,0.15) 0% 24%, transparent 24% 48%, rgba(2,27,58,0.26) 48% 72%, transparent 72%), linear-gradient(180deg, #041832 0%, #062a4a 52%, #083d63 100%)',
+                backgroundSize: '150px 150px, 180px 180px, 210px 210px, 100% 100%',
+                borderColor: 'rgba(255, 255, 255, 0.22)',
+                color: '#ffffff',
+                transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
+                '&:hover': {
+                  backgroundColor: '#0b3968',
+                  boxShadow: '0 4px 14px rgba(2, 23, 49, 0.28)',
+                },
+              }}
+            >
+              <CardContent sx={{ position: 'relative', display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', gap: 2, alignItems: { xs: 'stretch', sm: 'flex-start' }, color: '#ffffff' }}>
+                <Box sx={{ minWidth: 0, pr: { xs: 8, sm: 0 } }}>
                   <Typography fontWeight={700}>{assessment.title}</Typography>
-                  <Typography color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
+                  <Typography sx={{ whiteSpace: 'pre-line', color: 'rgba(255, 255, 255, 0.78)' }}>
                     {assessment.description || 'No description'}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                  <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'rgba(255, 255, 255, 0.72)' }}>
                     Classes: {(assessment.allowedClasses || []).map((item) => item.class?.className).filter(Boolean).join(', ') || 'None'}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255, 255, 255, 0.72)' }}>
                     Subjects: {(assessment.subjects || []).map((item) => item.subject?.subjectName).filter(Boolean).join(', ') || 'None'}
                   </Typography>
-                  <Stack direction="row" spacing={1} sx={{ mt: 1.5, flexWrap: 'wrap' }}>
-                    <Chip label={`Pending: ${summaryCounts[assessment.id]?.pending ?? 0}`} color="warning" variant="outlined" onClick={() => handleOpenPendingDialog(assessment)} sx={{ cursor: 'pointer' }} />
-                    <Chip label={`Appeared: ${summaryCounts[assessment.id]?.appeared ?? 0}`} color="success" variant="outlined" onClick={() => handleOpenAppearedDialog(assessment)} sx={{ cursor: 'pointer' }} />
-                    <Chip label={`Absent: ${summaryCounts[assessment.id]?.absent ?? 0}`} color="error" variant="outlined" onClick={() => handleOpenAbsentDialog(assessment)} sx={{ cursor: 'pointer' }} />
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 1.5, alignItems: { xs: 'flex-start', sm: 'center', display: 'flex', width: '100%'} }}>
+                    <Chip label={`Pending: ${summaryCounts[assessment.id]?.pending ?? 0}`} color="warning" variant="filled" onClick={() => handleOpenPendingDialog(assessment)} sx={{ cursor: 'pointer', display: 'flex', width: '100%', color: '#ffffff' }} />
+                    <Chip label={`Appeared: ${summaryCounts[assessment.id]?.appeared ?? 0}`} color="success" variant="filled" onClick={() => handleOpenAppearedDialog(assessment)} sx={{ cursor: 'pointer', display: 'flex', width: '100%', color: '#ffffff' }} />
+                    <Chip label={`Absent: ${summaryCounts[assessment.id]?.absent ?? 0}`} color="error" variant="filled" onClick={() => handleOpenAbsentDialog(assessment)} sx={{ cursor: 'pointer', display: 'flex', width: '100%', color: '#ffffff' }} />
                   </Stack>
                 </Box>
-                <Stack direction="row" spacing={0.5}>
-                  {canEdit ? <IconButton aria-label="Edit assessment" onClick={() => openEdit(assessment)}><EditOutlined /></IconButton> : null}
-                  {canDelete ? <IconButton aria-label="Delete assessment" color="error" onClick={() => handleDelete(assessment)}><DeleteOutline /></IconButton> : null}
+                <Stack direction="row" spacing={0.5} sx={{ position: { xs: 'absolute', sm: 'static' }, top: { xs: 8, sm: 'auto' }, right: { xs: 8, sm: 'auto' } }}>
+                  {canEdit ? <IconButton aria-label="Edit assessment" onClick={() => openEdit(assessment)}><EditOutlined sx={{ color: '#ffffff' }} /></IconButton> : null}
+                  {canDelete ? <IconButton aria-label="Delete assessment" color="error" onClick={() => openDeleteConfirmation(assessment)}><DeleteOutline sx={{ color: '#ffffff' }} /></IconButton> : null}
                 </Stack>
               </CardContent>
             </Card>
@@ -537,9 +573,16 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         </Stack>
       )}
 
-      <Dialog open={pendingDialogOpen} onClose={() => setPendingDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={pendingDialogOpen}
+        onClose={() => setPendingDialogOpen(false)}
+        // maxWidth="sm"
+        fullWidth
+        fullScreen={isMobile}
+        PaperProps={{ sx: { display: 'flex', flexDirection: 'column',  } }}
+      >
         <DialogTitle>Pending Students</DialogTitle>
-        <DialogContent dividers sx={{ overflowY: 'auto' }}>
+        <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <TextField label="Search by Name" value={pendingSearch} onChange={(event) => setPendingSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
           {pendingLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
@@ -574,9 +617,9 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(pendingSubmissionStudent) && !!selectedAssessment} onClose={() => { setPendingSubmissionStudent(null); setPendingSubmissionSelections({}); }} maxWidth="md" fullWidth>
+      <Dialog open={Boolean(pendingSubmissionStudent) && !!selectedAssessment} onClose={() => { setPendingSubmissionStudent(null); setPendingSubmissionSelections({}); }} maxWidth="md" fullWidth fullScreen={isMobile} PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}>
         <DialogTitle>Submit assessment for {pendingSubmissionStudent?.name || 'student'}</DialogTitle>
-        <DialogContent dividers sx={{ overflowY: 'auto', maxHeight: '75vh' }}>
+        <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto', maxHeight: { xs: 'none', sm: '75vh' } }}>
           {!selectedAssessment?.checklist?.length ? (
             <Typography color="text.secondary">No evaluation checklist is available for this assessment.</Typography>
           ) : (
@@ -609,9 +652,16 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={appearedDialogOpen} onClose={() => setAppearedDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={appearedDialogOpen}
+        onClose={() => setAppearedDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={isMobile}
+        PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}
+      >
         <DialogTitle>Appeared Students</DialogTitle>
-        <DialogContent dividers sx={{ overflowY: 'auto' }}>
+        <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <TextField label="Search by Name" value={appearedSearch} onChange={(event) => setAppearedSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
           {appearedLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
@@ -639,9 +689,9 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(appearedSubmissionStudent) && !!selectedAssessment} onClose={closeAppearedEditDialog} maxWidth="md" fullWidth>
+      <Dialog open={Boolean(appearedSubmissionStudent) && !!selectedAssessment} onClose={closeAppearedEditDialog} maxWidth="md" fullWidth fullScreen={isMobile} PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}>
         <DialogTitle>Edit assessment for {appearedSubmissionStudent?.name || 'student'}</DialogTitle>
-        <DialogContent dividers sx={{ overflowY: 'auto', maxHeight: '75vh' }}>
+        <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto', maxHeight: { xs: 'none', sm: '75vh' } }}>
           {!selectedAssessment?.checklist?.length ? (
             <Typography color="text.secondary">No evaluation checklist is available for this assessment.</Typography>
           ) : (
@@ -674,9 +724,16 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={absentDialogOpen} onClose={() => setAbsentDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={absentDialogOpen}
+        onClose={() => setAbsentDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={isMobile}
+        PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}
+      >
         <DialogTitle>Absent Students</DialogTitle>
-        <DialogContent dividers sx={{ overflowY: 'auto' }}>
+        <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <TextField label="Search by Name" value={absentSearch} onChange={(event) => setAbsentSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
           {absentLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
@@ -711,14 +768,38 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
+      <Dialog
+        open={Boolean(deleteAssessment)}
+        onClose={closeDeleteConfirmation}
+        fullWidth
+        maxWidth="xs"
+        fullScreen={isMobile}
+        PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}
+      >
+        <DialogTitle>Delete assessment?</DialogTitle>
+        <DialogContent dividers>
+          <Typography>
+            Are you sure you want to delete <strong>{deleteAssessment?.title || 'this assessment'}</strong>?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteConfirmation}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={confirmDelete}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth fullScreen={isMobile} PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography component="span" sx={{ flex: 1, fontWeight: 700 }}>
             {editingAssessment ? 'Edit Assessment' : 'Create Assessment'}
           </Typography>
-          <IconButton aria-label="Close" onClick={() => setDialogOpen(false)}><Close /></IconButton>
         </DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <Stack spacing={2} sx={{ pt: 1 }}>
             <TextField
               label="Assessment Title"
@@ -784,19 +865,34 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
                   <Box key={`checklist-${index}`} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Stack spacing={1} sx={{ flex: 1 }}>
                       {item.options.map((option, optionIndex) => (
-                        <TextField
-                          key={`checklist-${index}-option-${optionIndex}`}
-                          size="small"
-                          label={`Option ${optionIndex + 1}`}
-                          value={option}
-                          onChange={(event) => setForm((current) => ({
-                            ...current,
-                            checklist: current.checklist.map((entry, itemIndex) => itemIndex === index
-                              ? { ...entry, options: entry.options.map((value, valueIndex) => valueIndex === optionIndex ? event.target.value : value) }
-                              : entry),
-                          }))}
-                          fullWidth
-                        />
+                        <Box key={`checklist-${index}-option-${optionIndex}`} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <TextField
+                            size="small"
+                            label={`Option ${optionIndex + 1}`}
+                            value={option}
+                            onChange={(event) => setForm((current) => ({
+                              ...current,
+                              checklist: current.checklist.map((entry, itemIndex) => itemIndex === index
+                                ? { ...entry, options: entry.options.map((value, valueIndex) => valueIndex === optionIndex ? event.target.value : value) }
+                                : entry),
+                            }))}
+                            fullWidth
+                          />
+                          <IconButton
+                            aria-label={`Delete option ${optionIndex + 1}`}
+                            color="error"
+                            onClick={() => setForm((current) => ({
+                              ...current,
+                              checklist: current.checklist.map((entry, itemIndex) => {
+                                if (itemIndex !== index || entry.options.length <= 1) return entry;
+                                return { ...entry, options: entry.options.filter((_, valueIndex) => valueIndex !== optionIndex) };
+                              }),
+                            }))}
+                            disabled={item.options.length <= 1}
+                          >
+                            <DeleteOutline />
+                          </IconButton>
+                        </Box>
                       ))}
                       <Button
                         size="small"

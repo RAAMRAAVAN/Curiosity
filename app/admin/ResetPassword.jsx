@@ -139,7 +139,7 @@ const ResetPassword = () => {
             required
             autoComplete="new-password"
           />
-          <Button type="submit" variant="contained" disabled={saving} sx={{ alignSelf: { xs: 'stretch', sm: 'flex-end' }, minWidth: 160 }}>
+          <Button type="submit" variant="contained" disabled={saving} sx={{ alignSelf: { xs: 'stretch', sm: 'flex-end' }, minWidth: 160, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
             {saving ? 'Updating...' : 'Update Password'}
           </Button>
         </Stack>

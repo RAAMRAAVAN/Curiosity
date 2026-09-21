@@ -278,7 +278,6 @@ const Chapter = ({ chapters, setChapters, loading, subject, fetchChapters }) => 
                     marginLeft={1}
                   >
                     <Fab
-                      color="secondary"
                       size="small"
                       aria-label="edit"
                       sx={{
@@ -286,6 +285,9 @@ const Chapter = ({ chapters, setChapters, loading, subject, fetchChapters }) => 
                         marginTop: 1,
                         height: 32,
                         minHeight: 32,
+                        backgroundColor: '#e0f2fe',
+                        color: '#0a336b',
+                        '&:hover': { backgroundColor: '#bae6fd' },
                       }}
                     >
                       <Edit sx={{ fontSize: 18 }} />

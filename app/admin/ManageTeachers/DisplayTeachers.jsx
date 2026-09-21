@@ -192,14 +192,34 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
                     <TableCell>
                         <Stack direction="row" spacing={1} alignItems="center">
                             {canEditTeachers ? (
-                                <IconButton color="primary" onClick={() => onEditTeacher(teacher)}>
-                                    <Edit />
-                                </IconButton>
+                                <Tooltip title="Edit teacher" arrow>
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => onEditTeacher(teacher)}
+                                        sx={{
+                                            backgroundColor: '#e0f2fe',
+                                            color: '#0a336b',
+                                            '&:hover': { backgroundColor: '#bae6fd' },
+                                        }}
+                                    >
+                                        <Edit fontSize="small" />
+                                    </IconButton>
+                                </Tooltip>
                             ) : null}
                             {canDeleteTeachers ? (
-                                <Button size="small" color="error" onClick={() => handleDeleteTeacher(teacher.id)}>
-                                    Delete
-                                </Button>
+                                <Tooltip title="Delete teacher" arrow>
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => handleDeleteTeacher(teacher.id)}
+                                        sx={{
+                                            backgroundColor: '#fee2e2',
+                                            color: '#b91c1c',
+                                            '&:hover': { backgroundColor: '#fecaca' },
+                                        }}
+                                    >
+                                        <Delete fontSize="small" />
+                                    </IconButton>
+                                </Tooltip>
                             ) : null}
                         </Stack>
                     </TableCell>

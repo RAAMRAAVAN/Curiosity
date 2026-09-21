@@ -131,7 +131,7 @@ const AdminAssessmentsPage = ({ heading = 'View Assessments', moduleDescription 
           <Typography color="text.secondary" sx={{ fontSize: { xs: 12, sm: 16 } }}>{moduleDescription}</Typography>
         </Box>
         {canCreateAssessments ? (
-          <Button variant="contained" startIcon={<AddCircleOutline />} onClick={handleOpenCreate} disabled={!selectedSubjectId}>
+          <Button variant="contained" startIcon={<AddCircleOutline />} onClick={handleOpenCreate} disabled={!selectedSubjectId} sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
             Add New Assessment
           </Button>
         ) : null}

@@ -332,7 +332,7 @@ export default function AdminPage(props) {
           ml: { xs: 0, md: drawerOpen ? '320px' : 0 },
           transition: 'margin-left 0.3s ease-in-out',
           py: { xs: ['users', 'centers', 'students', 'roles'].includes(adminView) ? 0 : 2, sm: 3, md: 4 },
-          px: { xs: ['users', 'centers', 'students', 'roles'].includes(adminView) ? 0 : 2, sm: 3, md: 4 },
+          px: { xs: ['users', 'centers', 'students', 'roles', 'assessments-3-16'].includes(adminView) ? 0 : 2, sm: 3, md: 4 },
           bgcolor: ['users', 'centers', 'students', 'roles'].includes(adminView) ? '#fff' : 'transparent',
           width: { xs: ['users', 'centers', 'students', 'roles'].includes(adminView) ? '100vw' : 'auto', md: 'auto' },
           boxSizing: 'border-box',
@@ -361,7 +361,7 @@ export default function AdminPage(props) {
         ) : null}
 
         {adminView === "assessments-3-16" ? (
-          <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+          <Paper sx={{ p: { xs: 0, sm: 3 }, borderRadius: { xs: 0, sm: 3 }, boxShadow: { xs: 'none', sm: "0 20px 48px rgba(15, 23, 42, 0.08)" } }}>
             <AdminAssessments316Page
               role={admin?.role}
               permissions={admin?.permissions || []}
@@ -433,7 +433,7 @@ export default function AdminPage(props) {
         ) : null}
 
         {adminView === "attendance" ? (
-          <AttendanceManager role={admin?.role} permissions={admin?.permissions || []} />
+          <AttendanceManager admin={admin} role={admin?.role} permissions={admin?.permissions || []} />
         ) : null}
 
         {adminView === "results" ? (

@@ -485,6 +485,9 @@ const Cources = ({ defaultClass }) => {
             onClick={handleSubmit}
             disabled={loading}
             sx={{
+              backgroundColor: '#0a336b',
+              color: '#ffffff',
+              '&:hover': { backgroundColor: '#082b57' },
               width: {
                 xs: "100%",
                 sm: "auto",

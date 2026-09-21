@@ -29,8 +29,8 @@ export default function Assessments316RoutePage() {
   }
 
   return (
-    <Box sx={{ maxWidth: 1400, mx: 'auto', width: '100%' }}>
-      <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: '0 20px 48px rgba(15, 23, 42, 0.08)' }}>
+    <Box sx={{ maxWidth: 1400, mx: 'auto', width: { xs: 'calc(100% + 32px)', sm: '100%' }, ml: { xs: -2, sm: 'auto' } }}>
+      <Paper sx={{ p: { xs: 0, sm: 3 }, borderRadius: { xs: 0, sm: 3 }, boxShadow: { xs: 'none', sm: '0 20px 48px rgba(15, 23, 42, 0.08)' } }}>
         <AdminAssessments316Page
           role={admin?.role}
           permissions={admin?.permissions || []}

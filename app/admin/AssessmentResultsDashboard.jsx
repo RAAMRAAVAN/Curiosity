@@ -369,7 +369,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
       <Box sx={{ mt: 2 }}>
         <TableContainer component={Paper} variant="outlined">
           <Table>
-            <TableHead>
+            <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700 } }}>
               <TableRow>
                 <TableCell>Assessment Name</TableCell>
                 <TableCell>Class</TableCell>
@@ -546,7 +546,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
 
                 <TableContainer component={Paper} variant="outlined">
                   <Table size="small">
-                    <TableHead>
+                    <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700 } }}>
                       <TableRow>
                         <TableCell>S.No</TableCell>
                         <TableCell>Student</TableCell>
@@ -936,7 +936,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
           </Typography>
           <TableContainer component={Paper} variant="outlined">
             <Table>
-              <TableHead>
+              <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700 } }}>
                 <TableRow>
                   <TableCell>Assessment</TableCell>
                   <TableCell>Class</TableCell>
@@ -1001,7 +1001,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
           </Typography>
           <TableContainer component={Paper} variant="outlined">
             <Table>
-              <TableHead>
+              <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700 } }}>
                 <TableRow>
                   <TableCell>Student</TableCell>
                   <TableCell>Email</TableCell>
@@ -1253,7 +1253,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
           </Box>
           <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
             <Table>
-              <TableHead>
+              <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700 } }}>
                 <TableRow sx={{ backgroundColor: '#f3f4f6' }}>
                   {assessmentType === '3-16' ? (
                     <>

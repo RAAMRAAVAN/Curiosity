@@ -284,6 +284,9 @@ const Assessments = () => {
                                 sx={{
                                     minHeight: { xs: 36, sm: 48 },
                                     height: { xs: 36, sm: 48 },
+                                    backgroundColor: '#0a336b',
+                                    color: '#ffffff',
+                                    '&:hover': { backgroundColor: '#082b57' },
                                     // px: { xs: 2, sm: 2 },
                                     fontSize: { xs: '0.7rem', sm: '0.875rem' },
                                 }}

@@ -1,0 +1,48 @@
+{
+  "target": "http://127.0.0.1:5000",
+  "concurrency": 100,
+  "durationSeconds": 30,
+  "requests": 777,
+  "errors": 0,
+  "errorRate": 0,
+  "throughput": 25.9,
+  "latencyMs": {
+    "p50": 3908.9480999999996,
+    "p95": 6347.222000000002,
+    "p99": 6773.5198
+  },
+  "scenarios": {
+    "database health": {
+      "requests": 39,
+      "errors": 0,
+      "p95": 3056.8045
+    },
+    "centers": {
+      "requests": 81,
+      "errors": 0,
+      "p95": 3880.3183
+    },
+    "students": {
+      "requests": 223,
+      "errors": 0,
+      "p95": 4528.6941
+    },
+    "admin context": {
+      "requests": 112,
+      "errors": 0,
+      "p95": 4748.416099999999
+    },
+    "teachers": {
+      "requests": 110,
+      "errors": 0,
+      "p95": 4698.003199999999
+    },
+    "all-center attendance": {
+      "requests": 212,
+      "errors": 0,
+      "p95": 6690.4048
+    }
+  },
+  "errorMessages": [],
+  "generatedAt": "2026-09-21T05:24:39.419Z"
+}

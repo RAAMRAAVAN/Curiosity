@@ -57,12 +57,19 @@ async function accessibleCenterIds(actor) {
 async function attendanceScope(actor, centerId) {
   const allowedCenterIds = await accessibleCenterIds(actor);
   if (!allowedCenterIds.length) return null;
-  if (centerId === "all") {
+  const requestedCenterIds = String(centerId || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (requestedCenterIds.includes("all")) {
     return { centerIds: allowedCenterIds, center: { id: "all", name: "All", slug: null } };
   }
-  if (!centerId || !allowedCenterIds.includes(centerId)) return null;
-  const center = await prisma.center.findUnique({ where: { id: centerId }, select: { id: true, name: true, slug: true } });
-  return center ? { centerIds: [center.id], center } : null;
+  const selectedCenterIds = requestedCenterIds.filter((id) => allowedCenterIds.includes(id));
+  if (!selectedCenterIds.length || selectedCenterIds.length !== requestedCenterIds.length) return null;
+  const selectedCenters = await prisma.center.findMany({ where: { id: { in: selectedCenterIds } }, select: { id: true, name: true, slug: true } });
+  return selectedCenters.length === selectedCenterIds.length
+    ? { centerIds: selectedCenterIds, center: selectedCenters.length === 1 ? selectedCenters[0] : { id: selectedCenterIds.join(","), name: "Selected centres", slug: null } }
+    : null;
 }
 
 export async function GET(req) {
@@ -73,26 +80,29 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const dateText = searchParams.get("date") || todayValue();
     const date = dateValue(dateText);
-    const classId = searchParams.get("classId") || "";
+    const requestedClassIds = (searchParams.get("classId") || "").split(",").map((value) => value.trim()).filter(Boolean);
     const scope = await attendanceScope(auth.actor, searchParams.get("centerId"));
     if (!scope) return ApiResponse.error("You are not assigned to a valid center.", 403);
     if (!date) return ApiResponse.error("Invalid attendance date.", 400);
 
+    const assignedClassIds = auth.actor.isTeacher ? await getTeacherAssignedClassIds(prisma, auth.actor.userId) : null;
     const rawClasses = await prisma.class.findMany({
-      where: {
-        status: true,
-        OR: [{ centerId: { in: scope.centerIds } }, { centerId: null }],
-      },
+      where: assignedClassIds
+        ? { status: true, id: { in: assignedClassIds } }
+        : {
+            status: true,
+            OR: [{ centerId: { in: scope.centerIds } }, { centerId: null }],
+          },
       select: { id: true, className: true, centerId: true },
     });
-    const assignedClassIds = auth.actor.isTeacher ? await getTeacherAssignedClassIds(prisma, auth.actor.userId) : null;
-    const classes = sortClasses(assignedClassIds ? rawClasses.filter((item) => assignedClassIds.includes(item.id)) : rawClasses);
-    if (!classId) return ApiResponse.success({ center: scope.center, classes, students: [], date: dateText, today: todayValue() });
+    const classes = sortClasses(rawClasses);
+    if (!requestedClassIds.length) return ApiResponse.success({ center: scope.center, classes, students: [], date: dateText, today: todayValue() });
 
     const classMap = Object.fromEntries(classes.map((item) => [item.id, item.className]));
-    const isAllClasses = classId === "all";
-    const selectedClass = isAllClasses ? { id: "all", className: "All" } : classes.find((item) => item.id === classId);
-    if (!selectedClass) return ApiResponse.error("Class is not available for this center.", 403);
+    const isAllClasses = requestedClassIds.includes("all");
+    const selectedClassIds = isAllClasses ? classes.map((item) => item.id) : requestedClassIds;
+    const selectedClasses = classes.filter((item) => selectedClassIds.includes(item.id));
+    if (!isAllClasses && selectedClasses.length !== requestedClassIds.length) return ApiResponse.error("Class is not available for this center.", 403);
 
     const users = await prisma.user.findMany({
       where: {
@@ -100,9 +110,9 @@ export async function GET(req) {
         status: true,
         student: {
           centerId: { in: scope.centerIds },
-          ...(isAllClasses
-            ? (assignedClassIds ? { studyingClass: { in: assignedClassIds } } : {})
-            : { studyingClass: classId }),
+          studyingClass: isAllClasses
+            ? (assignedClassIds ? { in: assignedClassIds } : undefined)
+            : { in: selectedClassIds },
         },
       },
       orderBy: { id: "asc" },
@@ -125,7 +135,11 @@ export async function GET(req) {
     return ApiResponse.success({
       center: scope.center,
       classes,
-      selectedClass,
+      selectedClass: isAllClasses
+        ? { id: "all", className: "All" }
+        : selectedClasses.length === 1
+          ? selectedClasses[0]
+          : { id: selectedClassIds.join(","), className: "Selected classes" },
       date: dateText,
       today: todayValue(),
       students: users.map((user) => ({
@@ -133,7 +147,8 @@ export async function GET(req) {
         name: user.name,
         centerName: user.student?.center?.name || "-",
         classId: user.student?.studyingClass || null,
-        className: isAllClasses ? classMap[user.student?.studyingClass] || "-" : selectedClass.className,
+        className: classMap[user.student?.studyingClass] || "-",
+        centerId: user.student?.centerId || null,
         status: user.studentAttendances[0]?.status || null,
         markedAt: user.studentAttendances[0]?.markedAt || null,
         markedBy: user.studentAttendances[0]?.markedBy || null,

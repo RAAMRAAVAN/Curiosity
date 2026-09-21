@@ -736,9 +736,19 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
               borderTop: '1px solid rgba(8, 43, 87, 0.1)',
               boxShadow: '0 -5px 18px rgba(8, 43, 87, 0.06)',
             }}>
-              <Button variant="contained" onClick={handleSaveUser} size={isMobile ? "small" : "medium"} disabled={loading || !canSubmitUserForm}>
+              <Button
+                variant="contained"
+                onClick={handleSaveUser}
+                size={isMobile ? "small" : "medium"}
+                disabled={loading || !canSubmitUserForm}
+                sx={{
+                  backgroundColor: '#0a336b',
+                  color: '#ffffff',
+                  '&:hover': { backgroundColor: '#082b57' },
+                }}
+              >
                 {loading ? <CircularProgress size={20} color="inherit" /> : selectedUserId ? "Save Changes" : "Create User"}
-                </Button>
+              </Button>
             </DialogActions>
         </Dialog>
     </Box>)

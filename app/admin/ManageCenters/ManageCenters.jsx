@@ -184,7 +184,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
           <Typography color="text.secondary" sx={{ fontSize: { xs: 12, sm: 14 } }}>Create, view, and edit centers.</Typography>
         </Box>
         {canCreateCenters ? (
-          <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' }, display: { xs: 'none', sm: 'inline-flex' } }}>
+          <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' }, display: { xs: 'none', sm: 'inline-flex' }, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
             Add Center
           </Button>
         ) : null}
@@ -198,7 +198,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
 
       <TableContainer component={Paper} sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
         <Table sx={{ minWidth: { xs: 500, sm: 600 } }}>
-          <TableHead sx={{ backgroundColor: "#f5f8ff" }}>
+          <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff' } }}>
             <TableRow>
               <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Name</TableCell>
               {!isMobile && <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Description</TableCell>}
@@ -230,14 +230,18 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
                   <TableCell align="right">
                     <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                       {canEditCenters ? (
-                        <IconButton color="primary" onClick={() => openEditDialog(center)} size={isMobile ? "small" : "medium"}>
-                          <Edit fontSize={isMobile ? "small" : "medium"} />
-                        </IconButton>
+                        <Tooltip title="Edit center" arrow>
+                          <IconButton onClick={() => openEditDialog(center)} size="small" sx={{ backgroundColor: '#e0f2fe', color: '#0a336b', '&:hover': { backgroundColor: '#bae6fd' } }}>
+                            <Edit fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       ) : null}
                       {canDeleteCenters ? (
-                        <IconButton color="error" onClick={() => handleDelete(center.id)} size={isMobile ? "small" : "medium"}>
-                          <Delete fontSize={isMobile ? "small" : "medium"} />
-                        </IconButton>
+                        <Tooltip title="Delete center" arrow>
+                          <IconButton onClick={() => handleDelete(center.id)} size="small" sx={{ backgroundColor: '#fee2e2', color: '#b91c1c', '&:hover': { backgroundColor: '#fecaca' } }}>
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       ) : null}
                     </Stack>
                   </TableCell>
@@ -262,10 +266,10 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
         >
           <Tooltip title="Create new center" arrow>
             <Fab
-              color="primary"
               aria-label="Create new center"
               onClick={openCreateDialog}
               disabled={loading}
+              sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}
             >
               <Add />
             </Fab>
@@ -337,7 +341,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
         </DialogContent>
         <DialogActions sx={{ gap: 1, px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 2 } }}>
           <Button onClick={() => setDialogOpen(false)} size={isMobile ? "small" : "medium"}>Cancel</Button>
-          <Button variant="contained" onClick={handleSubmit} disabled={(!canCreateCenters && !editingCenter) || (editingCenter && !canEditCenters)} size={isMobile ? "small" : "medium"}>
+          <Button variant="contained" onClick={handleSubmit} disabled={(!canCreateCenters && !editingCenter) || (editingCenter && !canEditCenters)} size={isMobile ? "small" : "medium"} sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
             {editingCenter ? "Save Changes" : "Create Center"}
           </Button>
         </DialogActions>

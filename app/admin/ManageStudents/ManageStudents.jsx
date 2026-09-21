@@ -576,7 +576,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
             {exporting ? "Exporting..." : "Export Students"}
           </Button>
           {canCreateStudents ? (
-            <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog} size="small" sx={{ width: { xs: '100%', sm: 'auto' }, display: { xs: 'none', sm: 'inline-flex' }, fontSize: 12, py: 0.5, px: 1.5 }}>
+            <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog} size="small" sx={{ width: { xs: '100%', sm: 'auto' }, display: { xs: 'none', sm: 'inline-flex' }, fontSize: 12, py: 0.5, px: 1.5, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
               Add Student
             </Button>
           ) : null}
@@ -591,7 +591,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
 
       <TableContainer component={Paper} sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
         <Table sx={{ minWidth: { xs: 600, sm: 720 } }}>
-          <TableHead sx={{ backgroundColor: "#f5f8ff" }}>
+          <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff' } }}>
             <TableRow>
               <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 }, whiteSpace: 'nowrap' }}>Enrollment ID</TableCell>
               <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Name</TableCell>
@@ -633,14 +633,18 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
                   <TableCell align="right">
                     <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                       {canEditStudents ? (
-                        <IconButton color="primary" onClick={() => openEditDialog(student)} size={isMobile ? "small" : "medium"}>
-                          <Edit fontSize={isMobile ? "small" : "medium"} />
-                        </IconButton>
+                        <Tooltip title="Edit student" arrow>
+                          <IconButton onClick={() => openEditDialog(student)} size="small" sx={{ backgroundColor: '#e0f2fe', color: '#0a336b', '&:hover': { backgroundColor: '#bae6fd' } }}>
+                            <Edit fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       ) : null}
                       {canDeleteStudents ? (
-                        <IconButton color="error" onClick={() => requestDelete(student)} size={isMobile ? "small" : "medium"}>
-                          <Delete fontSize={isMobile ? "small" : "medium"} />
-                        </IconButton>
+                        <Tooltip title="Delete student" arrow>
+                          <IconButton onClick={() => requestDelete(student)} size="small" sx={{ backgroundColor: '#fee2e2', color: '#b91c1c', '&:hover': { backgroundColor: '#fecaca' } }}>
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       ) : null}
                     </Stack>
                   </TableCell>
@@ -665,10 +669,10 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
         >
           <Tooltip title="Create new student" arrow>
             <Fab
-              color="primary"
               aria-label="Create new student"
               onClick={openCreateDialog}
               disabled={loading}
+              sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}
             >
               <Add />
             </Fab>
@@ -874,7 +878,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSubmit} disabled={!canCreateStudents && !editingStudent || editingStudent && !canEditStudents}>
+          <Button variant="contained" onClick={handleSubmit} disabled={!canCreateStudents && !editingStudent || editingStudent && !canEditStudents} sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
             {editingStudent ? "Save Changes" : "Create Student"}
           </Button>
         </DialogActions>

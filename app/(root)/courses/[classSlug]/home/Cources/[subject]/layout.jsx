@@ -41,6 +41,7 @@ export default function Layout({ children }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const dispatch = useDispatch();
   const router = useRouter();
+  const drawerWidth = 320;
 
   const handleDrawerToggle = () => {
     setDrawerOpen((prev) => !prev);
@@ -150,28 +151,39 @@ export default function Layout({ children }) {
         ModalProps={{ keepMounted: true }}
         PaperProps={{
           sx: {
-            width: 260,
-            bgcolor: "#fff",
-            borderRight: "1px solid #e0e0e0",
+            width: collapsed ? 80 : drawerWidth,
+            boxSizing: "border-box",
+            backgroundColor: "#082b57",
+            backgroundImage: "conic-gradient(from 30deg at 25% 25%, rgba(22,78,126,0.2) 0deg 60deg, rgba(2,23,49,0.24) 60deg 120deg, transparent 120deg 180deg, rgba(12,56,101,0.18) 180deg 240deg, transparent 240deg 360deg), conic-gradient(from 210deg at 75% 75%, rgba(35,98,145,0.13) 0deg 60deg, transparent 60deg 180deg, rgba(1,19,44,0.28) 180deg 240deg, transparent 240deg 360deg), linear-gradient(135deg, rgba(17,68,113,0.15) 0% 24%, transparent 24% 48%, rgba(2,27,58,0.26) 48% 72%, transparent 72%), linear-gradient(180deg, #041832 0%, #062a4a 52%, #083d63 100%)",
+            backgroundSize: "150px 150px, 180px 180px, 210px 210px, 100% 100%",
+            borderRight: "1px solid rgba(255,255,255,0.12)",
             top: 0,
             height: "100%",
+            transition: "width 200ms ease",
+            overflow: "hidden",
+            color: "#ffffff",
           },
         }}
       >
         <Box sx={{ display: "flex",flexDirection: "column", minHeight: "100%" }}>
-          <Box px={3} pt={3} pb={2}>
+          <Box px={3} pt={3} pb={2} display="flex" alignItems="center" justifyContent={collapsed ? "center" : "space-between"}>
             <Typography
               component={Link}
               href="/"
               fontWeight="bold"
               fontSize={{ xs: 20, sm: 24 }}
-              display="flex"
+              display={collapsed ? "none" : "flex"}
               width="100%"
               marginLeft={{ xs:5, sm: 5, md:5, lg:0 }}
-              sx={{ textDecoration: "none", color: "inherit" }}
+              sx={{ textDecoration: "none", color: "#ffffff" }}
             >
               Curiosity Home
             </Typography>
+            {isMdUp && (
+              <IconButton size="small" onClick={toggleCollapse} aria-label={collapsed ? "Expand" : "Compress"} sx={{ color: "#ffffff" }}>
+                <ChevronLeftIcon sx={{ transform: collapsed ? "rotate(180deg)" : "none", transition: "transform 200ms" }} />
+              </IconButton>
+            )}
           </Box>
 
           <Box sx={{ flex: 1 }}>
@@ -184,18 +196,23 @@ export default function Layout({ children }) {
                     href={item.link}
                     selected={pathname === item.link}
                     sx={{
+                      color: "#ffffff",
+                      mx: 1,
+                      my: 0.25,
+                      borderRadius: 2,
                       "&.Mui-selected": {
-                        bgcolor: "#E3F2FD",
-                        color: "primary.main",
+                        bgcolor: "rgba(255,255,255,0.12)",
+                        color: "#ffffff",
                       },
                       "&.Mui-selected:hover": {
-                        bgcolor: "#BBDEFB",
+                        bgcolor: "rgba(255,255,255,0.18)",
                       },
                     }}
                   >
                     <ListItemIcon
                       sx={{
-                        color: pathname === item.link ? "primary.main" : "inherit",
+                        color: pathname === item.link ? "#ffffff" : "rgba(255,255,255,0.9)",
+                        minWidth: 42,
                       }}
                     >
                       {index % 2 === 0 ? <Inbox /> : <Mail />}
@@ -206,6 +223,7 @@ export default function Layout({ children }) {
                       primaryTypographyProps={{
                         fontSize: 14,
                         fontWeight: pathname === item.link ? 600 : 400,
+                        color: "#ffffff",
                       }}
                     />
                   </ListItemButton>
@@ -290,7 +308,8 @@ export default function Layout({ children }) {
         sx={{
           flexGrow: 1,
           width: "100%",
-          ml: isMdUp ? "0px" : 0,
+          ml: isMdUp ? (collapsed ? "80px" : `${drawerWidth}px`) : 0,
+          pt: isMdUp ? 0 : 8,
           pb: 4,
           minHeight: "100vh",
           display: "flex",

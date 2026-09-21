@@ -292,14 +292,16 @@ export async function PATCH(req, { params }) {
                 }
             }
 
-            await prisma.userClassAccess.deleteMany({ where: { userId: teacher.userId } });
+            await prisma.$transaction(async (transaction) => {
+                await transaction.userClassAccess.deleteMany({ where: { userId: teacher.userId } });
 
-            if (selectedClassIds.length > 0) {
-                await prisma.userClassAccess.createMany({
-                    data: selectedClassIds.map((classId) => ({ userId: teacher.userId, classId, status: true })),
-                    skipDuplicates: true,
-                });
-            }
+                if (selectedClassIds.length > 0) {
+                    await transaction.userClassAccess.createMany({
+                        data: selectedClassIds.map((classId) => ({ userId: teacher.userId, classId, status: true })),
+                        skipDuplicates: true,
+                    });
+                }
+            });
         }
 
         const refreshedTeacher = await prisma.teacher.findUnique({

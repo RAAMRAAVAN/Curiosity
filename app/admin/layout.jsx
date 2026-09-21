@@ -81,14 +81,14 @@ function AdminLayoutContent({ children }) {
 
   return (
     <Box sx={{ minHeight: '100vh', width: '100vw', overflowX: 'hidden', bgcolor: '#f5f8ff' }}>
-      <Box
+      {!drawerOpen?<><Box
         sx={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           px: { xs: 2, sm: 3, md: 4 },
           py: 2,
-          backgroundColor: '#fff',
+          backgroundColor: '#082b57',
           borderBottom: '1px solid rgba(15, 23, 42, 0.08)',
           position: { xs: 'sticky', md: 'relative' },
           top: 0,
@@ -96,8 +96,8 @@ function AdminLayoutContent({ children }) {
           gap: 2,
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: 16, sm: 18, md: 20 }, flex: 1 }}>
-          {admin.customRole?.name || admin.customRoleName || admin.role || 'Admin'}'s Panel
+        <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: 16, sm: 18, md: 20 }, flex: 1 }} color="#fff">
+          {admin.customRole?.name || admin.customRoleName || admin.role || 'Admin'}'s Paneel
         </Typography>
 
         {(isMobile || !drawerOpen) && (
@@ -107,7 +107,7 @@ function AdminLayoutContent({ children }) {
             onClick={() => setDrawerOpen(true)}
             sx={{
               border: '1px solid rgba(15, 23, 42, 0.12)',
-              background: '#fff',
+              background: '#082b57',
               borderRadius: 2,
               px: 1.5,
               py: 1,
@@ -115,7 +115,7 @@ function AdminLayoutContent({ children }) {
               alignItems: 'center',
               gap: 0.75,
               cursor: 'pointer',
-              color: 'text.primary',
+              color: '#fff',
               fontSize: 14,
               fontWeight: 600,
             }}
@@ -124,7 +124,7 @@ function AdminLayoutContent({ children }) {
             Menu
           </Box>
         )}
-      </Box>
+      </Box></>:null}
 
       <AdminDrawyer
         drawerOpen={drawerOpen}

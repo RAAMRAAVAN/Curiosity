@@ -385,14 +385,14 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                             {exporting ? "Exporting..." : "Download Excel"}
                         </Button>
                         {canCreateTeachers ? (
-                            <Button variant='contained' onClick={openCreateDialog} size={isMobile ? "small" : "medium"} sx={{ display: { xs: 'none', sm: 'inline-flex' }, width: { xs: '100%', sm: 'auto' } }}>Add New Teacher</Button>
+                            <Button variant='contained' onClick={openCreateDialog} size={isMobile ? "small" : "medium"} sx={{ display: { xs: 'none', sm: 'inline-flex' }, width: { xs: '100%', sm: 'auto' }, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>Add New Teacher</Button>
                         ) : null}
                     </Stack>
                 </Box>
                 <Box sx={{ marginTop: 2, overflow: 'auto' }}>
                     <TableContainer sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
                         <Table sx={{ minWidth: { xs: 600, sm: 720 } }}>
-                            <TableHead sx={{ backgroundColor: "#f5f8ff" }}>
+                            <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff' } }}>
                                 <TableRow>
                                     <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Name</TableCell>
                                     <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Center</TableCell>
@@ -438,10 +438,10 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                 >
                     <Tooltip title="Add new teacher" arrow>
                         <Fab
-                            color="primary"
                             aria-label="Add new teacher"
                             onClick={openCreateDialog}
                             disabled={pageLoading}
+                            sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}
                         >
                             <AddIcon />
                         </Fab>
@@ -590,7 +590,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                     </Stack>
                 </DialogContent>
                 <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 2 } }}>
-                    <Button variant="contained" onClick={handleSubmit} disabled={pageLoading} size={isMobile ? "small" : "medium"}>
+                    <Button variant="contained" onClick={handleSubmit} disabled={pageLoading} size={isMobile ? "small" : "medium"} sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
                         {editingTeacher ? "Save Changes" : "Create Teacher"}
                     </Button>
                 </DialogActions>

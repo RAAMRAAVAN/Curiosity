@@ -1,0 +1,24 @@
+{
+  "target": "https://thankfulhelpinghand.org",
+  "concurrency": 25,
+  "durationSeconds": 30,
+  "requests": 90,
+  "errors": 41,
+  "errorRate": 0.4555555556,
+  "throughput": 3,
+  "latencyMs": {
+    "p50": 942,
+    "p95": 14737,
+    "p99": 14953
+  },
+  "scenarios": {
+    "database health": { "requests": 2, "errors": 0, "p95": 721 },
+    "admin context": { "requests": 13, "errors": 0, "p95": 1232 },
+    "centers": { "requests": 10, "errors": 0, "p95": 942 },
+    "teachers": { "requests": 15, "errors": 0, "p95": 4297 },
+    "students": { "requests": 30, "errors": 24, "p95": 14953 },
+    "all-center attendance": { "requests": 20, "errors": 17, "p95": 14737 }
+  },
+  "errorMessages": ["timeout"],
+  "generatedAt": "2026-09-21T00:00:00.000Z"
+}
