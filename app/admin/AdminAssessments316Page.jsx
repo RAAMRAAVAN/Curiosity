@@ -508,7 +508,7 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
     <Box sx={{ width: { xs: '100%', sm: '100%' }, ml: { xs: 0, sm: 0 }, p: { xs: 1, sm: 2, md: 3 } }}>
       <Box  sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
         <Box>
-          <Typography variant="h6" fontWeight={600}>Assessment (3-16 years)</Typography>
+          <Typography variant="h6" fontWeight={600}>View Assessment - B</Typography>
           <Typography color="text.secondary">Manage age-range assessment records.</Typography>
         </Box>
         {canCreate ? (

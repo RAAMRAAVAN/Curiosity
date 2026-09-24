@@ -31,7 +31,7 @@ export default function AssessmentResultsRoutePage() {
   return (
     <Box sx={{ maxWidth: 1400, mx: 'auto', width: '100%' }}>
       <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: '0 20px 48px rgba(15, 23, 42, 0.08)' }}>
-        <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>Assessment Results</Typography>
+        <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>Assessment Results - A</Typography>
         <Typography color="text.secondary" sx={{ mb: 3 }}>Review live submissions from students across subjects.</Typography>
         <AssessmentResultsDashboard assessmentId="" />
       </Paper>

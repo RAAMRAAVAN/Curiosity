@@ -1,8 +1,21 @@
 import { prisma } from '@/server/prisma';
 import { getUserFromRequest } from '@/server/auth';
 import { ApiResponse } from '@/utils/apiResponse';
+import { requireAdminPermission } from '@/lib/adminRbac';
 
 const getUserId = (user) => user?.userId || user?.id || null;
+
+const canTeacherSubmitForAnotherStudent = async (req, role) => {
+  if (String(role || '').toUpperCase() !== 'TEACHER') return false;
+
+  const allowedChecks = [
+    requireAdminPermission(req, 'assessments316.pending.appear'),
+    requireAdminPermission(req, 'assessments.pending.appear'),
+  ];
+
+  const results = await Promise.all(allowedChecks);
+  return results.some((result) => result.ok);
+};
 
 export async function GET(req, { params }) {
   const user = getUserFromRequest(req);
@@ -15,8 +28,9 @@ export async function GET(req, { params }) {
     const targetUserId = requestedUserId || currentUserId;
     const actorRole = String(user?.role || '').toUpperCase();
     const isPrivileged = ['ADMIN', 'MANAGEMENT'].includes(actorRole);
+    const isTeacherAccessAllowed = await canTeacherSubmitForAnotherStudent(req, actorRole);
 
-    if (requestedUserId && requestedUserId !== currentUserId && !isPrivileged) {
+    if (requestedUserId && requestedUserId !== currentUserId && !isPrivileged && !isTeacherAccessAllowed) {
       return ApiResponse.error('You are not allowed to view another student\'s assessment.', 403);
     }
 
@@ -74,8 +88,9 @@ export async function POST(req, { params }) {
     const targetUserId = requestedUserId || currentUserId;
     const actorRole = String(user?.role || '').toUpperCase();
     const isPrivileged = ['ADMIN', 'MANAGEMENT'].includes(actorRole);
+    const isTeacherAccessAllowed = await canTeacherSubmitForAnotherStudent(req, actorRole);
 
-    if (requestedUserId && requestedUserId !== currentUserId && !isPrivileged) {
+    if (requestedUserId && requestedUserId !== currentUserId && !isPrivileged && !isTeacherAccessAllowed) {
       return ApiResponse.error('You are not allowed to submit this assessment for another student.', 403);
     }
 

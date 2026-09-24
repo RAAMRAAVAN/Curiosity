@@ -11,6 +11,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   List,
   ListItem,
   ListItemText,
@@ -28,7 +29,7 @@ import {
   useTheme,
   useMediaQuery,
 } from '@mui/material';
-import { Assessment, BarChart, TrendingUp } from '@mui/icons-material';
+import { Assessment, BarChart, Close, TrendingUp } from '@mui/icons-material';
 import * as XLSX from 'xlsx-js-style';
 
 const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
@@ -61,6 +62,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
   const [resultDialogRows, setResultDialogRows] = useState([]);
   const [resultDialogTitle, setResultDialogTitle] = useState('');
   const [resultDialogLoading, setResultDialogLoading] = useState(false);
+  const [resultDialogCenter, setResultDialogCenter] = useState(ALL_CENTERS);
   const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
   const [canUseCenterFilter, setCanUseCenterFilter] = useState(false);
 
@@ -99,6 +101,21 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
     return detailResults.filter((item) => (item.studentCenterName || 'N/A') === selectedCenter);
   }, [detailResults, selectedCenter, canUseCenterFilter]);
 
+  const resultDialogCenterOptions = useMemo(() => {
+    const values = Array.from(new Set(
+      resultDialogRows
+        .map((row) => row.studentCenterName || 'N/A')
+        .filter((value) => String(value).trim())
+    )).sort((a, b) => String(a).localeCompare(String(b)));
+
+    return [ALL_CENTERS, ...values];
+  }, [resultDialogRows]);
+
+  const filteredResultDialogRows = useMemo(() => {
+    if (resultDialogCenter === ALL_CENTERS) return resultDialogRows;
+    return resultDialogRows.filter((row) => (row.studentCenterName || 'N/A') === resultDialogCenter);
+  }, [resultDialogRows, resultDialogCenter]);
+
   const filterGroupsByName = (groups, search) => {
     const query = search.trim().toLowerCase();
     if (!query) return groups;
@@ -115,17 +132,17 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
   const filteredAppearedStudents = useMemo(() => filterGroupsByName(appearedStudents, appearedSearch), [appearedStudents, appearedSearch]);
 
   const resultDialogStats = useMemo(() => {
-    if (!resultDialogRows.length) {
+    if (!filteredResultDialogRows.length) {
       return { attempts: 0, avg: 0, top: 0, absent: 0 };
     }
 
-    const values = resultDialogRows.map((row) => Number(row.percentage ?? row.score ?? 0));
-    const attempts = resultDialogRows.length;
+    const values = filteredResultDialogRows.map((row) => Number(row.percentage ?? row.score ?? 0));
+    const attempts = filteredResultDialogRows.length;
     const avg = values.reduce((sum, value) => sum + value, 0) / attempts;
     const top = Math.max(...values);
 
     return { attempts, avg: Math.round(avg * 100) / 100, top, absent: 0 };
-  }, [resultDialogRows]);
+  }, [filteredResultDialogRows]);
 
   const detailStats = useMemo(() => {
     if (!filteredDetailResults.length) {
@@ -320,11 +337,13 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
       if (!response.success) throw new Error(response.message || 'Unable to load student results');
 
       setResultDialogRows(Array.isArray(response.data) ? response.data : []);
+      setResultDialogCenter(ALL_CENTERS);
       setResultDialogTitle(summary.title || 'Assessment Results');
       setResultDialogOpen(true);
     } catch (error) {
       console.error(error);
       setResultDialogRows([]);
+      setResultDialogCenter(ALL_CENTERS);
       setResultDialogTitle(summary.title || 'Assessment Results');
       setResultDialogOpen(true);
     } finally {
@@ -333,12 +352,12 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
   };
 
   function export316ResultRowsToExcel() {
-    if (!Array.isArray(resultDialogRows) || resultDialogRows.length === 0) {
+    if (!Array.isArray(filteredResultDialogRows) || filteredResultDialogRows.length === 0) {
       return;
     }
 
     const headers = ['S.No', 'Student', 'Center', 'Class', 'Subject', 'Result', 'Submitted At'];
-    const rows = resultDialogRows.map((row, index) => [
+    const rows = filteredResultDialogRows.map((row, index) => [
       index + 1,
       row.user?.name || 'Unknown',
       row.studentCenterName || 'N/A',
@@ -508,15 +527,46 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
           </DialogActions>
         </Dialog>
 
-        <Dialog open={resultDialogOpen} onClose={() => setResultDialogOpen(false)} maxWidth="lg" fullWidth>
-          <DialogTitle>{resultDialogTitle}</DialogTitle>
-          <DialogContent dividers sx={{ overflowY: 'auto' }}>
+        <Dialog
+          open={resultDialogOpen}
+          onClose={() => setResultDialogOpen(false)}
+          maxWidth="lg"
+          fullWidth
+          fullScreen={isMobile}
+          PaperProps={{
+            sx: {
+              height: { xs: '100dvh', sm: 'auto' },
+              maxHeight: { xs: '100dvh', sm: '90vh' },
+            },
+          }}
+        >
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight:'bold'}}>
+            {resultDialogTitle}
+            <IconButton aria-label="Close results" onClick={() => setResultDialogOpen(false)} edge="end">
+              <Close />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent dividers sx={{ overflowY: 'auto', flex: 1 }}>
             {resultDialogLoading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
             ) : resultDialogRows.length === 0 ? (
               <Typography color="text.secondary">No student results found for this assessment.</Typography>
             ) : (
               <>
+                {canUseCenterFilter ? (
+                  <TextField
+                    select
+                    size="small"
+                    label="Filter By Center"
+                    value={resultDialogCenter}
+                    onChange={(event) => setResultDialogCenter(event.target.value)}
+                    sx={{ minWidth: 240, mb: 3 }}
+                  >
+                    {resultDialogCenterOptions.map((center) => (
+                      <MenuItem key={center} value={center}>{center === ALL_CENTERS ? 'All Centers' : center}</MenuItem>
+                    ))}
+                  </TextField>
+                ) : null}
                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
                   <Card sx={{ flex: 1, bgcolor: '#f3f4f6', borderRadius: 3 }} variant="outlined">
                     <CardContent>
@@ -558,7 +608,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {resultDialogRows.map((row, index) => (
+                      {filteredResultDialogRows.map((row, index) => (
                         <TableRow key={row.id || `${row.userId}-${index}`}>
                           <TableCell>{index + 1}</TableCell>
                           <TableCell>{row.user?.name || 'Unknown'}</TableCell>
@@ -576,10 +626,9 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
             )}
           </DialogContent>
           <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
-            <Button variant="contained" color="primary" onClick={export316ResultRowsToExcel} disabled={resultDialogRows.length === 0}>
+            <Button variant="contained" color="primary" onClick={export316ResultRowsToExcel} disabled={filteredResultDialogRows.length === 0} sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
               Download Excel
             </Button>
-            <Button onClick={() => setResultDialogOpen(false)}>Close</Button>
           </DialogActions>
         </Dialog>
       </Box>

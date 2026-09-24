@@ -211,7 +211,7 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
   };
 
   return (
-    <Box sx={{ width: { xs: 'calc(100% + 32px)', sm: '100%' }, ml: { xs: -2, sm: 0 }, p: { xs: 0, sm: 2, md: 3 } }}>
+    <Box sx={{ width: { xs: '100%', sm: '100%' }, ml: { xs: 0, sm: 0 }, p: { xs: 0, sm: 0, md: 0 }}}>
       <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }} justifyContent="space-between">
           <Box>
@@ -333,98 +333,65 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
                 fullWidth
               />
             )}
-            <Autocomplete
-              multiple
-              disableCloseOnSelect
-              limitTags={1}
-              options={[{ id: SELECT_ALL, className: "Select All", action: true }, { id: DESELECT_ALL, className: "Deselect All", action: true }, ...classes]}
-              value={classes.filter((item) => classIds.includes(item.id))}
-              onChange={(event, selectedOptions) => {
-                const action = selectedOptions.find((option) => option.action);
-                if (action?.id === SELECT_ALL) {
-                  setClassIds(classes.map((item) => item.id));
-                } else if (action?.id === DESELECT_ALL) {
-                  setClassIds([]);
-                } else {
-                  setClassIds(selectedOptions.filter((option) => !option.action).map((option) => option.id));
-                }
-              }}
-              getOptionLabel={(option) => option.action ? option.className : `Class: ${option.className || ""}`}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
-              PaperComponent={(props) => (
-                <Paper
-                  {...props}
-                  sx={{
-                    ...props.sx,
-                    minWidth: { xs: 'calc(100vw - 32px)', sm: 220 },
-                    border: '1px solid rgba(8, 43, 87, 0.18)',
-                    borderRadius: 2.5,
-                    boxShadow: '0 14px 32px rgba(15, 23, 42, 0.22), 0 3px 8px rgba(8, 43, 87, 0.12)',
-                    overflow: 'hidden',
-                  }}
-                />
-              )}
-              renderOption={(props, option, { selected }) => (
-                <li
-                  {...props}
-                  key={option.id}
-                  style={{
-                    ...props.style,
-                    ...(option.action ? {
-                      borderBottom: option.id === SELECT_ALL ? '1px solid rgba(8, 43, 87, 0.12)' : 'none',
-                      marginBottom: option.id === SELECT_ALL ? 6 : 8,
-                      paddingTop: 10,
-                      paddingBottom: 10,
-                    } : {}),
-                  }}
-                >
-                  {option.action ? (
-                    <>
-                      {option.id === SELECT_ALL ? <SelectAll fontSize="small" color="primary" sx={{ mr: 1 }} /> : <ClearAll fontSize="small" color="error" sx={{ mr: 1 }} />}
-                      <Typography component="span" fontWeight={700} color={option.id === SELECT_ALL ? 'primary.main' : 'error.main'}>{option.className}</Typography>
-                    </>
-                  ) : (
-                    <>
-                      <Checkbox checked={selected} sx={{ mr: 1 }} />
-                      <Typography component="span">
-                        <Typography component="span" fontWeight={700}>Class: </Typography>
-                        {option.className}
-                      </Typography>
-                    </>
-                  )}
-                </li>
-              )}
-              renderInput={(params) => <TextField {...params} label="Class" placeholder="Search classes" size="small" />}
-              ListboxProps={{
-                sx: {
-                  maxHeight: '50dvh',
-                  overflowY: 'auto',
-                  p: 1,
-                  '& .MuiAutocomplete-option': {
-                    borderRadius: 1.5,
-                    mb: 0.25,
+            <FormControl fullWidth size="small" sx={{ flex: { md: 1 }, minWidth: 0 }}>
+              <InputLabel id="attendance-class-select-label">Class</InputLabel>
+              <Select
+                labelId="attendance-class-select-label"
+                label="Class"
+                multiple
+                value={classIds.length ? classIds : []}
+                onChange={(event) => {
+                  const selectedValues = Array.isArray(event.target.value) ? event.target.value : [event.target.value];
+                  if (selectedValues.includes(SELECT_ALL)) {
+                    setClassIds(classes.map((item) => item.id));
+                    return;
+                  }
+                  if (selectedValues.includes(DESELECT_ALL)) {
+                    setClassIds([]);
+                    return;
+                  }
+                  setClassIds(selectedValues.filter(Boolean));
+                }}
+                renderValue={(selected) => {
+                  if (!selected.length) return "Select class";
+                  const selectedNames = classes
+                    .filter((item) => selected.includes(item.id))
+                    .map((item) => item.className)
+                    .filter(Boolean);
+                  return selectedNames.length ? selectedNames.join(", ") : "Select class";
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      maxHeight: 'min(320px, calc(100dvh - 140px))',
+                      minWidth: { xs: 220, sm: 260 },
+                    },
                   },
-                },
-              }}
-              sx={{
-                width: '100%',
-                flex: { md: 1 },
-                minWidth: 0,
-                '& .MuiAutocomplete-inputRoot': {
-                  height: 40,
-                  flexWrap: 'nowrap',
-                  overflow: 'hidden',
-                  minWidth: 0,
-                },
-                '& .MuiAutocomplete-tag': {
-                  maxWidth: 'calc(100% - 36px)',
-                },
-                '& .MuiAutocomplete-popper': {
-                  minWidth: { xs: 'calc(100vw - 32px)', sm: 220 },
-                },
-              }}
-              fullWidth
-            />
+                }}
+                sx={{
+                  width: '100%',
+                  '& .MuiSelect-select': {
+                    minHeight: 40,
+                    display: 'flex',
+                    alignItems: 'center',
+                    boxSizing: 'border-box',
+                  },
+                }}
+              >
+                <MenuItem value={SELECT_ALL} sx={{ fontWeight: 700, color: 'primary.main' }}>
+                  <SelectAll fontSize="small" sx={{ mr: 1 }} /> Select All
+                </MenuItem>
+                <MenuItem value={DESELECT_ALL} sx={{ fontWeight: 700, color: 'error.main' }}>
+                  <ClearAll fontSize="small" sx={{ mr: 1 }} /> Deselect All
+                </MenuItem>
+                {classes.map((item) => (
+                  <MenuItem key={item.id} value={item.id}>
+                    <Checkbox checked={classIds.includes(item.id)} />
+                    {item.className}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <TextField type="date" label="Date" value={date} onChange={(event) => setDate(event.target.value)} inputProps={{ max: today }} InputLabelProps={{ shrink: true }} fullWidth size="small" sx={{ flex: { md: 1 }, minWidth: 0 }} />
           </Stack>
         </Box>
@@ -434,15 +401,22 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
 
       {message ? <Alert severity={message.severity} sx={{ mb: 2 }} onClose={() => setMessage(null)}>{message.text}</Alert> : null}
 
-      <Paper sx={{ borderRadius: 3, overflowX: "auto", boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+      <Paper sx={{ border: '1px solid rgba(59, 130, 246, 0.18)', borderRadius: 3, mx: { xs: 1, sm: 2 }, mb: { xs: 5, sm: 0 }, overflowX: "auto", boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
         {!hasLoadedAttendance ? null : !classIds.length ? <Typography sx={{ p: 3 }} color="text.secondary">Select one or more classes to view students.</Typography> : loading ? <Box sx={{ p: 4, textAlign: "center" }}><CircularProgress /></Box> : students.length === 0 ? <Typography sx={{ p: 3 }} color="text.secondary">No students found for this class.</Typography> : filteredStudents.length === 0 ? <Typography sx={{ p: 3 }} color="text.secondary">No students match your search.</Typography> : (
-          <Table size="small" sx={{ minWidth: { xs: "max-content", sm: 700 } }}>
+          <Table
+            size="small"
+            sx={{
+              width: "max-content",
+              minWidth: { xs: "max-content", sm: 700 },
+              '& .MuiTableCell-root': { whiteSpace: "nowrap" },
+            }}
+          >
             <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff' } }}>
               <TableRow>
                 <TableCell sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>Enrollment ID</TableCell>
+                <TableCell sx={{ fontWeight: 700, whiteSpace: "nowrap", textAlign: "right" }}>Class</TableCell>
                 <TableCell sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>Student Name</TableCell>
                 <TableCell sx={{ fontWeight: 700, display: { xs: "none", sm: "table-cell" } }}>Centre Name</TableCell>
-                <TableCell sx={{ fontWeight: 700, display: { xs: "none", sm: "table-cell" } }}>Class</TableCell>
                 <TableCell sx={{ fontWeight: 700, display: { xs: "none", sm: "table-cell" } }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 700, display: { xs: "none", sm: "table-cell" } }}>Marked by</TableCell>
                 <TableCell sx={{ fontWeight: 700, display: { xs: "none", sm: "table-cell" } }}>Mark time &amp; date</TableCell>
@@ -452,13 +426,13 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
             <TableBody>{filteredStudents.map((student) => (
               <TableRow key={student.id} hover>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>{student.id}</TableCell>
+                <TableCell sx={{ whiteSpace: "nowrap", textAlign: "right" }}>{student.className}</TableCell>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>{student.name}</TableCell>
                 <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>{student.centerName}</TableCell>
-                <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>{student.className}</TableCell>
                 <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}><Chip label={student.status || "Not marked"} color={student.status === "PRESENT" ? "success" : student.status === "ABSENT" ? "error" : student.status === "HOLIDAY" || student.status === "WEEKLY_OFF" ? "warning" : "default"} size="small" /></TableCell>
                 <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>{student.markedByName || "-"}</TableCell>
                 <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>{formatMarkedAt(student.markedAt)}</TableCell>
-                <TableCell sx={{ textAlign: { xs: "left", sm: "right" } }}><Stack direction="row" spacing={1} justifyContent={{ xs: "flex-start", sm: "flex-end" }}><Button size="small" variant={student.status === "PRESENT" ? "contained" : "outlined"} color="success" disabled={!canChange || savingId === student.id || student.status === "HOLIDAY" || student.status === "WEEKLY_OFF"} onClick={() => updateAttendance(student.id, "PRESENT", student.classId)}>Present</Button><Button size="small" variant={student.status === "ABSENT" ? "contained" : "outlined"} color="error" disabled={!canChange || savingId === student.id || student.status === "HOLIDAY" || student.status === "WEEKLY_OFF"} onClick={() => updateAttendance(student.id, "ABSENT", student.classId)}>Absent</Button><Button size="small" sx={{ display: { xs: "none", sm: "inline-flex" } }} disabled={!canChange || !student.status || savingId === student.id} onClick={() => updateAttendance(student.id, "REVERT", student.classId)}>Revert</Button></Stack></TableCell>
+                <TableCell sx={{ textAlign: { xs: "left", sm: "right" } }}><Stack direction="row" spacing={1} justifyContent={{ xs: "flex-start", sm: "flex-end" }}><Button size="small" variant={student.status === "PRESENT" ? "contained" : "outlined"} color="success" disabled={!canChange || savingId === student.id || student.status === "HOLIDAY" || student.status === "WEEKLY_OFF"} onClick={() => updateAttendance(student.id, "PRESENT", student.classId)}>Present</Button><Button size="small" variant={student.status === "ABSENT" ? "contained" : "outlined"} color="error" disabled={!canChange || savingId === student.id || student.status === "HOLIDAY" || student.status === "WEEKLY_OFF"} onClick={() => updateAttendance(student.id, "ABSENT", student.classId)}>Absent</Button><Button size="small" disabled={!canChange || !student.status || savingId === student.id} onClick={() => updateAttendance(student.id, "REVERT", student.classId)}>Revert</Button></Stack></TableCell>
               </TableRow>
             ))}</TableBody>
           </Table>

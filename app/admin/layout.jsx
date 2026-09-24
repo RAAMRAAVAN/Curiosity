@@ -142,11 +142,12 @@ function AdminLayoutContent({ children }) {
       <Box
         sx={{
           position: 'relative',
-          ml: { xs: 0, md: drawerOpen ? 44 : 0 },
+          ml: { xs: 0, md: drawerOpen ? 40 : 0 },
           transition: 'margin-left 0.3s ease-in-out',
           pt: 0,
           pb: { xs: 1, sm: 2, md: 3 },
-          px: { xs: 2, sm: 3, md: 4 },
+          px: { xs: ['attendance', 'results-3-16', 'users'].includes(activeView) ? 0 : 2, sm: 3, md: 0 },
+          pr: { xs: ['attendance', 'results-3-16', 'users'].includes(activeView) ? 0 : 2, sm: 3, md: 0 },
           boxSizing: 'border-box',
           minHeight: 'calc(100vh - 64px)',
         }}

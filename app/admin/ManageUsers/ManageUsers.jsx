@@ -62,6 +62,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
         schoolName: "",
         studyingClass: "",
     });
+      const [userSearch, setUserSearch] = useState("");
 
     const startNewUser = () => {
         setSelectedUserId(null);
@@ -274,14 +275,21 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
     }, [users]);
 
     const filteredUsers = useMemo(() => {
+      const normalizedSearch = userSearch.trim().toLowerCase();
+
         return visibleUsers.filter((user) => {
+        if (normalizedSearch) {
+          const searchableText = `${user.name || ""} ${user.email || ""}`.toLowerCase();
+          if (!searchableText.includes(normalizedSearch)) return false;
+        }
+
             return Object.entries(filters).every(([key, value]) => {
                 if (!value) return true;
                 const fieldValue = String(user[key] || "").toLowerCase();
                 return fieldValue.includes(value.toLowerCase());
             });
         });
-    }, [visibleUsers, filters]);
+    }, [visibleUsers, filters, userSearch]);
 
     
 
@@ -316,8 +324,8 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
       && (selectedUserId || userForm.password?.trim())
   );
 
-    return (<Box sx={{ width: { xs: 'calc(100% + 32px)', sm: '100%' }, ml: { xs: -2, sm: 0 } }}>
-        <Paper sx={{ p: { xs: 2, sm: 0 }, mb: 4, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+    return (<Box sx={{ width: { xs: '100%', sm: '100%' }, ml: { xs: 0, sm: 0 } }}>
+      <Paper sx={{ p: { xs: 0, sm: 0 }, px: { xs: 1, sm: 2 }, mb: 4, borderRadius: { xs: 0, sm: 3 }, boxShadow: { xs: 'none', sm: "0 20px 48px rgba(15, 23, 42, 0.08)" } }}>
             <Box padding={1} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", mb: 2 }}>
                 <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 14, sm: 16 } }}>
                     Management Users
@@ -337,6 +345,27 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
                       Create New User
                   </Button>
                 ) : null}
+            </Box>
+
+            <Box sx={{ display: 'block', width: '100%', px: 1, pb: 2, visibility: 'visible' }}>
+              <Autocomplete
+                freeSolo
+                fullWidth
+                options={[]}
+                forcePopupIcon={false}
+                inputValue={userSearch}
+                onInputChange={(_, value) => setUserSearch(value)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Filter users"
+                    placeholder="Search by name or email"
+                    size={isMobile ? "small" : "medium"}
+                    variant="outlined"
+                    autoComplete="off"
+                  />
+                )}
+              />
             </Box>
 
             <TableContainer sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' }, background: 'linear-gradient(180deg, #edf7ff 0%, #eef6ff 35%, #f4ecff 100%)', border: '1px solid rgba(59, 130, 246, 0.18)' }}>

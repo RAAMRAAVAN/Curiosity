@@ -13,7 +13,7 @@ const emptyQuestion = () => ({
   options: ['', '', '', ''],
 });
 
-const AdminAssessmentsPage = ({ heading = 'View Assessments', moduleDescription = 'Review and manage assessments across all available subjects.' }) => {
+const AdminAssessmentsPage = ({ heading = 'View Assessment - A', moduleDescription = 'Review and manage assessments across all available subjects.' }) => {
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');

@@ -47,16 +47,24 @@ export default function Layout({ children }) {
     setDrawerOpen((prev) => !prev);
   };
 
+  const closeDrawer = () => {
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
+    setDrawerOpen(false);
+  };
+
   const handleSignInClick = () => {
     setOpenSignup(false);
     setOpenLogin(true);
-    setDrawerOpen(false);
+    closeDrawer();
   };
 
   const handleSignUpClick = () => {
     setOpenLogin(false);
     setOpenSignup(true);
-    setDrawerOpen(false);
+    closeDrawer();
   };
 
   const refreshAuthDetails = () => {
@@ -147,7 +155,7 @@ export default function Layout({ children }) {
         anchor="left"
         open={isMdUp ? true : drawerOpen}
         variant={isMdUp ? "permanent" : "temporary"}
-        onClose={handleDrawerToggle}
+        onClose={closeDrawer}
         ModalProps={{ keepMounted: true }}
         PaperProps={{
           sx: {

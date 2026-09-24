@@ -106,6 +106,10 @@ const NavBar = () => {
   };
 
   const handleCloseNavMenu = () => {
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
     setMobileDrawerOpen(false);
   };
 

@@ -56,10 +56,22 @@ async function accessibleCenterIds(actor) {
 async function attendanceScope(actor, centerId) {
   const allowedCenterIds = await accessibleCenterIds(actor);
   if (!allowedCenterIds.length) return null;
-  if (centerId === "all") return { centerIds: allowedCenterIds, centerName: "All" };
-  if (!centerId || !allowedCenterIds.includes(centerId)) return null;
-  const center = await prisma.center.findUnique({ where: { id: centerId }, select: { name: true } });
-  return center ? { centerIds: [centerId], centerName: center.name } : null;
+  const requestedCenterIds = String(centerId || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (requestedCenterIds.includes("all")) return { centerIds: allowedCenterIds, centerName: "All" };
+
+  const selectedCenterIds = requestedCenterIds.filter((id) => allowedCenterIds.includes(id));
+  if (!selectedCenterIds.length || selectedCenterIds.length !== requestedCenterIds.length) return null;
+
+  const centers = await prisma.center.findMany({
+    where: { id: { in: selectedCenterIds } },
+    select: { id: true, name: true },
+  });
+  return centers.length === selectedCenterIds.length
+    ? { centerIds: selectedCenterIds, centerName: centers.length === 1 ? centers[0].name : "Selected centres" }
+    : null;
 }
 
 export async function GET(req) {
@@ -76,34 +88,43 @@ export async function GET(req) {
     if (!date) return new Response("Invalid attendance date.", { status: 400 });
     if (!classId) return new Response("A class must be selected before exporting.", { status: 400 });
 
+    const requestedClassIds = classId.split(",").map((value) => value.trim()).filter(Boolean);
     const assignedClassIds = auth.actor.isTeacher ? await getTeacherAssignedClassIds(prisma, auth.actor.userId) : null;
-    const isAllClasses = classId === "all";
-    if (!isAllClasses && assignedClassIds && !assignedClassIds.includes(classId)) {
+    const isAllClasses = requestedClassIds.includes("all");
+    const selectedClassIds = requestedClassIds.filter((id) => id !== "all");
+    if (!isAllClasses && !selectedClassIds.length) {
+      return new Response("A class must be selected before exporting.", { status: 400 });
+    }
+    if (!isAllClasses && assignedClassIds && selectedClassIds.some((id) => !assignedClassIds.includes(id))) {
       return new Response("Class is not available for this center.", { status: 403 });
     }
 
-    const classRecord = isAllClasses
-      ? { id: "all", className: "All" }
-      : await prisma.class.findFirst({
+    const classRecords = isAllClasses
+      ? [{ id: "all", className: "All" }]
+      : await prisma.class.findMany({
           where: {
-            id: classId,
+            id: { in: selectedClassIds },
             status: true,
-            OR: [{ centerId: { in: scope.centerIds } }, { centerId: null }],
+            ...(assignedClassIds
+              ? {}
+              : { OR: [{ centerId: { in: scope.centerIds } }, { centerId: null }] }),
           },
           select: { id: true, className: true },
         });
-    if (!classRecord) return new Response("Class is not available for this center.", { status: 403 });
+    if (!isAllClasses && classRecords.length !== selectedClassIds.length) {
+      return new Response("Class is not available for this center.", { status: 403 });
+    }
 
     const classMap = isAllClasses
       ? Object.fromEntries(
           (
-            await prisma.class.findMany({
+              await prisma.class.findMany({
               where: { status: true, OR: [{ centerId: { in: scope.centerIds } }, { centerId: null }] },
               select: { id: true, className: true },
             })
           ).map((item) => [item.id, item.className])
         )
-      : {};
+      : Object.fromEntries(classRecords.map((item) => [item.id, item.className]));
 
     const users = await prisma.user.findMany({
       where: {
@@ -113,7 +134,7 @@ export async function GET(req) {
           centerId: { in: scope.centerIds },
           ...(isAllClasses
             ? (assignedClassIds ? { studyingClass: { in: assignedClassIds } } : {})
-            : { studyingClass: classId }),
+            : { studyingClass: { in: selectedClassIds } }),
         },
       },
       orderBy: { id: "asc" },
@@ -154,7 +175,7 @@ export async function GET(req) {
         id: user.id,
         name: user.name,
         centerName: user.student?.center?.name || "-",
-        className: isAllClasses ? classMap[user.student?.studyingClass] || "-" : classRecord.className,
+        className: isAllClasses ? classMap[user.student?.studyingClass] || "-" : classMap[user.student?.studyingClass] || "-",
         date,
         status: attendance?.status || "Not marked",
         markedBy: attendance?.marker?.name || "-",
@@ -169,7 +190,7 @@ export async function GET(req) {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="attendance-${dateText}-${classRecord.className.replace(/[^a-z0-9]+/gi, "-")}.xlsx"`,
+        "Content-Disposition": `attachment; filename="attendance-${dateText}-${(isAllClasses ? "all-classes" : "selected-classes").replace(/[^a-z0-9]+/gi, "-")}.xlsx"`,
       },
     });
   } catch (error) {

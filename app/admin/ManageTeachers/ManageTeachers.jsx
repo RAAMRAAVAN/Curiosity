@@ -2,6 +2,7 @@
 
 import {
     Backdrop,
+    Autocomplete,
     Box,
     Button,
     CircularProgress,
@@ -62,6 +63,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
     const [authUser, setAuthUser] = useState(null);
     const [exporting, setExporting] = useState(false);
     const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
+    const [teacherSearch, setTeacherSearch] = useState("");
 
     const hasPermission = (permission) => {
         if (String(role || '').toUpperCase() === 'ADMIN') return true;
@@ -302,7 +304,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
     };
 
     useEffect(() => {
-        FetchTeachers();
+        FetchTeachers(false);
         fetchMeta();
     }, []);
 
@@ -341,12 +343,18 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
     }, [centers, teachers]);
 
     const filteredTeachers = useMemo(() => {
-        if (!canUseCenterFilter || selectedCenter === ALL_CENTERS) {
-            return teachers;
-        }
+        const normalizedSearch = teacherSearch.trim().toLowerCase();
 
-        return teachers.filter((teacher) => (teacher.centerId || "") === selectedCenter);
-    }, [teachers, canUseCenterFilter, selectedCenter]);
+        return teachers.filter((teacher) => {
+            const matchesSearch = !normalizedSearch
+                || `${teacher.name || ""} ${teacher.email || ""}`.toLowerCase().includes(normalizedSearch);
+            const matchesCenter = !canUseCenterFilter
+                || selectedCenter === ALL_CENTERS
+                || (teacher.centerId || "") === selectedCenter;
+
+            return matchesSearch && matchesCenter;
+        });
+    }, [teachers, canUseCenterFilter, selectedCenter, teacherSearch]);
 
     useEffect(() => {
         if (!canUseCenterFilter) {
@@ -362,7 +370,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
 
     return (
         <Box sx={{ width: { xs: 'calc(100% + 32px)', sm: '100%' }, ml: { xs: -2, sm: 0 }, p: { xs: 0, sm: 2, md: 3 } }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', p: { xs: 2, sm: 3 }, borderRadius: 3, backgroundColor: 'white', boxShadow: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', p: { xs: 2, sm: 3 }, borderRadius: 3, backgroundColor: 'white', boxShadow: 3, marginBottom: 5 }}>
                 <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
                     <Typography fontWeight='bold' sx={{ fontSize: { xs: 14, sm: 16 } }}>Teachers</Typography>
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
@@ -373,7 +381,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                                 label="Filter By Center"
                                 value={selectedCenter}
                                 onChange={(event) => setSelectedCenter(event.target.value)}
-                                sx={{ minWidth: 220, width: { xs: '100%', sm: 'auto' } }}
+                                sx={{ minWidth: 220, width: { xs: '100%', sm: 'auto' }, marginBottom: { xs: 1, sm: 0 } }}
                                 InputLabelProps={{ shrink: true }}
                             >
                                 {centerFilterOptions.map((center) => (
@@ -388,6 +396,26 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                             <Button variant='contained' onClick={openCreateDialog} size={isMobile ? "small" : "medium"} sx={{ display: { xs: 'none', sm: 'inline-flex' }, width: { xs: '100%', sm: 'auto' }, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>Add New Teacher</Button>
                         ) : null}
                     </Stack>
+                </Box>
+                <Box sx={{ width: '100%', mt: 2 }}>
+                    <Autocomplete
+                        freeSolo
+                        fullWidth
+                        options={[]}
+                        forcePopupIcon={false}
+                        inputValue={teacherSearch}
+                        onInputChange={(_, value) => setTeacherSearch(value)}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                size="small"
+                                label="Filter Teachers"
+                                placeholder="Search by name or email"
+                                InputLabelProps={{ shrink: true }}
+                                autoComplete="off"
+                            />
+                        )}
+                    />
                 </Box>
                 <Box sx={{ marginTop: 2, overflow: 'auto' }}>
                     <TableContainer sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>

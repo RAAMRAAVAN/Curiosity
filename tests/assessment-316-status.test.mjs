@@ -3,6 +3,12 @@ import assert from 'node:assert/strict';
 
 import { buildAssessment316StatusGroups } from '../lib/assessment316Status.js';
 import { buildAssessment316ResultSummary } from '../lib/assessment316Results.js';
+import { permissionMatches } from '../lib/adminRbac.js';
+
+test('teacher 3-16 assessment permission aliases resolve correctly', () => {
+  assert.equal(permissionMatches('assessments316.pending.appear', 'assessments.pending.appear'), true);
+  assert.equal(permissionMatches('assessments.pending.appear', 'assessments316.pending.appear'), true);
+});
 
 test('3-16 status groups split students into pending, appeared, and absent correctly', () => {
   const students = [

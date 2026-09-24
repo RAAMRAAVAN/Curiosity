@@ -6,6 +6,37 @@ import { store } from "../redux/store";
 import { setAuthUser } from "@/redux/features/authSlice";
 import { fetchClasses } from "@/redux/features/classSlice";
 
+function ChunkLoadRecovery() {
+  useEffect(() => {
+    const retryKey = "curiosity:chunk-load-retry";
+    const retryWindow = 30 * 1000;
+
+    const recoverFromChunkError = (event) => {
+      const error = event?.reason || event?.error || event;
+      const message = String(event?.message || error?.message || error || "");
+      const isChunkError = /ChunkLoadError|Loading chunk|Failed to fetch dynamically imported module/i.test(message);
+
+      if (!isChunkError || typeof window === "undefined") return;
+
+      const previousRetry = Number(sessionStorage.getItem(retryKey) || 0);
+      if (Date.now() - previousRetry < retryWindow) return;
+
+      sessionStorage.setItem(retryKey, String(Date.now()));
+      window.location.reload();
+    };
+
+    window.addEventListener("error", recoverFromChunkError);
+    window.addEventListener("unhandledrejection", recoverFromChunkError);
+
+    return () => {
+      window.removeEventListener("error", recoverFromChunkError);
+      window.removeEventListener("unhandledrejection", recoverFromChunkError);
+    };
+  }, []);
+
+  return null;
+}
+
 function AuthHydrator({ children }) {
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(true);
@@ -110,7 +141,10 @@ function AuthHydrator({ children }) {
 export function Providers({ children }) {
   return (
     <Provider store={store}>
-      <AuthHydrator>{children}</AuthHydrator>
+      <>
+        <ChunkLoadRecovery />
+        <AuthHydrator>{children}</AuthHydrator>
+      </>
     </Provider>
   );
 }

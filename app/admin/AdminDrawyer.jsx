@@ -100,25 +100,25 @@ const AdminDrawer = ({
 
   const assessmentSubmenuItems = [
     {
-      title: "View Assessments",
+      title: "View Assessment - A",
       value: "assessments",
       icon: <Checklist />,
       permission: 'assessments.view',
     },
     {
-      title: "Assessment (3-16 years)",
+      title: "View Assessment - B",
       value: "assessments-3-16",
       icon: <AssignmentTurnedIn />,
       permission: 'assessments316.view',
     },
     {
-      title: "Assessment Results",
+      title: "Assessment Results - A",
       value: "results",
       icon: <FactCheck />,
       permission: 'results.view',
     },
     {
-      title: "Assessment Results (3-16 years)",
+      title: "Assessment Results - B",
       value: "results-3-16",
       icon: <Summarize />,
       permission: 'results.view',
@@ -197,9 +197,17 @@ const AdminDrawer = ({
     }
   }, [adminView, pathname, isAssessmentViewActive, isAssessmentRouteActive]);
 
+  const closeDrawer = () => {
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
+    setDrawerOpen(false);
+  };
+
   const handleMenuItemClick = () => {
     if (isMobile) {
-      setDrawerOpen(false);
+      closeDrawer();
     }
   };
 
@@ -211,7 +219,7 @@ const AdminDrawer = ({
         router.push(targetRoute, { scroll: false });
       }
       if (isMobile) {
-        setDrawerOpen(false);
+        closeDrawer();
       }
       return;
     }
@@ -228,7 +236,7 @@ const AdminDrawer = ({
         router.push(targetRoute, { scroll: false });
       }
       if (isMobile) {
-        setDrawerOpen(false);
+        closeDrawer();
       }
       return;
     }
@@ -241,7 +249,7 @@ const AdminDrawer = ({
     <Drawer
       variant={isMobile ? "temporary" : "persistent"}
       open={drawerOpen}
-      onClose={() => setDrawerOpen(false)}
+      onClose={closeDrawer}
       sx={{
         width: isMobile ? mobileDrawerWidth : drawerWidth,
         flexShrink: 0,
@@ -268,7 +276,7 @@ const AdminDrawer = ({
           {panelRole}'s Panel
         </Typography>
 
-        <IconButton onClick={() => setDrawerOpen(false)} sx={{ color: "#ffffff" }}>
+        <IconButton onClick={closeDrawer} sx={{ color: "#ffffff" }}>
           <Menu />
         </IconButton>
       </Box>
