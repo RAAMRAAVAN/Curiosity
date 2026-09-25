@@ -3,6 +3,14 @@ import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from "@/lib/adminRbac";
 import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const noStoreHeaders = {
+  "Cache-Control": "private, no-store, max-age=0, must-revalidate",
+  Vary: "Cookie",
+};
+
 function dateValue(value) {
   const raw = String(value || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
@@ -76,7 +84,7 @@ async function attendanceScope(actor, centerId) {
 
 export async function GET(req) {
   const auth = await requireAdminPermission(req, "attendance.view");
-  if (!auth.ok) return new Response(auth.message, { status: auth.status });
+  if (!auth.ok) return new Response(auth.message, { status: auth.status, headers: noStoreHeaders });
 
   try {
     const { searchParams } = new URL(req.url);
@@ -84,19 +92,19 @@ export async function GET(req) {
     const date = dateValue(dateText);
     const classId = searchParams.get("classId") || "";
     const scope = await attendanceScope(auth.actor, searchParams.get("centerId"));
-    if (!scope) return new Response("You are not assigned to a valid center.", { status: 403 });
-    if (!date) return new Response("Invalid attendance date.", { status: 400 });
-    if (!classId) return new Response("A class must be selected before exporting.", { status: 400 });
+    if (!scope) return new Response("You are not assigned to a valid center.", { status: 403, headers: noStoreHeaders });
+    if (!date) return new Response("Invalid attendance date.", { status: 400, headers: noStoreHeaders });
+    if (!classId) return new Response("A class must be selected before exporting.", { status: 400, headers: noStoreHeaders });
 
     const requestedClassIds = classId.split(",").map((value) => value.trim()).filter(Boolean);
     const assignedClassIds = auth.actor.isTeacher ? await getTeacherAssignedClassIds(prisma, auth.actor.userId) : null;
     const isAllClasses = requestedClassIds.includes("all");
     const selectedClassIds = requestedClassIds.filter((id) => id !== "all");
     if (!isAllClasses && !selectedClassIds.length) {
-      return new Response("A class must be selected before exporting.", { status: 400 });
+      return new Response("A class must be selected before exporting.", { status: 400, headers: noStoreHeaders });
     }
     if (!isAllClasses && assignedClassIds && selectedClassIds.some((id) => !assignedClassIds.includes(id))) {
-      return new Response("Class is not available for this center.", { status: 403 });
+      return new Response("Class is not available for this center.", { status: 403, headers: noStoreHeaders });
     }
 
     const classRecords = isAllClasses
@@ -112,7 +120,7 @@ export async function GET(req) {
           select: { id: true, className: true },
         });
     if (!isAllClasses && classRecords.length !== selectedClassIds.length) {
-      return new Response("Class is not available for this center.", { status: 403 });
+      return new Response("Class is not available for this center.", { status: 403, headers: noStoreHeaders });
     }
 
     const classMap = isAllClasses
@@ -189,12 +197,13 @@ export async function GET(req) {
     return new Response(buffer, {
       status: 200,
       headers: {
+        ...noStoreHeaders,
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="attendance-${dateText}-${(isAllClasses ? "all-classes" : "selected-classes").replace(/[^a-z0-9]+/gi, "-")}.xlsx"`,
       },
     });
   } catch (error) {
     console.error(error);
-    return new Response("Unable to export attendance", { status: 500 });
+    return new Response("Unable to export attendance", { status: 500, headers: noStoreHeaders });
   }
 }

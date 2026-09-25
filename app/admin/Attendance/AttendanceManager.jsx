@@ -167,6 +167,7 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
     setExporting(true);
     try {
       const params = new URLSearchParams({ centerId: centerQuery, classId: classQuery, date });
+      params.set("exportRequest", String(Date.now()));
       const response = await fetch(`/api/admin/attendance/export?${params}`, { credentials: "include" });
       if (!response.ok) {
         throw new Error((await response.text()) || "Unable to export attendance.");

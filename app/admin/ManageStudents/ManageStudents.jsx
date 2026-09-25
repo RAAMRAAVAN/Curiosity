@@ -48,6 +48,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   const [exporting, setExporting] = useState(false);
   const [templateLoading, setTemplateLoading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [importMessage, setImportMessage] = useState(null);
   const fileInputRef = useRef(null);
   const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
@@ -253,6 +254,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+
     if (editingStudent && !canEditStudents) {
       setMessage("You are not authorized to perform this operation.");
       return;
@@ -262,6 +265,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
       setMessage("You are not authorized to perform this operation.");
       return;
     }
+
+    setIsSubmitting(true);
 
     try {
       const method = editingStudent ? "PATCH" : "POST";
@@ -294,6 +299,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
     } catch (error) {
       console.error(error);
       setMessage("Unable to save student.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -878,8 +885,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSubmit} disabled={!canCreateStudents && !editingStudent || editingStudent && !canEditStudents} sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
-            {editingStudent ? "Save Changes" : "Create Student"}
+          <Button variant="contained" onClick={handleSubmit} disabled={isSubmitting || (!canCreateStudents && !editingStudent) || (editingStudent && !canEditStudents)} sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
+            {isSubmitting ? (editingStudent ? "Saving..." : "Creating...") : (editingStudent ? "Save Changes" : "Create Student")}
           </Button>
         </DialogActions>
       </Dialog>
