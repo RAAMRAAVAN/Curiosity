@@ -119,18 +119,56 @@ function AuthHydrator({ children }) {
           minHeight: "100vh",
           width: "100vw",
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          bgcolor: "background.default",
-          color: "text.primary",
-          p: 2,
+          bgcolor: "rgba(255,255,255,0.96)",
+          p: 3,
         }}
       >
-        <CircularProgress size={80} thickness={4} />
-        <Typography mt={2} variant="h6" align="center">
-          Verifying session...
-        </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 2,
+            px: 5,
+            py: 4,
+            minWidth: { xs: 220, sm: 300 },
+            borderRadius: 4,
+            background: "rgba(255,255,255,0.92)",
+            boxShadow: "0 28px 80px rgba(0,0,0,0.18)",
+          }}
+        >
+          <Box
+            component="img"
+            src="/favicon.gif"
+            alt="Loading"
+            sx={{
+              width: { xs: 140, sm: 180 },
+              height: { xs: 140, sm: 180 },
+              objectFit: "contain",
+              borderRadius: 4,
+              animation: "pulse 1.2s ease-in-out infinite",
+              "@keyframes pulse": {
+                "0%": { transform: "scale(0.96)", opacity: 0.75 },
+                "50%": { transform: "scale(1.12)", opacity: 1 },
+                "100%": { transform: "scale(0.96)", opacity: 0.75 },
+              },
+            }}
+          />
+          <Typography
+            sx={{
+              fontWeight: 800,
+              fontSize: { xs: 20, sm: 26 },
+              color: "#1f2937",
+              letterSpacing: 0.5,
+              textAlign: "center",
+            }}
+          >
+            Verifying session...
+          </Typography>
+        </Box>
       </Box>
     );
   }

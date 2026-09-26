@@ -1,12 +1,10 @@
 'use client';
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 
 const AdminAuthContext = createContext(null);
 
 export function AdminAuthProvider({ children }) {
-  const router = useRouter();
   const [admin, setAdmin] = useState(null);
   const [loading, setLoading] = useState(true);
   const requestRef = useRef(false);
@@ -34,10 +32,6 @@ export function AdminAuthProvider({ children }) {
 
       if (!data.success) {
         setAdmin(null);
-        const currentPathname = typeof window !== 'undefined' ? window.location.pathname : '';
-        if (redirectOnFail && currentPathname.startsWith('/admin')) {
-          router.push('/');
-        }
         return null;
       }
 
@@ -48,16 +42,12 @@ export function AdminAuthProvider({ children }) {
     } catch (error) {
       console.error('Admin auth load failed:', error);
       setAdmin(null);
-      const currentPathname = typeof window !== 'undefined' ? window.location.pathname : '';
-      if (redirectOnFail && currentPathname.startsWith('/admin')) {
-        router.push('/');
-      }
       return null;
     } finally {
       setLoading(false);
       requestRef.current = false;
     }
-  }, [normalizeAdmin, router]);
+  }, [normalizeAdmin]);
 
   useEffect(() => {
     const cachedAuth = typeof window !== 'undefined' ? sessionStorage.getItem('authDetails') : null;

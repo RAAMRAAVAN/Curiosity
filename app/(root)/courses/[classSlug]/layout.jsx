@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useParams, useRouter } from "next/navigation";
+import { usePathname, useParams } from "next/navigation";
 import { useDispatch } from "react-redux";
 import {
   Box,
@@ -40,7 +40,6 @@ export default function Layout({ children }) {
   const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const dispatch = useDispatch();
-  const router = useRouter();
   const drawerWidth = 320;
 
   const handleDrawerToggle = () => {
@@ -100,7 +99,6 @@ export default function Layout({ children }) {
         sessionStorage.removeItem("authDetails");
         sessionStorage.clear();
         setAuthDetails(null);
-        router.push("/");
       }
     } catch (error) {
       console.error("Logout failed", error);

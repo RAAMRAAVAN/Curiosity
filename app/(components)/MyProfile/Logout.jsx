@@ -5,14 +5,12 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import MenuIcon from "@mui/icons-material/Menu";
 import IconButton from "@mui/material/IconButton";
-import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { clearAuthUser } from "@/redux/features/authSlice";
 
 const Logout = () => {
   const [anchorEl, setAnchorEl] = React.useState(null);
   const dispatch = useDispatch();
-  const router = useRouter();
 
   const open = Boolean(anchorEl);
 
@@ -38,7 +36,6 @@ const Logout = () => {
         dispatch(clearAuthUser());
         sessionStorage.removeItem("authDetails");
         sessionStorage.clear();
-        router.push("/");
       } else {
         console.error("Logout failed:", res.status);
       }

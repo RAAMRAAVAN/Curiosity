@@ -1,12 +1,15 @@
-'use client'
-import TeachingHome from "../(components)/TeachingHome/TeachingHome";
+'use client';
 
-// ✅ Server Component
-const Home = () => {
+import LoginModal from "@/app/(components)/MyProfile/LoginModal";
+
+export default function RootLoginPage() {
   return (
-    <>
-      <TeachingHome />
-    </>
+    <LoginModal
+      open={true}
+      onClose={() => {}}
+      fullScreen
+      showSignup={false}
+      showForgotPassword={false}
+    />
   );
 }
-export default Home;

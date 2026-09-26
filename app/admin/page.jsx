@@ -26,6 +26,7 @@ import ManageStudents from "./ManageStudents/ManageStudents";
 import ManageRoles from './ManageRoles/ManageRoles';
 import ResetPassword from './ResetPassword';
 import AttendanceManager from './attendance/AttendanceManager';
+import LoginPage from './LoginPage';
 
 const hasPermission = (permissions, permission, role) => {
   if (String(role || '').toUpperCase() === 'ADMIN') return true;
@@ -53,6 +54,8 @@ export default function AdminPage(props) {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [adminView, setAdminView] = useState(initialView || "users");
   const [message, setMessage] = useState(null);
+  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
+  const [loginLoading, setLoginLoading] = useState(false);
   const [hasAnyAdminPermission, setHasAnyAdminPermission] = useState(true);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -235,42 +238,21 @@ export default function AdminPage(props) {
 
   if (!authorized) {
     return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          bgcolor: "#eef4fb",
-          p: 3,
+      <LoginPage
+        loginForm={loginForm}
+        refreshUsers={refreshUsers}
+        handleLoginChange={(event) => {
+          const { name, value } = event.target;
+          setLoginForm((previous) => ({ ...previous, [name]: value }));
         }}
-      >
-        <Paper
-          sx={{
-            width: "100%",
-            maxWidth: 520,
-            p: 4,
-            borderRadius: 4,
-            boxShadow: "0 28px 70px rgba(15, 23, 42, 0.12)",
-            border: "1px solid rgba(15, 23, 42, 0.08)",
-          }}
-        >
-          <Typography variant="h4" fontWeight={700} mb={1}>
-            Admin access
-          </Typography>
-          <Typography color="text.secondary" mb={3}>
-            Please sign in with the main site login using an admin account to access this panel.
-          </Typography>
-          {message ? (
-            <Typography color="error" mb={3}>
-              {message}
-            </Typography>
-          ) : null}
-          <Button variant="contained" size="large" fullWidth onClick={() => router.push("/")}>
-            Go to home
-          </Button>
-        </Paper>
-      </Box>
+        message={message}
+        setMessage={setMessage}
+        loading={loginLoading}
+        setLoading={setLoginLoading}
+        setAdmin={setAdmin}
+        setAuthorized={setAuthorized}
+        setLoginForm={setLoginForm}
+      />
     );
   }
 

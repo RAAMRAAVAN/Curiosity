@@ -1,7 +1,8 @@
 'use client';
 
-import { Box, Button, Paper, TextField, Typography } from "@mui/material";
+import { Box, Button, TextField, Typography } from "@mui/material";
 import { useEffect } from "react";
+import Image from "next/image";
 
 const LoginPage = ({
   loginForm,
@@ -142,69 +143,145 @@ const LoginPage = ({
 
   return (
     <Box
+      component="main"
       sx={{
         minHeight: "100vh",
-        display: "flex",
+        borderTop: "4px solid #8b3fe8",
+        bgcolor: "#fff",
+        display: "grid",
+        gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1.65fr) minmax(360px, 0.85fr)" },
+        px: { xs: 2, sm: 4, md: 5 },
+        py: { xs: 4, sm: 6, md: 7 },
+        gap: { xs: 5, md: 6 },
         alignItems: "center",
-        justifyContent: "center",
-        bgcolor: "#eef4fb",
-        p: 3,
       }}
     >
-      <Paper
-        sx={{
-          width: "100%",
-          maxWidth: 520,
-          p: 4,
-          borderRadius: 4,
-          boxShadow: "0 28px 70px rgba(15, 23, 42, 0.12)",
-          border: "1px solid rgba(15, 23, 42, 0.08)",
+      <Box sx={{ minWidth: 0 }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: { xs: "center", md: "space-between" },
+            gap: { xs: 2, sm: 4, md: 6 },
+            width: "100%",
+            mb: { xs: 4, md: 5 },
+          }}
+        >
+          <Image
+            src="/loginimage1.png"
+            alt="The Hans Foundation"
+            width={270}
+            height={180}
+            priority
+            style={{ width: "clamp(115px, 15vw, 200px)", height: "auto", objectFit: "contain" }}
+          />
+          <Typography
+            component="h1"
+            sx={{
+              color: "#202020",
+              fontFamily: "Georgia, 'Times New Roman', serif",
+              fontSize: { xs: 28, sm: 42, md: "clamp(40px, 4.8vw, 76px)" },
+              lineHeight: 1.05,
+              whiteSpace: { xs: "normal", sm: "nowrap" },
+            }}
+          >
+            Project Uttam Xikhya
+          </Typography>
+        </Box>
+
+        <Box
+          component="img"
+          src="/loginimage1.png"
+          alt="Project Uttam Xikhya campus"
+          sx={{
+            display: "block",
+            width: "100%",
+            aspectRatio: "1.95 / 1",
+            objectFit: "cover",
+            objectPosition: "center",
+          }}
+        />
+      </Box>
+
+      <Box
+        component="form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleAdminLogin();
         }}
+        sx={{ width: "100%", maxWidth: 430, justifySelf: "center", px: { xs: 1, sm: 2, md: 0 } }}
       >
-        <Typography variant="h4" fontWeight={700} mb={1}>
-          Admin Sign In
+        <Typography
+          component="h2"
+          sx={{ fontSize: { xs: 28, sm: 32 }, lineHeight: 1.15, fontWeight: 800, mb: 4 }}
+        >
+          Welcome to CBLC<br />Management
         </Typography>
 
-        <Typography color="text.secondary" mb={4}>
-          Access the user management console with your admin or management account.
+        <Typography component="label" htmlFor="admin-email" sx={{ display: "block", fontSize: 14, fontWeight: 700, mb: 1 }}>
+          Username/ Email*
         </Typography>
-
         <TextField
-          label="Email"
+          id="admin-email"
           name="email"
+          type="email"
           value={loginForm.email}
           onChange={handleLoginChange}
+          required
           fullWidth
-          sx={{ mb: 2 }}
+          variant="outlined"
+          inputProps={{ "aria-label": "Username or email" }}
+          sx={{ mb: 3, "& .MuiOutlinedInput-root": { height: 40, borderRadius: 0 } }}
         />
 
+        <Typography component="label" htmlFor="admin-password" sx={{ display: "block", fontSize: 14, fontWeight: 700, mb: 1 }}>
+          Password
+        </Typography>
         <TextField
-          label="Password"
+          id="admin-password"
           name="password"
           type="password"
           value={loginForm.password}
           onChange={handleLoginChange}
+          required
           fullWidth
-          sx={{ mb: 3 }}
+          variant="outlined"
+          inputProps={{ "aria-label": "Password" }}
+          sx={{ mb: 3, "& .MuiOutlinedInput-root": { height: 40, borderRadius: 0 } }}
         />
 
         <Button
+          type="submit"
           variant="contained"
-          size="large"
           fullWidth
           disabled={loading}
-          onClick={handleAdminLogin}
-          sx={{ py: 1.5 }}
+          sx={{
+            height: 43,
+            borderRadius: 1.5,
+            bgcolor: "#2b8c82",
+            color: "#050505",
+            fontSize: 14,
+            fontWeight: 800,
+            boxShadow: "none",
+            "&:hover": { bgcolor: "#23786f", boxShadow: "none" },
+          }}
         >
-          {loading ? "Signing In..." : "Sign In"}
+          {loading ? "SUBMITTING..." : "SUBMIT"}
         </Button>
 
+        <Typography sx={{ mt: 2, textAlign: "center", fontSize: 10, color: "#777" }}>
+          Your Canva profile name will be shared. Never submit passwords.
+        </Typography>
+        <Typography component="a" href="#" sx={{ display: "block", textAlign: "center", color: "#555", fontSize: 10, textDecoration: "underline" }}>
+          Learn how we handle your data
+        </Typography>
+
         {message && (
-          <Typography mt={3} color="error">
+          <Typography mt={3} color="error" sx={{ textAlign: "center", fontSize: 13 }}>
             {message}
           </Typography>
         )}
-      </Paper>
+      </Box>
     </Box>
   );
 };
