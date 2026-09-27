@@ -1,18 +1,15 @@
 'use client';
 
-import { Box, CircularProgress, Paper } from '@mui/material';
+import { Box, Paper } from '@mui/material';
 import ManageStudents from '../ManageStudents/ManageStudents';
 import { useAdminAuth } from '../AdminAuthContext';
+import Loader from '@/app/(components)/Loader';
 
 export default function AdminStudentsRoutePage() {
   const { admin, loading } = useAdminAuth();
 
   if (loading || !admin) {
-    return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#eef4fb', p: 3 }}>
-        <CircularProgress size={64} thickness={4} />
-      </Box>
-    );
+    return <Loader variant='page' size={64} thickness={4} sx={{ bgcolor: '#eef4fb', p: 3 }} />;
   }
 
   return (

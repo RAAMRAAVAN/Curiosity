@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AccessTime, LocationOn, Login, Logout } from "@mui/icons-material";
-import { Alert, Box, Button, Chip, CircularProgress, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
+import Loader from '@/app/(components)/Loader';
 
 function formatTime(value) {
   if (!value) return "Not marked";
@@ -197,11 +198,7 @@ export default function TeacherAttendance({ endpoint = "/api/teacher/attendance/
   const completed = checkedIn && checkedOut;
 
   if (loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <Loader variant='section' />;
   }
 
   return (
@@ -262,7 +259,7 @@ export default function TeacherAttendance({ endpoint = "/api/teacher/attendance/
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 3 }}>
         <Button
           variant="contained"
-          startIcon={actionLoading === "IN" ? <CircularProgress size={18} color="inherit" /> : <Login />}
+          startIcon={actionLoading === "IN" ? <Loader variant='inline' size={18} color='inherit' /> : <Login />}
           onClick={() => handleMark("IN")}
           disabled={Boolean(actionLoading) || checkedIn}
           sx={{ minWidth: 150 }}
@@ -271,7 +268,7 @@ export default function TeacherAttendance({ endpoint = "/api/teacher/attendance/
         </Button>
         <Button
           variant="outlined"
-          startIcon={actionLoading === "OUT" ? <CircularProgress size={18} /> : <Logout />}
+          startIcon={actionLoading === "OUT" ? <Loader variant='inline' size={18} /> : <Logout />}
           onClick={() => handleMark("OUT")}
           disabled={Boolean(actionLoading) || !checkedIn || checkedOut}
           sx={{ minWidth: 150 }}

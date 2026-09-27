@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
+import Loader from '@/app/(components)/Loader';
 import { useParams, useRouter } from "next/navigation";
 
 const ClassPage = () => {
@@ -34,7 +35,7 @@ const ClassPage = () => {
   }, [router]);
 
   if (loading) {
-    return null;
+    return <Loader variant='page' />;
   }
 
   return <div>{classSlug ? `Class ${classSlug}` : "Class"}</div>;

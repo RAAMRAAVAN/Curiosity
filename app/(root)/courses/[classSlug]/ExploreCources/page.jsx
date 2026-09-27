@@ -4,7 +4,6 @@ import { KeyboardArrowRight } from "@mui/icons-material";
 import {
   Avatar,
   Box,
-  CircularProgress,
   IconButton,
   Typography,
 } from "@mui/material";
@@ -13,6 +12,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { fetchClasses } from "@/redux/features/classSlice";
+import Loader from '@/app/(components)/Loader';
 
 const ExploreCources = () => {
   const dispatch = useDispatch();
@@ -58,22 +58,7 @@ const ExploreCources = () => {
 
   // Full-page loader
   if (loading) {
-    return (
-      <Box
-        sx={{
-          width: "100%",
-          height: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: 2,
-        }}
-      >
-        <CircularProgress size={45} />
-        <Typography>Loading class details...</Typography>
-      </Box>
-    );
+    return <Loader variant='page' label='Loading class details...' />;
   }
 
   // API failed

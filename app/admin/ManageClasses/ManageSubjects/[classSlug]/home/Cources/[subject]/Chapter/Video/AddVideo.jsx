@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
     Box,
     Button,
-    CircularProgress,
     Fade,
     IconButton,
     MenuItem,
@@ -14,6 +13,7 @@ import {
 } from "@mui/material";
 import { Close } from "@mui/icons-material";
 import { LinearProgress } from "@mui/material";
+import Loader from '@/app/(components)/Loader';
 
 const style = {
     position: "absolute",
@@ -238,7 +238,7 @@ const AddVideo = ({
                                 zIndex: 9999,
                             }}
                         >
-                            <CircularProgress />
+                            <Loader variant='inline' size={40} />
                         </Box>
                     )}
 

@@ -1,9 +1,10 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { Alert, Box, CircularProgress, Paper } from '@mui/material';
+import { Alert, Box, Paper } from '@mui/material';
 import AttendanceManager from '../AttendanceManager';
 import SelfAttendance from '@/app/teacher/TeacherAttendance';
+import Loader from '@/app/(components)/Loader';
 import { useAdminAuth } from '../../AdminAuthContext';
 
 function hasAttendancePermission(admin, permission) {
@@ -27,11 +28,7 @@ export default function AttendanceAudiencePage() {
   const { admin, loading } = useAdminAuth();
 
   if (loading || !admin) {
-    return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#eef4fb', p: 3 }}>
-        <CircularProgress size={64} thickness={4} />
-      </Box>
-    );
+    return <Loader variant='page' size={64} thickness={4} sx={{ bgcolor: '#eef4fb', p: 3 }} />;
   }
 
   if (audience === 'students') {

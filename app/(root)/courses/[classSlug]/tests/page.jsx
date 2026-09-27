@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { Box, Card, CardContent, Chip, CircularProgress, Stack, Typography, Button } from '@mui/material';
+import { Box, Card, CardContent, Chip, Stack, Typography, Button } from '@mui/material';
 import { Quiz } from '@mui/icons-material';
+import Loader from '@/app/(components)/Loader';
 
 const StudentTestsPage = () => {
   const router = useRouter();
@@ -68,7 +69,7 @@ const StudentTestsPage = () => {
   };
 
   if (loading) {
-    return <Box sx={{ p: 4 }}><CircularProgress /></Box>;
+    return <Loader variant='section' sx={{ py: 4 }} />;
   }
 
   return (

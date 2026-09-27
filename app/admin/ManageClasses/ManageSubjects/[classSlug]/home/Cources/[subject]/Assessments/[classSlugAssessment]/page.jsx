@@ -6,12 +6,12 @@ import {
     Box,
     Fab,
     Typography,
-    CircularProgress,
 } from "@mui/material";
 
 import Image from "next/image";
 import { Add } from "@mui/icons-material";
 import { useParams } from "next/navigation";
+import Loader from '@/app/(components)/Loader';
 
 const Assessments = () => {
 
@@ -205,10 +205,7 @@ const Assessments = () => {
                 gap: 2,
             }}
         >
-            <CircularProgress size={50} />
-            <Typography variant="body1" color="text.secondary">
-                Loading Subject...
-            </Typography>
+            <Loader variant='page' label='Loading subject...' />
         </Box></>;
     }
 

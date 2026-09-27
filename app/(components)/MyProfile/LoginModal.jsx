@@ -16,8 +16,8 @@ import {
   Box,
   IconButton,
   InputAdornment,
-  CircularProgress,
 } from "@mui/material";
+import Loader from '@/app/(components)/Loader';
 
 import CloseIcon from "@mui/icons-material/Close";
 import SchoolRoundedIcon from "@mui/icons-material/SchoolRounded";
@@ -65,7 +65,7 @@ const LoginModal = ({
     try {
       setLoading(true);
 
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch("/api/auth/login/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -509,7 +509,7 @@ const LoginModal = ({
               "&:hover": { transform: "translateY(-2px)", background: "#23786f", boxShadow: "none" },
             }}
           >
-            {loading ? <CircularProgress size={24} sx={{ color: "white" }} /> : "Login"}
+            {loading ? <Loader variant='inline' size={24} spinnerSx={{ color: 'white' }} /> : "Login"}
           </Button>
         ) : null}
 
@@ -541,74 +541,14 @@ const LoginModal = ({
           }}
         >
           {loading ? (
-            <CircularProgress
-              size={24}
-              sx={{ color: "white" }}
-            />
+            <Loader variant='inline' size={24} spinnerSx={{ color: 'white' }} />
           ) : (
             "Login"
           )}
         </Button>
       </DialogActions>
 
-      {loading && (
-        <Box
-          sx={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 1300,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(10, 14, 26, 0.5)",
-            backdropFilter: "blur(4px)",
-          }}
-        >
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 2,
-              px: 5,
-              py: 4,
-              minWidth: { xs: 200, sm: 260 },
-              borderRadius: 4,
-              background: "rgba(255,255,255,0.92)",
-              boxShadow: "0 28px 80px rgba(0,0,0,0.22)",
-            }}
-          >
-            <Box
-              component="img"
-              src="/favicon.gif"
-              alt="Loading"
-              sx={{
-                width: { xs: 140, sm: 180 },
-                height: { xs: 140, sm: 180 },
-                objectFit: "contain",
-                borderRadius: 4,
-                animation: "pulse 1.2s ease-in-out infinite",
-                "@keyframes pulse": {
-                  "0%": { transform: "scale(0.96)", opacity: 0.75 },
-                  "50%": { transform: "scale(1.12)", opacity: 1 },
-                  "100%": { transform: "scale(0.96)", opacity: 0.75 },
-                },
-              }}
-            />
-            <Typography
-              sx={{
-                fontWeight: 800,
-                fontSize: { xs: 20, sm: 26 },
-                color: "#1f2937",
-                letterSpacing: 0.5,
-              }}
-            >
-              Signing you in...
-            </Typography>
-          </Box>
-        </Box>
-      )}
+      {loading ? <Loader variant='overlay' label='Signing you in...' /> : null}
     </Dialog>
   );
 };

@@ -5,7 +5,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   FormControl,
   InputLabel,
   Link,
@@ -26,6 +25,7 @@ import {
 import ScreenRotation from '@mui/icons-material/ScreenRotation';
 import LocationOn from '@mui/icons-material/LocationOn';
 import { reverseGeocodeLocation } from '@/lib/reverseGeocodeLocation';
+import Loader from '@/app/(components)/Loader';
 import { useAdminAuth } from '../../AdminAuthContext';
 
 const monthOptions = Array.from({ length: 12 }, (_, index) => ({
@@ -52,6 +52,7 @@ export default function StaffMonthlyAttendancePage({ audience }) {
   const reportTitle = isTeacherReport ? "Teachers' Monthly Attendance" : "Management's Monthly Attendance";
   const [centers, setCenters] = useState([]);
   const [selectedCenterId, setSelectedCenterId] = useState('');
+  const [loadingOptions, setLoadingOptions] = useState(isTeacherReport);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [rows, setRows] = useState([]);
   const [search, setSearch] = useState('');
@@ -64,6 +65,7 @@ export default function StaffMonthlyAttendancePage({ audience }) {
   useEffect(() => {
     if (!admin || !isTeacherReport) return;
     const fetchCenters = async () => {
+      setLoadingOptions(true);
       try {
         const response = await fetch('/api/admin/centers', { credentials: 'include' });
         const data = await response.json();
@@ -79,6 +81,8 @@ export default function StaffMonthlyAttendancePage({ audience }) {
         setSelectedCenterId(preferredCenter || centerList[0]?.id || '');
       } catch (fetchError) {
         setError(fetchError.message || 'Unable to load centers.');
+      } finally {
+        setLoadingOptions(false);
       }
     };
 
@@ -147,11 +151,7 @@ export default function StaffMonthlyAttendancePage({ audience }) {
   }, [isPortraitPhone, loadingRows, reportLoaded]);
 
   if (loading) {
-    return (
-      <Box sx={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <Loader variant='page' />;
   }
 
   if (!admin) return null;
@@ -171,6 +171,8 @@ export default function StaffMonthlyAttendancePage({ audience }) {
   if (!canViewReport) {
     return <Alert severity='error'>You are not authorized to view this monthly attendance report.</Alert>;
   }
+
+  if (loadingOptions) return <Loader variant='page' label='Loading attendance options...' />;
 
   return (
     <Box sx={{ width: '100%', height: isCompactScreen ? 'auto' : '100%', minWidth: 0, minHeight: 0, p: 0, overflow: isCompactScreen ? 'visible' : 'hidden' }}>
@@ -239,9 +241,7 @@ export default function StaffMonthlyAttendancePage({ audience }) {
 
         {error ? <Alert severity='error' sx={{ mb: 2 }}>{error}</Alert> : null}
         {loadingRows ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-            <CircularProgress />
-          </Box>
+          <Loader variant='section' label='Loading monthly attendance' />
         ) : null}
 
         {!loadingRows && reportLoaded ? (

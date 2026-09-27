@@ -1,8 +1,9 @@
 import { Delete, Edit, MenuBook, School } from "@mui/icons-material";
-import { Button, CircularProgress, Typography, IconButton, Stack, TableCell, TableRow, Tooltip } from "@mui/material";
+import { Button, Typography, IconButton, Stack, TableCell, TableRow, Tooltip } from "@mui/material";
 import { useEffect, useState } from "react";
 import TeacherSubjectDialog from "./TeacherSubjectDialog";
 import TeacherClassDialog from "./TeacherClassDialog";
+import Loader from '@/app/(components)/Loader';
 
 const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeacher, canEditTeachers = false, canDeleteTeachers = false, canMapSubjects = false, canMapClasses = false }) => {
 
@@ -161,7 +162,7 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
                                     size="small"
                                     disabled
                                 >
-                                    <CircularProgress size={18} />
+                                    <Loader variant='inline' size={18} />
                                 </IconButton>
 
                                 :

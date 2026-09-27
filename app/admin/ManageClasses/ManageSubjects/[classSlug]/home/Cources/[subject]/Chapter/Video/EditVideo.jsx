@@ -3,7 +3,6 @@ import { Close } from "@mui/icons-material";
 import {
     Box,
     Button,
-    CircularProgress,
     Fade,
     IconButton,
     MenuItem,
@@ -11,6 +10,7 @@ import {
     TextField,
     Typography,
 } from "@mui/material";
+import Loader from '@/app/(components)/Loader';
 
 
 const style = {
@@ -340,7 +340,7 @@ const EditVideo = ({
 
                         >
 
-                            <CircularProgress />
+                            <Loader variant='inline' size={40} />
 
                         </Box>
 

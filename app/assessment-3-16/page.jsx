@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -8,7 +9,6 @@ import {
   Button,
   Card,
   CardContent,
-  CircularProgress,
   FormControl,
   FormControlLabel,
   Radio,
@@ -16,8 +16,9 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
+import Loader from '@/app/(components)/Loader';
 
-const Assessment316Page = () => {
+const Assessment316Content = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const assessmentId = searchParams.get('assessmentId');
@@ -80,7 +81,7 @@ const Assessment316Page = () => {
     }
   };
 
-  if (loading) return <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><CircularProgress /></Box>;
+  if (loading) return <Loader variant='page' />;
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f5f7fb', p: { xs: 2, sm: 4 } }}>
@@ -138,4 +139,10 @@ const Assessment316Page = () => {
   );
 };
 
-export default Assessment316Page;
+export default function Assessment316Page() {
+  return (
+    <Suspense fallback={<Loader variant='page' />}>
+      <Assessment316Content />
+    </Suspense>
+  );
+}

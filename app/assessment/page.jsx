@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { selectAuthUser } from '@/redux/features/authSlice';
@@ -10,15 +10,15 @@ import {
   Button,
   Card,
   CardContent,
-  CircularProgress,
   FormControlLabel,
   Radio,
   RadioGroup,
   Stack,
   Typography,
 } from '@mui/material';
+import Loader from '@/app/(components)/Loader';
 
-const AssessmentPage = () => {
+const AssessmentContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useSelector(selectAuthUser);
@@ -188,11 +188,7 @@ const AssessmentPage = () => {
   };
 
   if (loading) {
-    return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <Loader variant='page' />;
   }
 
   if (!assessment) {
@@ -405,7 +401,7 @@ const AssessmentPage = () => {
                       }}
                     >
                       {submitting ? (
-                        <CircularProgress size={18} color="inherit" />
+                        <Loader variant='inline' size={18} color='inherit' />
                       ) : (
                         'Submit Assessment'
                       )}
@@ -526,4 +522,10 @@ const AssessmentPage = () => {
   );
 };
 
-export default AssessmentPage;
+export default function AssessmentPage() {
+  return (
+    <Suspense fallback={<Loader variant='page' />}>
+      <AssessmentContent />
+    </Suspense>
+  );
+}

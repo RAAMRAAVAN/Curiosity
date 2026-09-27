@@ -1,11 +1,12 @@
 'use client'
 
-import { Alert, Autocomplete, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Fab, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography, useMediaQuery, useTheme } from "@mui/material"
-import { useEffect, useMemo, useState } from "react";
+import { Alert, Autocomplete, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, Fab, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography, useMediaQuery, useTheme } from "@mui/material"
+import { useEffect, useMemo, useRef, useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
+import Loader from '@/app/(components)/Loader';
 
 const emptyUserForm = {
     name: "",
@@ -35,6 +36,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
   
   const [roles, setRoles] = useState([]);
   const [centers, setCenters] = useState([]);
+  const referenceDataRequested = useRef(false);
 
   const hasPermission = (permission) => {
     if (String(role || '').toUpperCase() === 'ADMIN') return true;
@@ -75,8 +77,8 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
     const loadRolesAndCenters = async () => {
       try {
         const [rolesRes, centersRes] = await Promise.all([
-          fetch('/api/admin/roles', { credentials: 'include' }),
-          fetch('/api/admin/centers', { credentials: 'include' }),
+          fetch('/api/admin/roles/', { credentials: 'include' }),
+          fetch('/api/admin/centers/', { credentials: 'include' }),
         ]);
 
         const rolesData = await rolesRes.json();
@@ -99,10 +101,9 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
     };
 
     useEffect(() => {
+      if (referenceDataRequested.current) return;
+      referenceDataRequested.current = true;
       loadRolesAndCenters();
-      if (typeof refreshUsers === 'function') {
-        refreshUsers();
-      }
     }, []);
 
     const handleUserFormChange = (event) => {
@@ -173,8 +174,8 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
     }
 
     const endpoint = selectedUserId
-      ? `/api/admin/users/${selectedUserId}`
-      : "/api/admin/users";
+      ? `/api/admin/users/${selectedUserId}/`
+      : "/api/admin/users/";
     const method = selectedUserId ? "PATCH" : "POST";
     const payload = {
       ...userForm,
@@ -244,7 +245,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/admin/users/${id}`, {
+      const response = await fetch(`/api/admin/users/${id}/`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -431,7 +432,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
                                                 '&:hover': { backgroundColor: '#fecaca' },
                                               }}
                                             >
-                                              {deletingUserId === user.id ? <CircularProgress size={18} color="inherit" /> : <DeleteIcon fontSize="small" />}
+                                              {deletingUserId === user.id ? <Loader variant='inline' size={18} color='inherit' /> : <DeleteIcon fontSize="small" />}
                                             </IconButton>
                                           </Tooltip>
                                         ) : null}
@@ -491,7 +492,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
               color="error"
               onClick={confirmDeleteUser}
               disabled={Boolean(deletingUserId)}
-              startIcon={deletingUserId ? <CircularProgress size={16} color="inherit" /> : <DeleteIcon />}
+              startIcon={deletingUserId ? <Loader variant='inline' size={16} color='inherit' /> : <DeleteIcon />}
             >
               {deletingUserId ? 'Deleting...' : 'Delete User'}
             </Button>
@@ -776,7 +777,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
                   '&:hover': { backgroundColor: '#082b57' },
                 }}
               >
-                {loading ? <CircularProgress size={20} color="inherit" /> : selectedUserId ? "Save Changes" : "Create User"}
+                {loading ? <Loader variant='inline' size={20} color='inherit' /> : selectedUserId ? "Save Changes" : "Create User"}
               </Button>
             </DialogActions>
         </Dialog>

@@ -3,13 +3,13 @@ import { Close } from "@mui/icons-material";
 import {
     Box,
     Button,
-    CircularProgress,
     Fade,
     IconButton,
     Modal,
     TextField,
     Typography,
 } from "@mui/material";
+import Loader from '@/app/(components)/Loader';
 
 const style = {
     position: "absolute",
@@ -173,7 +173,7 @@ const EditPPT = ({
                                 zIndex: 9999,
                             }}
                         >
-                            <CircularProgress />
+                            <Loader variant='inline' size={40} />
                         </Box>
                     )}
 

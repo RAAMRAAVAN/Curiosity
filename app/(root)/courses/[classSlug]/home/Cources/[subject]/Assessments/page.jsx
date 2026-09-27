@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
-import { Box, Typography, CircularProgress } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { useParams } from "next/navigation";
 import StudentAssessmentView from "@/app/(components)/StudentAssessmentView";
+import Loader from '@/app/(components)/Loader';
 
 const Assessments = () => {
     const params = useParams();
@@ -48,24 +49,7 @@ const Assessments = () => {
     }
 
     if (loading) {
-        return (
-            <Box
-                sx={{
-                    width: "100%",
-                    minHeight: "100vh",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    flexDirection: "column",
-                    gap: 2,
-                }}
-            >
-                <CircularProgress size={50} />
-                <Typography color="text.secondary">
-                    Loading Subject...
-                </Typography>
-            </Box>
-        );
+        return <Loader variant='page' label='Loading subject...' />;
     }
 
     return (

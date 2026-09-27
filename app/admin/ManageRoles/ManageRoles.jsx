@@ -1,5 +1,6 @@
 'use client';
 
+import Loader from '@/app/(components)/Loader';
 import {
   Alert,
   Box,
@@ -345,7 +346,13 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {roles.map((role) => (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={isMobile ? 4 : 5} align="center" sx={{ py: 3 }}>
+                    <Loader variant='section' label='Loading roles...' sx={{ minHeight: 'auto', py: 0 }} />
+                  </TableCell>
+                </TableRow>
+              ) : roles.map((role) => (
                 <TableRow key={role.id} sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}>
                   <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{role.name}</TableCell>
                   {!isMobile && <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{role.description || '-'}</TableCell>}

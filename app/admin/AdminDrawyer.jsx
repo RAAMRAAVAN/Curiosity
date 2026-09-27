@@ -44,6 +44,7 @@ const AdminDrawer = ({
   drawerOpen,
   adminView,
   setAdminView,
+  onRouteNavigate,
   setDrawerOpen,
   role,
   permissions = [],
@@ -217,9 +218,7 @@ const AdminDrawer = ({
   ];
 
   const visibleAssessmentItems = assessmentSubmenuItems.filter((item) => hasPermission(item.permission));
-  const visibleAttendanceItems = attendanceSubmenuItems.filter((item) =>
-    hasPermission(item.permission) && !(isMobile && item.value.endsWith('-monthly-attendance')),
-  );
+  const visibleAttendanceItems = attendanceSubmenuItems.filter((item) => hasPermission(item.permission));
   const visibleMenuItems = menuItems.filter((item) => {
     if (!item.permission) return true;
     return hasPermission(item.permission);
@@ -268,7 +267,9 @@ const AdminDrawer = ({
     const targetRoute = routeMap[value];
 
     if (targetRoute) {
-      if (targetRoute !== pathname) {
+      if (onRouteNavigate) {
+        onRouteNavigate(value);
+      } else if (targetRoute !== pathname) {
         router.push(targetRoute, { scroll: false });
       }
       if (isMobile) {
@@ -285,7 +286,9 @@ const AdminDrawer = ({
     const targetRoute = routeMap[value];
 
     if (targetRoute) {
-      if (targetRoute !== pathname) {
+      if (onRouteNavigate) {
+        onRouteNavigate(value);
+      } else if (targetRoute !== pathname) {
         router.push(targetRoute, { scroll: false });
       }
       if (isMobile) {

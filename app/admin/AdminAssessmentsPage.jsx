@@ -16,6 +16,7 @@ const emptyQuestion = () => ({
 const AdminAssessmentsPage = ({ heading = 'View Assessment - A', moduleDescription = 'Review and manage assessments across all available subjects.' }) => {
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingOptions, setLoadingOptions] = useState(true);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState('ASSESSMENT');
@@ -86,6 +87,8 @@ const AdminAssessmentsPage = ({ heading = 'View Assessment - A', moduleDescripti
       console.error(error);
       setAssessmentClasses([]);
       setAssessmentSubjects([]);
+    } finally {
+      setLoadingOptions(false);
     }
   };
 
@@ -141,7 +144,7 @@ const AdminAssessmentsPage = ({ heading = 'View Assessment - A', moduleDescripti
         fetchAssessments={fetchAssessments}
         emptyQuestion={emptyQuestion}
         assessments={assessments}
-        loading={loading}
+        loading={loading || loadingOptions}
         addQuestion={() => setQuestions((previous) => [...previous, emptyQuestion()])}
         title={title}
         setTitle={setTitle}

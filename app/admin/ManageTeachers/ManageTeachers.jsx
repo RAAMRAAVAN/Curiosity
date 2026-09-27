@@ -5,7 +5,6 @@ import {
     Autocomplete,
     Box,
     Button,
-    CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
@@ -32,6 +31,7 @@ import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import DisplayTeachers from "./DisplayTeachers";
 import TeacherSubjectDialog from "./TeacherSubjectDialog";
+import Loader from '@/app/(components)/Loader';
 
 const ALL_CENTERS = "ALL";
 
@@ -634,7 +634,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                     backdropFilter: "blur(4px)",
                 }}
             >
-                <CircularProgress size={100} thickness={4} />
+                <Loader variant='section' size={100} thickness={4} />
             </Backdrop>
         </Box>
     );

@@ -27,7 +27,7 @@ export function AdminAuthProvider({ children }) {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/admin/me', { credentials: 'include' });
+      const response = await fetch('/api/admin/me/', { credentials: 'include' });
       const data = await response.json();
 
       if (!data.success) {

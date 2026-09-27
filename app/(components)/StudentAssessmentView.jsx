@@ -7,7 +7,6 @@ import {
   Card,
   CardContent,
   Chip,
-  CircularProgress,
   Divider,
   Stack,
   Typography,
@@ -16,6 +15,7 @@ import { Quiz } from '@mui/icons-material';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { selectAuthUser } from '@/redux/features/authSlice';
 import { useSelector } from 'react-redux';
+import Loader from '@/app/(components)/Loader';
 
 const StudentAssessmentView = ({ subjectId }) => {
   const user = useSelector(selectAuthUser);
@@ -72,21 +72,7 @@ const StudentAssessmentView = ({ subjectId }) => {
   };
 
   if (loading) {
-    return (
-      <Box
-        sx={{
-          width: '100%',
-          py: 4,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 2,
-        }}
-      >
-        <CircularProgress size={24} />
-        <Typography color="text.secondary">Loading assessments...</Typography>
-      </Box>
-    );
+    return <Loader variant='section' label='Loading assessments...' />;
   }
 
   if (!availableAssessments.length) {

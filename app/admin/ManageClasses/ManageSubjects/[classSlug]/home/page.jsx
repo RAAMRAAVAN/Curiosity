@@ -14,6 +14,7 @@ import {
 } from "@/redux/features/classSlice";
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
+import Loader from '@/app/(components)/Loader';
 
 const HomePage = () => {
   const dispatch = useDispatch();
@@ -47,11 +48,7 @@ const HomePage = () => {
   const handleClick = () => { };
 
   if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
-        <Typography>Loading...</Typography>
-      </Box>
-    );
+    return <Loader variant='page' label='Loading class details...' />;
   }
 
   return (

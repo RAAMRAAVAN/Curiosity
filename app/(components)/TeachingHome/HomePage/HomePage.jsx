@@ -14,7 +14,6 @@ import { useDispatch, useSelector } from "react-redux";
 import SignupModal from "@/app/(components)/MyProfile/SignupModal";
 import LoginModal from "@/app/(components)/MyProfile/LoginModal";
 import {
-    setAuthUser,
     clearAuthUser,
 } from "@/redux/features/authSlice";
 import { useRouter } from "next/navigation";
@@ -42,9 +41,7 @@ const HomePage = () => {
         try {
             const parsed = JSON.parse(auth);
 
-            if (parsed.loggedIn && parsed.user) {
-                dispatch(setAuthUser(parsed.user));
-            } else {
+            if (!parsed.loggedIn || !parsed.user) {
                 dispatch(clearAuthUser());
                 setOpenLogin(true);
             }
@@ -53,12 +50,6 @@ const HomePage = () => {
             setOpenLogin(true);
         }
     }, [dispatch]);
-
-    useEffect(() => {
-        if (typeof window !== "undefined" && !sessionStorage.getItem("authDetails")) {
-            setOpenLogin(true);
-        }
-    }, []);
 
     const handleLogout = () => {
         sessionStorage.removeItem("authDetails");

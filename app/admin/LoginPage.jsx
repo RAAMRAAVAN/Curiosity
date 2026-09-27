@@ -3,6 +3,7 @@
 import { Box, Button, TextField, Typography } from "@mui/material";
 import { useEffect } from "react";
 import Image from "next/image";
+import Loader from '@/app/(components)/Loader';
 
 const LoginPage = ({
   loginForm,
@@ -255,6 +256,7 @@ const LoginPage = ({
           variant="contained"
           fullWidth
           disabled={loading}
+          aria-label={loading ? 'Submitting login' : undefined}
           sx={{
             height: 43,
             borderRadius: 1.5,
@@ -266,7 +268,7 @@ const LoginPage = ({
             "&:hover": { bgcolor: "#23786f", boxShadow: "none" },
           }}
         >
-          {loading ? "SUBMITTING..." : "SUBMIT"}
+          {loading ? <Loader variant='inline' size={18} color='inherit' /> : "SUBMIT"}
         </Button>
 
         <Typography sx={{ mt: 2, textAlign: "center", fontSize: 10, color: "#777" }}>

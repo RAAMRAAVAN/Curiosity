@@ -14,9 +14,9 @@ import {
   Box,
   IconButton,
   InputAdornment,
-  CircularProgress,
   MenuItem,
 } from "@mui/material";
+import Loader from '@/app/(components)/Loader';
 
 import { fetchClasses } from "@/redux/features/classSlice";
 
@@ -544,12 +544,7 @@ const SignupModal = ({
           }}
         >
           {loading ? (
-            <CircularProgress
-              size={24}
-              sx={{
-                color: "white",
-              }}
-            />
+            <Loader variant='inline' size={24} spinnerSx={{ color: 'white' }} />
           ) : (
             "Create Account"
           )}

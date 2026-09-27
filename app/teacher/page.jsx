@@ -8,7 +8,6 @@ import {
   Button,
   Card,
   CardContent,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -26,6 +25,7 @@ import {
   ListItemText,
   Chip,
 } from "@mui/material";
+import Loader from '@/app/(components)/Loader';
 
 const contentTypes = [
   { value: "PPT", label: "PPT" },
@@ -251,11 +251,7 @@ export default function TeacherPage() {
   };
 
   if (loading) {
-    return (
-      <Box sx={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <Loader variant='page' />;
   }
 
   if (!authorized) {

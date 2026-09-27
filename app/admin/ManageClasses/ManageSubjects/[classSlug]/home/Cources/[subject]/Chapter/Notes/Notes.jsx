@@ -5,7 +5,6 @@ import {
     AccordionDetails,
     Box,
     Button,
-    CircularProgress,
     Fade,
     Fab,
     IconButton,
@@ -13,6 +12,7 @@ import {
     TextField,
     Typography,
 } from "@mui/material";
+import Loader from '@/app/(components)/Loader';
 
 import {
     Assignment,
@@ -232,7 +232,7 @@ const Notes = ({ chapterContents, fetchChapters }) => {
                         zIndex: 999,
                     }}
                 >
-                    <CircularProgress />
+                    <Loader variant='inline' size={40} />
                 </Box>
             )}
 

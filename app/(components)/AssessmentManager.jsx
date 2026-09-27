@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Loader from '@/app/(components)/Loader';
 import {
   Alert,
   Box,
@@ -9,7 +10,6 @@ import {
   CardContent,
   Checkbox,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -726,7 +726,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
               textAlign: 'center',
             }}
           >
-            <CircularProgress size={48} sx={{ mb: 2 }} />
+            <Loader variant='inline' size={48} spinnerSx={{ mb: 2 }} />
             <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
               Updating Assessment
             </Typography>
@@ -771,7 +771,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             }}
           >
             <Stack spacing={2} alignItems="center" sx={{ mb: 3 }}>
-              <CircularProgress size={42} />
+              <Loader variant='inline' size={42} />
               <Typography variant="h6" fontWeight={700}>Processing student attendance update</Typography>
             </Stack>
             <Stack spacing={1.2}>
@@ -796,22 +796,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
       ) : null}
 
       {loading ? (
-        <Box
-          sx={{
-            width: "100%",
-            minHeight: "400px", // Adjust as needed
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            flexDirection: "column",
-            gap: 2,
-          }}
-        >
-          <CircularProgress size={48} />
-          <Typography variant="body2" color="text.secondary">
-            Loading assessments...
-          </Typography>
-        </Box>
+        <Loader variant='section' size={48} label='Loading assessments...' sx={{ minHeight: '400px' }} />
       ) : (<>
         <Stack spacing={2}>
           {assessments.map((assessment) => (
@@ -906,7 +891,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
           />
           {pendingLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
+              <Loader variant='inline' size={40} />
             </Box>
           ) : filteredPendingStudents.length === 0 ? (
             <Typography color="text.secondary">{pendingStudents.length === 0 ? 'No pending students found for this assessment.' : 'No students match your search.'}</Typography>
@@ -998,7 +983,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
           />
           {appearedLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
+              <Loader variant='inline' size={40} />
             </Box>
           ) : filteredAppearedStudents.length === 0 ? (
             <Typography color="text.secondary">{appearedStudents.length === 0 ? 'No appeared students found for this assessment.' : 'No students match your search.'}</Typography>
@@ -1055,7 +1040,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
           />
           {absentLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
+              <Loader variant='inline' size={40} />
             </Box>
           ) : filteredAbsentStudents.length === 0 ? (
             <Typography color="text.secondary">{absentStudents.length === 0 ? 'No absent students found for this assessment.' : 'No students match your search.'}</Typography>

@@ -6,7 +6,6 @@ import {
   Button,
   Card,
   CardContent,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -30,7 +29,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { Assessment, BarChart, Close, TrendingUp } from '@mui/icons-material';
-import * as XLSX from 'xlsx-js-style';
+import Loader from '@/app/(components)/Loader';
 
 const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
   const ALL_CENTERS = 'ALL';
@@ -351,11 +350,12 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
     }
   };
 
-  function export316ResultRowsToExcel() {
+  async function export316ResultRowsToExcel() {
     if (!Array.isArray(filteredResultDialogRows) || filteredResultDialogRows.length === 0) {
       return;
     }
 
+    const XLSX = await import('xlsx-js-style');
     const headers = ['S.No', 'Student', 'Center', 'Class', 'Subject', 'Result', 'Submitted At'];
     const rows = filteredResultDialogRows.map((row, index) => [
       index + 1,
@@ -403,7 +403,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={7} sx={{ py: 4 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'center' }}><CircularProgress size={24} /></Box>
+                    <Loader variant='inline' size={24} />
                   </TableCell>
                 </TableRow>
               ) : results.length === 0 ? (
@@ -448,7 +448,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
           <DialogContent dividers sx={{ overflowY: 'auto' }}>
             <TextField label="Search by Name" value={pendingSearch} onChange={(event) => setPendingSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
             {pendingLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+              <Loader variant='section' sx={{ minHeight: 'auto' }} />
             ) : filteredPendingStudents.length === 0 ? (
               <Typography color="text.secondary">{pendingStudents.length === 0 ? 'No pending students found for this assessment.' : 'No students match your search.'}</Typography>
             ) : (
@@ -476,7 +476,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
           <DialogContent dividers sx={{ overflowY: 'auto' }}>
             <TextField label="Search by Name" value={absentSearch} onChange={(event) => setAbsentSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
             {absentLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+              <Loader variant='section' sx={{ minHeight: 'auto' }} />
             ) : filteredAbsentStudents.length === 0 ? (
               <Typography color="text.secondary">{absentStudents.length === 0 ? 'No absent students found for this assessment.' : 'No students match your search.'}</Typography>
             ) : (
@@ -504,7 +504,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
           <DialogContent dividers sx={{ overflowY: 'auto' }}>
             <TextField label="Search by Name" value={appearedSearch} onChange={(event) => setAppearedSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
             {appearedLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+              <Loader variant='section' sx={{ minHeight: 'auto' }} />
             ) : filteredAppearedStudents.length === 0 ? (
               <Typography color="text.secondary">{appearedStudents.length === 0 ? 'No appeared students found for this assessment.' : 'No students match your search.'}</Typography>
             ) : (
@@ -548,7 +548,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
           </DialogTitle>
           <DialogContent dividers sx={{ overflowY: 'auto', flex: 1 }}>
             {resultDialogLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+              <Loader variant='section' sx={{ minHeight: 'auto' }} />
             ) : resultDialogRows.length === 0 ? (
               <Typography color="text.secondary">No student results found for this assessment.</Typography>
             ) : (
@@ -735,7 +735,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
   }, [assessmentSummaries, assessmentId, assessmentType]);
 
   if (loading) {
-    return <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>;
+    return <Loader variant='section' />;
   }
 
   const pendingCount = assessmentId ? pendingCounts[assessmentId] || 0 : 0;
@@ -756,11 +756,12 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
 
   const escapeValue = (value) => String(value).replace(/"/g, '""');
 
-  const exportStudentGroupsToExcel = (groups, fileName, { includeReason = false } = {}) => {
+  const exportStudentGroupsToExcel = async (groups, fileName, { includeReason = false } = {}) => {
     if (!Array.isArray(groups) || groups.length === 0) {
       return;
     }
 
+    const XLSX = await import('xlsx-js-style');
     const headers = ['S.No', 'Student Name', 'Enrollment ID', 'Center Name', 'Class', ...(includeReason ? ['Reason', 'Marked At'] : [])];
 
     const students = groups.flatMap((group) => (group.students || []).map((student) => ({
@@ -1117,7 +1118,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
             sx={{ mb: 2 }}
           />
           {pendingLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+            <Loader variant='section' sx={{ minHeight: 'auto' }} />
           ) : filteredPendingStudents.length === 0 ? (
             <Typography color="text.secondary">{pendingStudents.length === 0 ? 'No pending students found for this assessment.' : 'No students match your search.'}</Typography>
           ) : (
@@ -1174,7 +1175,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
             sx={{ mb: 2 }}
           />
           {absentLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+            <Loader variant='section' sx={{ minHeight: 'auto' }} />
           ) : filteredAbsentStudents.length === 0 ? (
             <Typography color="text.secondary">{absentStudents.length === 0 ? 'No absent students found for this assessment.' : 'No students match your search.'}</Typography>
           ) : (

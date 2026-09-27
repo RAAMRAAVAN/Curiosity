@@ -20,6 +20,7 @@ import Chapter from "./Chapter/ChapterClient";
 // import AssessmentManager from "@/app/(components)/AssessmentManager";
 import { Add } from "@mui/icons-material";
 import { useParams } from "next/navigation";
+import Loader from '@/app/(components)/Loader';
 
 const Subject = () => {
 
@@ -204,7 +205,7 @@ const Subject = () => {
     }
 
     if (loading) {
-        return <>Loading Subject...</>;
+        return <Loader variant='page' label='Loading subject...' />;
     }
 
     return (

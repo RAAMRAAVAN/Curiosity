@@ -4,13 +4,13 @@ import { useState } from "react";
 import {
     Box,
     Button,
-    CircularProgress,
     Fade,
     IconButton,
     Modal,
     TextField,
     Typography,
 } from "@mui/material";
+import Loader from '@/app/(components)/Loader';
 import { Close } from "@mui/icons-material";
 
 const style = {
@@ -154,7 +154,7 @@ const AddPDF = ({
                                 zIndex: 9999,
                             }}
                         >
-                            <CircularProgress />
+                            <Loader variant='inline' size={40} />
                         </Box>
                     )}
 

@@ -1,6 +1,7 @@
 'use client';
 
-import { Box, CircularProgress, Paper, Typography } from '@mui/material';
+import { Box, Paper, Typography } from '@mui/material';
+import Loader from '@/app/(components)/Loader';
 import AssessmentResultsDashboard from '../AssessmentResultsDashboard';
 import { useAdminAuth } from '../AdminAuthContext';
 
@@ -8,20 +9,7 @@ export default function AssessmentResults316RoutePage() {
   const { admin, loading } = useAdminAuth();
 
   if (loading) {
-    return (
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          bgcolor: '#eef4fb',
-          p: 3,
-        }}
-      >
-        <CircularProgress size={64} thickness={4} />
-      </Box>
-    );
+    return <Loader variant='page' size={64} thickness={4} sx={{ bgcolor: '#eef4fb', p: 3 }} />;
   }
 
   if (!admin) {

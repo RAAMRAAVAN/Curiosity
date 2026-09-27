@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
 
@@ -32,6 +32,37 @@ import LoginModal from "@/app/(components)/MyProfile/LoginModal";
 import Logout from "@/app/(components)/MyProfile/Logout";
 import MainPage from "./MainPage/MainPage";
 
+const MenuSection = memo(function MenuSection({ title, Icon, items, isOpen, onToggle, openKey }) {
+  if (!items || items.length === 0) return null;
+
+  return (
+    <>
+      <ListItem disablePadding>
+        <ListItemButton onClick={() => onToggle(openKey)}>
+          <ListItemIcon>
+            <Icon />
+          </ListItemIcon>
+          <ListItemText primary={`${title} (${items.length})`} />
+          {isOpen ? <ExpandLess /> : <ExpandMore />}
+        </ListItemButton>
+      </ListItem>
+      <Collapse in={isOpen} timeout="auto" unmountOnExit>
+        <List disablePadding>
+          {items.map((item) => (
+            <ListItem key={item.id} disablePadding sx={{ pl: 4 }}>
+              <ListItemButton>
+                <ListItemText
+                  primary={item.title || item.fileName || item.name || "Untitled"}
+                  primaryTypographyProps={{ fontSize: 13 }}
+                />
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+      </Collapse>
+    </>
+  );
+});
 
 export default function Layout() {
 
@@ -132,119 +163,6 @@ export default function Layout() {
 
 
   // ================= MENU COMPONENT =================
-
-  const MenuSection = ({
-    title,
-    icon,
-    items,
-    openKey,
-  }) => {
-
-
-    if (!items || items.length === 0)
-      return null;
-
-
-    return (
-
-      <>
-
-        <ListItem disablePadding>
-
-          <ListItemButton
-            onClick={() => toggleMenu(openKey)}
-          >
-
-            <ListItemIcon>
-              {icon}
-            </ListItemIcon>
-
-
-            <ListItemText
-              primary={`${title} (${items.length})`}
-            />
-
-
-            {
-              openMenus[openKey]
-                ?
-                <ExpandLess />
-                :
-                <ExpandMore />
-            }
-
-
-          </ListItemButton>
-
-
-        </ListItem>
-
-
-
-        <Collapse
-          in={openMenus[openKey]}
-          timeout="auto"
-          unmountOnExit
-        >
-
-          <List disablePadding>
-
-
-            {
-              items.map(item => (
-
-                <ListItem
-                  key={item.id}
-                  disablePadding
-                  sx={{
-                    pl:4
-                  }}
-                >
-
-                  <ListItemButton>
-
-
-                    <ListItemText
-
-                      primary={
-                        item.title ||
-                        item.fileName ||
-                        item.name ||
-                        "Untitled"
-                      }
-
-                      primaryTypographyProps={{
-                        fontSize:13
-                      }}
-
-                    />
-
-
-                  </ListItemButton>
-
-
-                </ListItem>
-
-              ))
-            }
-
-
-          </List>
-
-
-        </Collapse>
-
-
-      </>
-
-    );
-
-
-  };
-
-
-
-
 
   // ================= FETCH CONTENT =================
 
@@ -369,20 +287,9 @@ export default function Layout() {
 
 
 
-  const toggleMenu=(key)=>{
-
-
-    setOpenMenus(prev=>({
-
-      ...prev,
-
-      [key]:
-        !prev[key]
-
-    }));
-
-
-  };
+  const toggleMenu = useCallback((key) => {
+    setOpenMenus((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
 
 
@@ -569,44 +476,54 @@ export default function Layout() {
 
             <MenuSection
               title="Notes"
-              icon={<Description/>}
+              Icon={Description}
               items={notes}
               openKey="notes"
+              isOpen={openMenus.notes}
+              onToggle={toggleMenu}
             />
 
 
             <MenuSection
               title="Videos"
-              icon={<PlayCircle/>}
+              Icon={PlayCircle}
               items={videos}
               openKey="videos"
+              isOpen={openMenus.videos}
+              onToggle={toggleMenu}
             />
 
 
 
             <MenuSection
               title="PDFs"
-              icon={<PictureAsPdf/>}
+              Icon={PictureAsPdf}
               items={pdfs}
               openKey="pdfs"
+              isOpen={openMenus.pdfs}
+              onToggle={toggleMenu}
             />
 
 
 
             <MenuSection
               title="PPTs"
-              icon={<Slideshow/>}
+              Icon={Slideshow}
               items={ppts}
               openKey="ppts"
+              isOpen={openMenus.ppts}
+              onToggle={toggleMenu}
             />
 
 
 
             <MenuSection
               title="Previous Papers"
-              icon={<Quiz/>}
+              Icon={Quiz}
               items={previousPapers}
               openKey="previousPapers"
+              isOpen={openMenus.previousPapers}
+              onToggle={toggleMenu}
             />
 
 

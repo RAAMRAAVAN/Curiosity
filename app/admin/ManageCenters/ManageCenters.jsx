@@ -1,5 +1,6 @@
 "use client";
 
+import Loader from '@/app/(components)/Loader';
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -210,7 +211,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
             {loading ? (
               <TableRow>
                 <TableCell colSpan={isMobile ? 3 : 4} align="center" sx={{ py: 4 }}>
-                  Loading centers...
+                  <Loader variant='section' label='Loading centers...' sx={{ minHeight: 'auto', py: 0 }} />
                 </TableCell>
               </TableRow>
             ) : centers.length === 0 ? (

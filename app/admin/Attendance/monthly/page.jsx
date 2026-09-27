@@ -7,7 +7,6 @@ import {
   Button,
   Checkbox,
   Chip,
-  CircularProgress,
   FormControl,
   InputLabel,
   MenuItem,
@@ -24,6 +23,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import ScreenRotation from '@mui/icons-material/ScreenRotation';
+import Loader from '@/app/(components)/Loader';
 import { useAdminAuth } from '../../AdminAuthContext';
 
 const monthOptions = Array.from({ length: 12 }, (_, index) => {
@@ -60,6 +60,8 @@ export default function StudentMonthlyAttendancePage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [rows, setRows] = useState([]);
   const [studentSearch, setStudentSearch] = useState('');
+  const [centersLoaded, setCentersLoaded] = useState(false);
+  const [loadingOptions, setLoadingOptions] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
   const [error, setError] = useState('');
   const reportRef = useRef(null);
@@ -69,6 +71,9 @@ export default function StudentMonthlyAttendancePage() {
   useEffect(() => {
     if (!admin) return;
     const fetchCenters = async () => {
+      setLoadingOptions(true);
+      setCentersLoaded(false);
+      let hasSelectedCenter = false;
       try {
         const response = await fetch('/api/admin/centers', { credentials: 'include' });
         const data = await response.json();
@@ -79,9 +84,13 @@ export default function StudentMonthlyAttendancePage() {
 
         const preferredCenter = admin.centerId || admin.teacher?.centerId || admin.assignedCenterIds?.[0] || '';
         const firstCenter = preferredCenter || centerList[0]?.id || '';
+        hasSelectedCenter = Boolean(firstCenter);
         setSelectedCenterId(firstCenter);
       } catch (err) {
         setError(err.message || 'Unable to load centers.');
+      } finally {
+        setCentersLoaded(true);
+        if (!hasSelectedCenter) setLoadingOptions(false);
       }
     };
 
@@ -89,9 +98,11 @@ export default function StudentMonthlyAttendancePage() {
   }, [admin]);
 
   useEffect(() => {
+    if (!centersLoaded) return;
     if (!selectedCenterId) {
       setClasses([]);
       setSelectedClassIds([]);
+      setLoadingOptions(false);
       return;
     }
 
@@ -110,11 +121,13 @@ export default function StudentMonthlyAttendancePage() {
         }
       } catch (err) {
         setError(err.message || 'Unable to load classes.');
+      } finally {
+        setLoadingOptions(false);
       }
     };
 
     fetchClasses();
-  }, [selectedCenterId]);
+  }, [centersLoaded, selectedCenterId]);
 
   const monthDates = useMemo(() => {
     const start = new Date(selectedYear, selectedMonth - 1, 1);
@@ -160,11 +173,7 @@ export default function StudentMonthlyAttendancePage() {
   }, [isPortraitPhone, loadingRows, rows]);
 
   if (loading) {
-    return (
-      <Box sx={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <Loader variant='page' />;
   }
 
   if (!admin) {
@@ -183,6 +192,8 @@ export default function StudentMonthlyAttendancePage() {
   if (!canViewReport) {
     return <Alert severity="error">You are not authorized to view the student monthly attendance report.</Alert>;
   }
+
+  if (loadingOptions) return <Loader variant='page' label='Loading attendance options...' />;
 
   return (
     <Box sx={{ width: '100%', height: isCompactScreen ? 'auto' : '100%', minWidth: 0, minHeight: 0, p: 0, overflow: isCompactScreen ? 'visible' : 'hidden' }}>
@@ -308,9 +319,7 @@ export default function StudentMonthlyAttendancePage() {
         {error ? <Alert severity='error' sx={{ mb: 2 }}>{error}</Alert> : null}
 
         {loadingRows ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-            <CircularProgress />
-          </Box>
+          <Loader variant='section' label='Loading monthly attendance' />
         ) : null}
 
         {!loadingRows && rows.length ? (

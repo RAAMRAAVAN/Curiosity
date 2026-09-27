@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Backdrop, Box, CircularProgress, LinearProgress, Typography } from '@mui/material';
+import { Backdrop, Box, LinearProgress, Typography } from '@mui/material';
+import Loader from '@/app/(components)/Loader';
 
 const initialStatus = { state: 'IDLE', total: 0, processed: 0, marked: 0, message: '' };
 
@@ -50,7 +51,7 @@ export default function AttendanceAutomationOverlay() {
       }}
     >
       <Box sx={{ width: 'min(560px, calc(100vw - 32px))', color: '#fff', textAlign: 'center' }}>
-        <CircularProgress size={58} thickness={4} sx={{ color: '#90caf9', mb: 3 }} />
+        <Loader variant='inline' size={58} thickness={4} spinnerSx={{ color: '#90caf9', mb: 3 }} />
         <Typography variant="h5" fontWeight={700} sx={{ mb: 1 }}>
           Finalizing daily attendance
         </Typography>

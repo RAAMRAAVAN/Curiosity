@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Backdrop, Box, CircularProgress, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Backdrop, Box, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { Menu } from '@mui/icons-material';
 import AdminDrawyer from './AdminDrawyer';
 import { AdminAuthProvider, useAdminAuth } from './AdminAuthContext';
+import Loader, { LoaderActivityProvider } from '@/app/(components)/Loader';
 
 const routeValues = {
   users: '/admin/users',
@@ -34,6 +35,20 @@ const monthlyAttendanceViews = [
   'teacher-monthly-attendance',
 ];
 
+const normalizeRoutePath = (path) => (path || '').replace(/\/+$/, '') || '/';
+
+function NavigationReadyWatcher({ pathname, targetPath, pending, isNavigating, onReady }) {
+  useEffect(() => {
+    if (!pending || !targetPath || isNavigating) return undefined;
+    if (normalizeRoutePath(pathname) !== normalizeRoutePath(targetPath)) return undefined;
+
+    const frame = window.requestAnimationFrame(onReady);
+    return () => window.cancelAnimationFrame(frame);
+  }, [isNavigating, onReady, pathname, pending, targetPath]);
+
+  return null;
+}
+
 const getActiveView = (pathname) => {
   const normalized = (pathname || '').replace(/\/+$/, '');
   if (!normalized || normalized === '/admin') return 'users';
@@ -58,16 +73,19 @@ function AdminLayoutContent({ children }) {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [isNavigating, startNavigation] = useTransition();
   const [navigationPending, setNavigationPending] = useState(false);
+  const [navigationTarget, setNavigationTarget] = useState(null);
 
   const activeView = useMemo(() => getActiveView(pathname), [pathname]);
 
-  useEffect(() => {
+  const finishNavigation = useCallback(() => {
     setNavigationPending(false);
-  }, [pathname]);
+    setNavigationTarget(null);
+  }, []);
 
   const handleNavigation = (value) => {
     const route = routeValues[value] || '/admin';
-    if (route !== pathname) {
+    if (normalizeRoutePath(route) !== normalizeRoutePath(pathname)) {
+      setNavigationTarget(route);
       setNavigationPending(true);
       startNavigation(() => {
         router.push(route, { scroll: false });
@@ -80,11 +98,7 @@ function AdminLayoutContent({ children }) {
   };
 
   if (loading) {
-    return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#eef4fb', p: 3 }}>
-        <CircularProgress size={64} thickness={4} />
-      </Box>
-    );
+    return <Loader variant='page' size={64} thickness={4} sx={{ bgcolor: '#eef4fb', p: 3 }} />;
   }
 
   if (!admin) {
@@ -143,6 +157,7 @@ function AdminLayoutContent({ children }) {
         setDrawerOpen={setDrawerOpen}
         adminView={activeView}
         setAdminView={handleNavigation}
+        onRouteNavigate={handleNavigation}
         role={admin?.role}
         permissions={admin?.permissions || []}
         customRolePermissions={admin?.customRole?.permissions || []}
@@ -179,12 +194,18 @@ function AdminLayoutContent({ children }) {
         open={navigationPending || isNavigating}
         sx={{
           zIndex: (theme) => theme.zIndex.drawer + 9999,
-          backgroundColor: 'rgba(255,255,255,0.65)',
-          backdropFilter: 'blur(4px)',
+          backgroundColor: 'transparent',
         }}
       >
-        <CircularProgress size={100} thickness={4} />
+        <Loader variant='overlay' label='Loading...' />
       </Backdrop>
+      <NavigationReadyWatcher
+        pathname={pathname}
+        targetPath={navigationTarget}
+        pending={navigationPending}
+        isNavigating={isNavigating}
+        onReady={finishNavigation}
+      />
     </Box>
   );
 }
@@ -192,7 +213,9 @@ function AdminLayoutContent({ children }) {
 export default function AdminLayout({ children }) {
   return (
     <AdminAuthProvider>
-      <AdminLayoutContent>{children}</AdminLayoutContent>
+      <LoaderActivityProvider>
+        <AdminLayoutContent>{children}</AdminLayoutContent>
+      </LoaderActivityProvider>
     </AdminAuthProvider>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Loader from '@/app/(components)/Loader';
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -20,6 +21,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Tooltip,
@@ -54,6 +56,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
   const [selectedClassFilter, setSelectedClassFilter] = useState(ALL_CLASSES);
   const [studentSearch, setStudentSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -498,6 +502,11 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
     });
   }, [students, canUseCenterFilter, selectedCenter, selectedClassFilter, studentSearch]);
 
+  useEffect(() => {
+    const lastPage = Math.max(0, Math.ceil(filteredStudents.length / rowsPerPage) - 1);
+    if (page > lastPage) setPage(lastPage);
+  }, [filteredStudents.length, page, rowsPerPage]);
+
   const centerOptions = useMemo(() => {
     if (!teacherLocked) return centers;
     return centers.filter((center) => center.id === authUser?.centerId);
@@ -544,7 +553,10 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
             label="Search Students"
             placeholder="Name or Enrollment ID"
             value={studentSearch}
-            onChange={(event) => setStudentSearch(event.target.value)}
+            onChange={(event) => {
+              setStudentSearch(event.target.value);
+              setPage(0);
+            }}
             sx={{ minWidth: 240, width: { xs: '100%', sm: 'auto' } }}
           />
           {canUseCenterFilter ? (
@@ -553,7 +565,10 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
               size="small"
               label="Filter By Center"
               value={selectedCenter}
-              onChange={(event) => setSelectedCenter(event.target.value)}
+              onChange={(event) => {
+                setSelectedCenter(event.target.value);
+                setPage(0);
+              }}
               sx={{ minWidth: 220, width: { xs: '100%', sm: 'auto' } }}
               InputLabelProps={{ shrink: true }}
             >
@@ -569,7 +584,10 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
             size="small"
             label="Filter By Class"
             value={selectedClassFilter}
-            onChange={(event) => setSelectedClassFilter(event.target.value)}
+            onChange={(event) => {
+              setSelectedClassFilter(event.target.value);
+              setPage(0);
+            }}
             sx={{ minWidth: 180, width: { xs: '100%', sm: 'auto' } }}
             InputLabelProps={{ shrink: true }}
           >
@@ -613,7 +631,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
             {loading ? (
               <TableRow>
                 <TableCell colSpan={isMobile ? 5 : isTablet ? 6 : 7} align="center" sx={{ py: 4 }}>
-                  Loading students...
+                  <Loader variant='section' label='Loading students...' sx={{ minHeight: 'auto', py: 0 }} />
                 </TableCell>
               </TableRow>
             ) : filteredStudents.length === 0 ? (
@@ -627,7 +645,9 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredStudents.map((student) => (
+              filteredStudents
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((student) => (
                 <TableRow key={student.id} hover sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}>
                   <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, whiteSpace: 'nowrap' }}>{student.id || "—"}</TableCell>
                   <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{student.name}</TableCell>
@@ -656,11 +676,23 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
                     </Stack>
                   </TableCell>
                 </TableRow>
-              ))
+                ))
             )}
           </TableBody>
         </Table>
       </TableContainer>
+      <TablePagination
+        component="div"
+        count={filteredStudents.length}
+        page={page}
+        onPageChange={(_, nextPage) => setPage(nextPage)}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={(event) => {
+          setRowsPerPage(Number(event.target.value));
+          setPage(0);
+        }}
+        rowsPerPageOptions={[25, 50, 100]}
+      />
 
       {canCreateStudents ? (
         <Box

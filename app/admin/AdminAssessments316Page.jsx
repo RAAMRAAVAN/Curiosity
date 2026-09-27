@@ -9,7 +9,6 @@ import {
   CardContent,
   Checkbox,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -33,6 +32,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { AddCircleOutline, DeleteOutline, EditOutlined } from '@mui/icons-material';
+import Loader from '@/app/(components)/Loader';
 
 const emptyForm = { title: '', description: '', classIds: [], subjectIds: [], checklist: [{ itemText: 'Field 1', options: [''] }] };
 
@@ -521,7 +521,7 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
       {feedback ? <Alert severity={feedback.severity} sx={{ mb: 2 }} onClose={() => setFeedback(null)}>{feedback.message}</Alert> : null}
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
+        <Loader variant='section' />
       ) : assessments.length === 0 ? (
         <Typography color="text.secondary">No assessments have been created yet.</Typography>
       ) : (
@@ -585,7 +585,7 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <TextField label="Search by Name" value={pendingSearch} onChange={(event) => setPendingSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
           {pendingLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+            <Loader variant='section' />
           ) : filteredPendingStudents.length === 0 ? (
             <Typography color="text.secondary">{pendingStudents.length === 0 ? 'No pending students found for this assessment.' : 'No students match your search.'}</Typography>
           ) : (
@@ -664,7 +664,7 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <TextField label="Search by Name" value={appearedSearch} onChange={(event) => setAppearedSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
           {appearedLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+            <Loader variant='section' />
           ) : filteredAppearedStudents.length === 0 ? (
             <Typography color="text.secondary">{appearedStudents.length === 0 ? 'No appeared students found for this assessment.' : 'No students match your search.'}</Typography>
           ) : (
@@ -736,7 +736,7 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <TextField label="Search by Name" value={absentSearch} onChange={(event) => setAbsentSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
           {absentLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+            <Loader variant='section' />
           ) : filteredAbsentStudents.length === 0 ? (
             <Typography color="text.secondary">{absentStudents.length === 0 ? 'No absent students found for this assessment.' : 'No students match your search.'}</Typography>
           ) : (

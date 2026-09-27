@@ -8,7 +8,6 @@ import {
   Button,
   Chip,
   Checkbox,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -28,6 +27,7 @@ import {
   Typography,
 } from "@mui/material";
 import { ClearAll, SelectAll } from "@mui/icons-material";
+import Loader from '@/app/(components)/Loader';
 
 function todayValue() {
   return new Date().toISOString().slice(0, 10);
@@ -403,7 +403,7 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
       {message ? <Alert severity={message.severity} sx={{ mb: 2 }} onClose={() => setMessage(null)}>{message.text}</Alert> : null}
 
       <Paper sx={{ border: '1px solid rgba(59, 130, 246, 0.18)', borderRadius: 3, mx: { xs: 1, sm: 2 }, mb: { xs: 5, sm: 0 }, overflowX: "auto", boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
-        {!hasLoadedAttendance ? null : !classIds.length ? <Typography sx={{ p: 3 }} color="text.secondary">Select one or more classes to view students.</Typography> : loading ? <Box sx={{ p: 4, textAlign: "center" }}><CircularProgress /></Box> : students.length === 0 ? <Typography sx={{ p: 3 }} color="text.secondary">No students found for this class.</Typography> : filteredStudents.length === 0 ? <Typography sx={{ p: 3 }} color="text.secondary">No students match your search.</Typography> : (
+        {!hasLoadedAttendance && loading ? <Loader variant='section' label='Loading attendance...' sx={{ py: 4, minHeight: 'auto' }} /> : !hasLoadedAttendance ? null : !classIds.length ? <Typography sx={{ p: 3 }} color="text.secondary">Select one or more classes to view students.</Typography> : loading ? <Loader variant='section' sx={{ py: 4, minHeight: 'auto' }} /> : students.length === 0 ? <Typography sx={{ p: 3 }} color="text.secondary">No students found for this class.</Typography> : filteredStudents.length === 0 ? <Typography sx={{ p: 3 }} color="text.secondary">No students match your search.</Typography> : (
           <Table
             size="small"
             sx={{

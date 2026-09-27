@@ -4,7 +4,6 @@ import {
     Alert,
     Box,
     Button,
-    CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
@@ -30,6 +29,7 @@ import {
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Loader from '@/app/(components)/Loader';
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -397,7 +397,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                                                                 '&:hover': { backgroundColor: '#fecaca' },
                                                             }}
                                                         >
-                                                            {deletingClassId === c.id ? <CircularProgress size={18} color="inherit" /> : <DeleteIcon fontSize="small" />}
+                                                            {deletingClassId === c.id ? <Loader variant='inline' size={18} color='inherit' /> : <DeleteIcon fontSize="small" />}
                                                         </IconButton>
                                                     </Tooltip>
                                                 ) : null}
@@ -466,7 +466,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                         color="error"
                         onClick={confirmDeleteClass}
                         disabled={Boolean(deletingClassId)}
-                        startIcon={deletingClassId ? <CircularProgress size={16} color="inherit" /> : <DeleteIcon />}
+                        startIcon={deletingClassId ? <Loader variant='inline' size={16} color='inherit' /> : <DeleteIcon />}
                     >
                         {deletingClassId ? 'Deleting...' : 'Delete Class'}
                     </Button>
@@ -599,7 +599,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                             '&:hover': { backgroundColor: '#082b57' },
                         }}
                     >
-                        {loading ? <CircularProgress size={20} color="inherit" /> : editingClassId ? 'Save Changes' : 'Create Class'}
+                        {loading ? <Loader variant='inline' size={20} color='inherit' /> : editingClassId ? 'Save Changes' : 'Create Class'}
                     </Button>
                 </DialogActions>
             </Dialog>

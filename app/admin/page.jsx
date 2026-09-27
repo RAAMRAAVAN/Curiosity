@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Paper,
   Typography,
   IconButton,
@@ -14,19 +14,22 @@ import {
   useTheme,
 } from "@mui/material";
 import AdminDrawyer from "./AdminDrawyer";
-import ManageUsersPage from "./ManageUsers/ManageUsers";
-import ManageClasses from "./ManageClasses/ManageClasses";
 import { Menu } from "@mui/icons-material";
-import ManageTeachersPage from "./ManageTeachers/ManageTeachers";
-import AssessmentResultsDashboard from "./AssessmentResultsDashboard";
-import AdminAssessmentsPage from './AdminAssessmentsPage';
-import AdminAssessments316Page from './AdminAssessments316Page';
-import ManageCenters from "./ManageCenters/ManageCenters";
-import ManageStudents from "./ManageStudents/ManageStudents";
-import ManageRoles from './ManageRoles/ManageRoles';
-import ResetPassword from './ResetPassword';
-import AttendanceManager from './attendance/AttendanceManager';
 import LoginPage from './LoginPage';
+import Loader from '@/app/(components)/Loader';
+
+const panelLoading = () => <Loader variant='section' />;
+const ManageUsersPage = dynamic(() => import('./ManageUsers/ManageUsers'), { loading: panelLoading });
+const ManageClasses = dynamic(() => import('./ManageClasses/ManageClasses'), { loading: panelLoading });
+const ManageTeachersPage = dynamic(() => import('./ManageTeachers/ManageTeachers'), { loading: panelLoading });
+const AssessmentResultsDashboard = dynamic(() => import('./AssessmentResultsDashboard'), { loading: panelLoading });
+const AdminAssessmentsPage = dynamic(() => import('./AdminAssessmentsPage'), { loading: panelLoading });
+const AdminAssessments316Page = dynamic(() => import('./AdminAssessments316Page'), { loading: panelLoading });
+const ManageCenters = dynamic(() => import('./ManageCenters/ManageCenters'), { loading: panelLoading });
+const ManageStudents = dynamic(() => import('./ManageStudents/ManageStudents'), { loading: panelLoading });
+const ManageRoles = dynamic(() => import('./ManageRoles/ManageRoles'), { loading: panelLoading });
+const ResetPassword = dynamic(() => import('./ResetPassword'), { loading: panelLoading });
+const AttendanceManager = dynamic(() => import('./attendance/AttendanceManager'), { loading: panelLoading });
 
 const hasPermission = (permissions, permission, role) => {
   if (String(role || '').toUpperCase() === 'ADMIN') return true;
@@ -238,20 +241,7 @@ export default function AdminPage(props) {
 
 
   if (loading) {
-    return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          bgcolor: "#eef4fb",
-          p: 3,
-        }}
-      >
-        <CircularProgress size={64} thickness={4} />
-      </Box>
-    );
+    return <Loader variant='page' size={64} thickness={4} sx={{ bgcolor: '#eef4fb', p: 3 }} />;
   }
 
   if (!authorized) {
