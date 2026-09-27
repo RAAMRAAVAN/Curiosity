@@ -1,4 +1,5 @@
 "use client"; 
+import Image from "next/image";
 import { Provider, useDispatch } from "react-redux";
 import { useEffect, useState } from "react";
 import { Alert, Box, CircularProgress, Typography } from "@mui/material";
@@ -140,21 +141,19 @@ function AuthHydrator({ children }) {
             boxShadow: "0 28px 80px rgba(0,0,0,0.18)",
           }}
         >
-          <Box
-            component="img"
+          <Image
             src="/favicon.gif"
             alt="Loading"
-            sx={{
-              width: { xs: 140, sm: 180 },
-              height: { xs: 140, sm: 180 },
+            priority
+            width={180}
+            height={180}
+            style={{
+              width: "clamp(140px, 18vw, 180px)",
+              height: "auto",
               objectFit: "contain",
-              borderRadius: 4,
+              borderRadius: 16,
               animation: "pulse 1.2s ease-in-out infinite",
-              "@keyframes pulse": {
-                "0%": { transform: "scale(0.96)", opacity: 0.75 },
-                "50%": { transform: "scale(1.12)", opacity: 1 },
-                "100%": { transform: "scale(0.96)", opacity: 0.75 },
-              },
+              display: "block",
             }}
           />
           <Typography

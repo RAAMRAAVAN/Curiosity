@@ -224,23 +224,32 @@ const LoginModal = ({
             mx: { xs: 2, md: 5 },
             aspectRatio: "1.95 / 1",
             borderRadius: 4,
-            backgroundImage: "url('/LoginBackground.jpeg')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundRepeat: "no-repeat",
             border: "1px solid rgba(148, 163, 184, 0.18)",
             boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6)",
             position: "relative",
             overflow: "hidden",
             transform: { xs: "none", md: "translateY(-24px)" },
-            "&::before": {
-              content: '""',
+          }}
+        >
+          <Image
+            src="/LoginBackground.jpeg"
+            alt="Background"
+            fill
+            priority
+            sizes="(max-width: 900px) 100vw, 50vw"
+            style={{
+              objectFit: "cover",
+              objectPosition: "center",
+            }}
+          />
+          <Box
+            sx={{
               position: "absolute",
               inset: 0,
               background: "linear-gradient(135deg, rgba(79,70,229,0.12), rgba(45,212,191,0.1), rgba(15,23,42,0.12))",
-            },
-          }}
-        />
+            }}
+          />
+        </Box>
       ) : null}
 
       {useFullScreenLayout ? (
