@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { ApiResponse } from "@/utils/apiResponse";
 import { prisma } from "@/server/prisma";
 import { getUserFromRequest } from "@/server/auth";
-import { getUserAccessAssignment } from "@/lib/adminRbac";
+import { getUserAccessAssignment, requireAdminPermission } from "@/lib/adminRbac";
 
 function getAttendanceDate() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -95,6 +95,8 @@ function parseLocation(body) {
 
 export async function GET(req) {
   try {
+    const permission = await requireAdminPermission(req, "attendance.management.self.view");
+    if (!permission.ok) return ApiResponse.error(permission.message, permission.status);
     const auth = await resolveManagement(req);
     if (auth.response) return auth.response;
 
@@ -109,6 +111,8 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
+    const permission = await requireAdminPermission(req, "attendance.management.self.view");
+    if (!permission.ok) return ApiResponse.error(permission.message, permission.status);
     const auth = await resolveManagement(req);
     if (auth.response) return auth.response;
 

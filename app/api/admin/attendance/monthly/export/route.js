@@ -13,7 +13,7 @@ function getMonthDates(year, month) {
 }
 
 export async function GET(req) {
-  const auth = await requireAdminPermission(req, 'attendance.view');
+  const auth = await requireAdminPermission(req, 'attendance.students.monthly.view');
   if (!auth.ok) {
     return new Response(auth.message, { status: auth.status });
   }

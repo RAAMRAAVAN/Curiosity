@@ -73,11 +73,15 @@ async function attendanceScope(actor, centerId) {
 }
 
 export async function GET(req) {
-  const auth = await requireAdminPermission(req, "attendance.view");
+  const { searchParams } = new URL(req.url);
+  const isMonthlyOptionsRequest = searchParams.get("purpose") === "monthly-options";
+  const requiredPermission = isMonthlyOptionsRequest
+    ? "attendance.students.monthly.view"
+    : "attendance.students.view";
+  const auth = await requireAdminPermission(req, requiredPermission);
   if (!auth.ok) return ApiResponse.error(auth.message, auth.status);
 
   try {
-    const { searchParams } = new URL(req.url);
     const dateText = searchParams.get("date") || todayValue();
     const date = dateValue(dateText);
     const requestedClassIds = (searchParams.get("classId") || "").split(",").map((value) => value.trim()).filter(Boolean);
@@ -96,6 +100,9 @@ export async function GET(req) {
       select: { id: true, className: true, centerId: true },
     });
     const classes = sortClasses(rawClasses);
+    if (isMonthlyOptionsRequest) {
+      return ApiResponse.success({ center: scope.center, classes, students: [], date: dateText, today: todayValue() });
+    }
     if (!requestedClassIds.length) return ApiResponse.success({ center: scope.center, classes, students: [], date: dateText, today: todayValue() });
 
     const classMap = Object.fromEntries(classes.map((item) => [item.id, item.className]));
@@ -162,7 +169,7 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  const auth = await requireAdminPermission(req, "attendance.view");
+  const auth = await requireAdminPermission(req, "attendance.students.view");
   if (!auth.ok) return ApiResponse.error(auth.message, auth.status);
 
   try {

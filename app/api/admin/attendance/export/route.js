@@ -83,7 +83,7 @@ async function attendanceScope(actor, centerId) {
 }
 
 export async function GET(req) {
-  const auth = await requireAdminPermission(req, "attendance.view");
+  const auth = await requireAdminPermission(req, "attendance.students.view");
   if (!auth.ok) return new Response(auth.message, { status: auth.status, headers: noStoreHeaders });
 
   try {

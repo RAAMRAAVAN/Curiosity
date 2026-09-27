@@ -4,7 +4,14 @@ import { requireAdminPermission } from '@/lib/adminRbac';
 import { isValidCenterSlug, normalizeCenterSlug } from "@/lib/centerSlug";
 
 export async function GET(req) {
-  const auth = await requireAdminPermission(req, 'centers.view');
+  const auth = await requireAdminPermission(req, [
+    'centers.view',
+    'attendance.view',
+    'attendance.students.view',
+    'attendance.students.monthly.view',
+    'attendance.management.monthly.view',
+    'attendance.teachers.monthly.view',
+  ]);
   if (!auth.ok) {
     return ApiResponse.error(auth.message, auth.status);
   }

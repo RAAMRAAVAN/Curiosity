@@ -6,6 +6,21 @@ import AttendanceManager from '../AttendanceManager';
 import SelfAttendance from '@/app/teacher/TeacherAttendance';
 import { useAdminAuth } from '../../AdminAuthContext';
 
+function hasAttendancePermission(admin, permission) {
+  if (String(admin?.role || '').toUpperCase() === 'ADMIN') return true;
+  const granted = Array.isArray(admin?.permissions)
+    ? admin.permissions.map((item) => String(item || '').toLowerCase())
+    : [];
+  return granted.includes('*')
+    || (granted.includes('attendance.view') && [
+      'attendance.students.view',
+      'attendance.teacher.self.view',
+      'attendance.management.self.view',
+    ].includes(permission))
+    || granted.includes(permission)
+    || granted.some((item) => item.endsWith('.*') && permission.startsWith(`${item.slice(0, -2)}.`));
+}
+
 export default function AttendanceAudiencePage() {
   const { audience } = useParams();
   const router = useRouter();
@@ -20,6 +35,10 @@ export default function AttendanceAudiencePage() {
   }
 
   if (audience === 'students') {
+    if (!hasAttendancePermission(admin, 'attendance.students.view')) {
+      return <Box sx={{ width: '100%', p: 0 }}><Alert severity="error">You are not authorized to view student attendance.</Alert></Box>;
+    }
+
     return (
       <Box sx={{ maxWidth: 1400, mx: 'auto', width: '100%' }}>
         <Paper sx={{ p: { xs: 0, sm: 0 }, borderRadius: { xs: 0, sm: 0 } }}>
@@ -38,6 +57,10 @@ export default function AttendanceAudiencePage() {
       );
     }
 
+    if (!hasAttendancePermission(admin, 'attendance.teacher.self.view')) {
+      return <Box sx={{ width: '100%', p: 0 }}><Alert severity="error">You are not authorized to view your attendance.</Alert></Box>;
+    }
+
     return (
       <Box sx={{ width: '100%', minHeight: '100%', p: 0 }}>
         <SelfAttendance />
@@ -52,6 +75,10 @@ export default function AttendanceAudiencePage() {
           <Alert severity="error">Management access is required to use this attendance page.</Alert>
         </Box>
       );
+    }
+
+    if (!hasAttendancePermission(admin, 'attendance.management.self.view')) {
+      return <Box sx={{ width: '100%', p: 0 }}><Alert severity="error">You are not authorized to view your attendance.</Alert></Box>;
     }
 
     return (

@@ -97,7 +97,7 @@ export default function StudentMonthlyAttendancePage() {
 
     const fetchClasses = async () => {
       try {
-        const response = await fetch(`/api/admin/attendance?centerId=${encodeURIComponent(selectedCenterId)}&date=${encodeURIComponent(new Date().toISOString().slice(0, 10))}`, { credentials: 'include' });
+        const response = await fetch(`/api/admin/attendance?purpose=monthly-options&centerId=${encodeURIComponent(selectedCenterId)}&date=${encodeURIComponent(new Date().toISOString().slice(0, 10))}`, { credentials: 'include' });
         const data = await response.json();
         if (!response.ok || !data.success) throw new Error(data.message || 'Unable to load classes.');
 
@@ -169,6 +169,19 @@ export default function StudentMonthlyAttendancePage() {
 
   if (!admin) {
     return null;
+  }
+
+  const grantedPermissions = Array.isArray(admin.permissions)
+    ? admin.permissions.map((item) => String(item || '').toLowerCase())
+    : [];
+  const canViewReport = String(admin.role || '').toUpperCase() === 'ADMIN'
+    || grantedPermissions.includes('*')
+    || grantedPermissions.includes('attendance.students.monthly.view')
+    || grantedPermissions.some((item) => item.endsWith('.*') && 'attendance.students.monthly.view'.startsWith(`${item.slice(0, -2)}.`))
+    || grantedPermissions.includes('attendance.*');
+
+  if (!canViewReport) {
+    return <Alert severity="error">You are not authorized to view the student monthly attendance report.</Alert>;
   }
 
   return (
@@ -440,20 +453,39 @@ export default function StudentMonthlyAttendancePage() {
                       const status = row.dailyStatus[dayKey] || '—';
                       const statusLabel = status === '—' ? 'No record' : status.replace('_', ' ').toLowerCase();
                       const statusBackground = status === 'PRESENT'
-                        ? '#237a4b'
+                        ? '#e8f4ec'
                         : status === 'ABSENT'
-                          ? '#c43b3b'
+                          ? '#fdecec'
                           : status === 'HOLIDAY'
-                            ? '#a56800'
-                            : '#f8fafc';
-                      const statusBorder = status === '—' ? '#cbd5e1' : statusBackground;
+                            ? '#fff3db'
+                            : status === 'WEEKLY_OFF'
+                              ? '#eaf2fb'
+                              : '#f3f5f7';
+                      const statusColor = status === 'PRESENT'
+                        ? '#21623b'
+                        : status === 'ABSENT'
+                          ? '#aa2e2e'
+                          : status === 'HOLIDAY'
+                            ? '#8a5a00'
+                            : status === 'WEEKLY_OFF'
+                              ? '#315f86'
+                              : '#64748b';
+                      const statusBorder = status === 'PRESENT'
+                        ? '#8ec7a1'
+                        : status === 'ABSENT'
+                          ? '#e4a1a1'
+                          : status === 'HOLIDAY'
+                            ? '#e5c078'
+                            : status === 'WEEKLY_OFF'
+                              ? '#9bb9dc'
+                              : '#d0d7de';
                       return (
                         <TableCell key={`${row.id}-${dayKey}`} align='center' sx={{ width: 40, minWidth: 40, px: 0.25 }}>
                           <Box
                             component='span'
                             title={`${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: ${statusLabel}`}
                             sx={{
-                              width: 34,
+                              width: 24,
                               height: 24,
                               boxSizing: 'border-box',
                               display: 'inline-flex',
@@ -461,9 +493,9 @@ export default function StudentMonthlyAttendancePage() {
                               justifyContent: 'center',
                               border: '1px solid',
                               borderColor: statusBorder,
-                              borderRadius: 1,
+                              borderRadius: 0.75,
                               backgroundColor: statusBackground,
-                              color: status === '—' ? '#64748b' : '#ffffff',
+                              color: statusColor,
                               fontSize: 11,
                               fontWeight: 600,
                               lineHeight: 1,

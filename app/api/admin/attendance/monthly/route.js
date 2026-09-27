@@ -32,7 +32,7 @@ async function getCenterIds(actor, centerId) {
 }
 
 export async function GET(req) {
-  const auth = await requireAdminPermission(req, 'attendance.view');
+  const auth = await requireAdminPermission(req, 'attendance.students.monthly.view');
   if (!auth.ok) return ApiResponse.error(auth.message, auth.status);
 
   try {

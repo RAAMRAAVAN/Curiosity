@@ -93,7 +93,18 @@ const permissionGroups = [
   },
   {
     title: 'Attendance',
-    permissions: ['attendance.view', 'attendance.mark', 'attendance.edit', 'attendance.holiday'],
+    permissions: [
+      'attendance.view',
+      'attendance.students.view',
+      'attendance.students.monthly.view',
+      'attendance.management.monthly.view',
+      'attendance.teachers.monthly.view',
+      'attendance.teacher.self.view',
+      'attendance.management.self.view',
+      'attendance.mark',
+      'attendance.edit',
+      'attendance.holiday',
+    ],
   },
   {
     title: 'Admin Navigation',

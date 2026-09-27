@@ -156,6 +156,22 @@ export default function StaffMonthlyAttendancePage({ audience }) {
 
   if (!admin) return null;
 
+  const requiredPermission = isTeacherReport
+    ? 'attendance.teachers.monthly.view'
+    : 'attendance.management.monthly.view';
+  const grantedPermissions = Array.isArray(admin.permissions)
+    ? admin.permissions.map((item) => String(item || '').toLowerCase())
+    : [];
+  const canViewReport = String(admin.role || '').toUpperCase() === 'ADMIN'
+    || grantedPermissions.includes('*')
+    || grantedPermissions.includes(requiredPermission)
+    || grantedPermissions.some((item) => item.endsWith('.*') && requiredPermission.startsWith(`${item.slice(0, -2)}.`))
+    || grantedPermissions.includes('attendance.*');
+
+  if (!canViewReport) {
+    return <Alert severity='error'>You are not authorized to view this monthly attendance report.</Alert>;
+  }
+
   return (
     <Box sx={{ width: '100%', height: isCompactScreen ? 'auto' : '100%', minWidth: 0, minHeight: 0, p: 0, overflow: isCompactScreen ? 'visible' : 'hidden' }}>
       <Paper sx={{ height: isCompactScreen ? 'auto' : '100%', minWidth: 0, minHeight: isCompactScreen ? 'calc(100dvh - 73px)' : 0, display: 'flex', flexDirection: 'column', overflow: isCompactScreen ? 'visible' : 'hidden', p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: '0 20px 48px rgba(15, 23, 42, 0.08)' }}>

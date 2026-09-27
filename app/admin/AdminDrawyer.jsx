@@ -71,6 +71,11 @@ const AdminDrawer = ({
     if (!permission) return true;
     if (isAdminUser) return true;
 
+    if (
+      allPermissions.includes('attendance.view')
+      && ['attendance.students.view', 'attendance.teacher.self.view', 'attendance.management.self.view'].includes(permission)
+    ) return true;
+
     if (allPermissions.includes('*')) return true;
     if (allPermissions.includes(permission)) return true;
 
@@ -142,27 +147,27 @@ const AdminDrawer = ({
     ...(selfAttendanceView ? [{
       title: "Mark My Attendance",
       value: selfAttendanceView,
-      permission: null,
+      permission: roleValue === 'TEACHER' ? 'attendance.teacher.self.view' : 'attendance.management.self.view',
     }] : []),
     {
       title: "Student's Attendance",
       value: "student-attendance",
-      permission: 'attendance.view',
+      permission: 'attendance.students.view',
     },
     {
       title: "Student's Monthly Attendance",
       value: "student-monthly-attendance",
-      permission: 'attendance.view',
+      permission: 'attendance.students.monthly.view',
     },
     {
       title: "Management's Monthly Attendance",
       value: 'management-monthly-attendance',
-      permission: 'attendance.view',
+      permission: 'attendance.management.monthly.view',
     },
     {
       title: "Teachers' Monthly Attendance",
       value: 'teacher-monthly-attendance',
-      permission: 'attendance.view',
+      permission: 'attendance.teachers.monthly.view',
     },
   ];
 
