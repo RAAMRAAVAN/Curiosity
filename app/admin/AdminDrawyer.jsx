@@ -90,6 +90,12 @@ const AdminDrawer = ({
     centers: '/admin/centers',
     students: '/admin/students',
     attendance: '/admin/attendance',
+    'student-attendance': '/admin/attendance/students',
+    'student-monthly-attendance': '/admin/attendance/monthly',
+    'management-monthly-attendance': '/admin/attendance/management/monthly',
+    'teacher-monthly-attendance': '/admin/attendance/teachers/monthly',
+    'teacher-attendance': '/admin/attendance/teachers',
+    'management-attendance': '/admin/attendance/management',
     roles: '/admin/roles',
     'reset-password': '/admin/reset-password',
     assessments: '/admin/view_assessments',
@@ -125,6 +131,41 @@ const AdminDrawer = ({
     },
   ];
 
+  const roleValue = String(role || '').toUpperCase();
+  const selfAttendanceView = roleValue === 'TEACHER'
+    ? 'teacher-attendance'
+    : roleValue === 'MANAGEMENT'
+      ? 'management-attendance'
+      : null;
+
+  const attendanceSubmenuItems = [
+    ...(selfAttendanceView ? [{
+      title: "Mark My Attendance",
+      value: selfAttendanceView,
+      permission: null,
+    }] : []),
+    {
+      title: "Student's Attendance",
+      value: "student-attendance",
+      permission: 'attendance.view',
+    },
+    {
+      title: "Student's Monthly Attendance",
+      value: "student-monthly-attendance",
+      permission: 'attendance.view',
+    },
+    {
+      title: "Management's Monthly Attendance",
+      value: 'management-monthly-attendance',
+      permission: 'attendance.view',
+    },
+    {
+      title: "Teachers' Monthly Attendance",
+      value: 'teacher-monthly-attendance',
+      permission: 'attendance.view',
+    },
+  ];
+
   const menuItems = [
     {
       title: "Manage Users",
@@ -157,12 +198,6 @@ const AdminDrawer = ({
       permission: 'students.view',
     },
     {
-      title: "Attendance",
-      value: "attendance",
-      icon: <EventAvailable />,
-      permission: 'attendance.view',
-    },
-    {
       title: 'Manage Roles',
       value: 'roles',
       icon: <Security />,
@@ -177,12 +212,17 @@ const AdminDrawer = ({
   ];
 
   const visibleAssessmentItems = assessmentSubmenuItems.filter((item) => hasPermission(item.permission));
+  const visibleAttendanceItems = attendanceSubmenuItems.filter((item) =>
+    hasPermission(item.permission) && !(isMobile && item.value.endsWith('-monthly-attendance')),
+  );
   const visibleMenuItems = menuItems.filter((item) => {
     if (!item.permission) return true;
     return hasPermission(item.permission);
   });
   const shouldShowAssessmentModule = visibleAssessmentItems.length > 0;
+  const shouldShowAttendanceModule = visibleAttendanceItems.length > 0;
   const isAssessmentViewActive = visibleAssessmentItems.some((item) => item.value === adminView);
+  const isAttendanceViewActive = visibleAttendanceItems.some((item) => item.value === adminView);
   const isAssessmentRouteActive = typeof pathname === 'string' && (
     pathname === '/admin/view_assessments' ||
     pathname === '/admin/assessments-3-16' ||
@@ -190,12 +230,20 @@ const AdminDrawer = ({
     pathname === '/admin/assessment-results-3-16'
   );
   const [assessmentModuleOpen, setAssessmentModuleOpen] = useState(Boolean(isAssessmentViewActive || isAssessmentRouteActive));
+  const isAttendanceRouteActive = typeof pathname === 'string' && pathname.startsWith('/admin/attendance');
+  const [attendanceModuleOpen, setAttendanceModuleOpen] = useState(Boolean(isAttendanceViewActive || isAttendanceRouteActive));
 
   useEffect(() => {
     if (isAssessmentViewActive || isAssessmentRouteActive) {
       setAssessmentModuleOpen(true);
     }
   }, [adminView, pathname, isAssessmentViewActive, isAssessmentRouteActive]);
+
+  useEffect(() => {
+    if (isAttendanceViewActive || isAttendanceRouteActive) {
+      setAttendanceModuleOpen(true);
+    }
+  }, [adminView, pathname, isAttendanceViewActive, isAttendanceRouteActive]);
 
   const closeDrawer = () => {
     if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
@@ -261,6 +309,18 @@ const AdminDrawer = ({
           backgroundImage: "conic-gradient(from 30deg at 25% 25%, rgba(22,78,126,0.2) 0deg 60deg, rgba(2,23,49,0.24) 60deg 120deg, transparent 120deg 180deg, rgba(12,56,101,0.18) 180deg 240deg, transparent 240deg 360deg), conic-gradient(from 210deg at 75% 75%, rgba(35,98,145,0.13) 0deg 60deg, transparent 60deg 180deg, rgba(1,19,44,0.28) 180deg 240deg, transparent 240deg 360deg), linear-gradient(135deg, rgba(17,68,113,0.15) 0% 24%, transparent 24% 48%, rgba(2,27,58,0.26) 48% 72%, transparent 72%), linear-gradient(180deg, #041832 0%, #062a4a 52%, #083d63 100%)",
           backgroundSize: "150px 150px, 180px 180px, 210px 210px, 100% 100%",
           color: "#ffffff",
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(154, 190, 216, 0.7) rgba(2, 23, 49, 0.35)',
+          '&::-webkit-scrollbar': { width: 8 },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: 'rgba(2, 23, 49, 0.35)',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'rgba(154, 190, 216, 0.7)',
+            border: '2px solid rgba(2, 23, 49, 0.35)',
+            borderRadius: 8,
+            '&:hover': { backgroundColor: '#c1d9e9' },
+          },
         },
       }}
     >
@@ -351,6 +411,77 @@ const AdminDrawer = ({
             {assessmentModuleOpen ? (
               <Box sx={{ pl: 3, pr: 1, pb: 0.5 }}>
                 {visibleAssessmentItems.map((item) => (
+                  <ListItem key={item.value} disablePadding>
+                    <ListItemButton
+                      selected={adminView === item.value}
+                      onClick={() => handleAssessmentNavigation(item.value)}
+                      sx={{
+                        mx: 0,
+                        my: 0.25,
+                        borderRadius: 2,
+                        pl: 2,
+                        color: "#ffffff",
+                        "&.Mui-selected": {
+                          bgcolor: "rgba(255,255,255,0.12)",
+                          color: "#ffffff",
+                        },
+                        "&.Mui-selected:hover": {
+                          bgcolor: "rgba(255,255,255,0.18)",
+                        },
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 24, color: "#ffffff" }}>
+                        <Box
+                          component="span"
+                          sx={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            backgroundColor: "#ffffff",
+                            display: "inline-block",
+                          }}
+                        />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={item.title}
+                        primaryTypographyProps={{
+                          fontSize: 13,
+                          fontWeight: adminView === item.value ? 600 : 400,
+                          color: "#ffffff",
+                        }}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </Box>
+            ) : null}
+          </>
+        ) : null}
+
+        {shouldShowAttendanceModule ? (
+          <>
+            <ListItem disablePadding>
+              <ListItemButton
+                onClick={() => setAttendanceModuleOpen((prev) => !prev)}
+                sx={{
+                  mx: 1,
+                  my: 0.25,
+                  borderRadius: 2,
+                  color: "#ffffff",
+                  bgcolor: isAttendanceViewActive ? "rgba(255,255,255,0.08)" : "transparent",
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 42, color: "#ffffff" }}>
+                  <EventAvailable />
+                </ListItemIcon>
+                <ListItemText primary="Attendance" primaryTypographyProps={{ fontSize: 14, fontWeight: 400, color: "#ffffff" }} />
+                {attendanceModuleOpen ? <ExpandLess sx={{ color: "#ffffff" }} /> : <ExpandMore sx={{ color: "#ffffff" }} />}
+              </ListItemButton>
+            </ListItem>
+
+            {attendanceModuleOpen ? (
+              <Box sx={{ pl: 3, pr: 1, pb: 0.5 }}>
+                {visibleAttendanceItems.map((item) => (
                   <ListItem key={item.value} disablePadding>
                     <ListItemButton
                       selected={adminView === item.value}

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AssessmentManager from "@/app/(components)/AssessmentManager";
-import AttendanceManager from "@/app/admin/attendance/AttendanceManager";
+import TeacherAttendance from "@/app/teacher/TeacherAttendance";
 import {
   Box,
   Button,
@@ -289,11 +289,11 @@ export default function TeacherPage() {
             Create Subject
           </Button>
           <Button variant={showAttendance ? "contained" : "outlined"} onClick={() => setShowAttendance((current) => !current)} sx={{ ml: 2 }}>
-            Attendance
+            My Attendance
           </Button>
         </Paper>
 
-        {showAttendance ? <AttendanceManager role="TEACHER" permissions={["attendance.view", "attendance.mark", "attendance.edit"]} /> : null}
+        {showAttendance ? <TeacherAttendance /> : null}
 
         <Box sx={{ display: "grid", gap: 3, gridTemplateColumns: "280px 1fr" }}>
           <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>

@@ -99,8 +99,10 @@ const LoginModal = ({
         const redirectPath =
           userRole === "ADMIN"
             ? "/admin/users"
-            : userRole === "TEACHER" || userRole === "MANAGEMENT"
-              ? "/admin/attendance"
+            : userRole === "TEACHER"
+              ? "/admin/attendance/teachers"
+              : userRole === "MANAGEMENT"
+                ? "/admin/attendance/management"
               : `/courses/${authData.user.studyingClass || 1}/home`;
 
         router.replace(redirectPath);
@@ -272,7 +274,7 @@ const LoginModal = ({
 
       <DialogContent sx={{ gridColumn: useFullScreenLayout ? { xs: "1", md: "2" } : undefined, gridRow: useFullScreenLayout ? { xs: "4", md: "2" } : undefined, alignSelf: "stretch", display: useFullScreenLayout ? "flex" : undefined, flexDirection: useFullScreenLayout ? "column" : undefined, justifyContent: useFullScreenLayout ? "center" : undefined, transform: useFullScreenLayout ? { xs: "none", md: "translateX(-80px)" } : undefined, p: useFullScreenLayout ? { xs: 3, sm: 5, md: 4 } : 4, width: "100%" }}>
         {useFullScreenLayout ? (
-          <Typography component="h2" sx={{ fontSize: { xs: 28, sm: 32 }, lineHeight: 1.15, fontWeight: 800, mb: 4 }}>
+          <Typography component="h2" sx={{ fontSize: { xs: 28, sm: 32 }, lineHeight: 1.15, fontWeight: 800, mb: 4, textAlign: { xs: "center", md: "left" } }}>
             Welcome to CBLC<br />Management
           </Typography>
         ) : null}

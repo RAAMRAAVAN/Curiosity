@@ -74,11 +74,18 @@ export default function AdminPage(props) {
       return;
     }
 
-    if (window.location.pathname === '/admin') {
+    if (window.location.pathname === '/admin' && admin) {
       const userRole = String(admin?.role || '').toUpperCase();
-      router.replace(userRole === 'ADMIN' ? '/admin/users' : '/admin/attendance');
+      const landingPath = userRole === 'ADMIN'
+        ? '/admin/users'
+        : userRole === 'TEACHER'
+          ? '/admin/attendance/teachers'
+          : userRole === 'MANAGEMENT'
+            ? '/admin/attendance/management'
+            : '/admin/attendance';
+      router.replace(landingPath);
     }
-  }, [searchParams, router, admin?.role]);
+  }, [searchParams, router, admin]);
 
   useEffect(() => {
     const restoreSession = async () => {

@@ -53,6 +53,8 @@ model Center {
   managements        Management[]
   parents            Parent[]
   studentAttendances StudentAttendance[]
+  teacherAttendances TeacherAttendance[]
+  managementAttendances ManagementAttendance[]
   assessments316     Assessment316[]
 }
 
@@ -196,6 +198,7 @@ model Teacher {
 
   // Relations
   teacherSubjects TeacherSubject[]
+  attendances     TeacherAttendance[]
 }
 
 model Student {
@@ -259,6 +262,8 @@ model Management {
   address       String?
   schoolName    String?
   studyingClass String?
+
+  attendances ManagementAttendance[]
 
   status Boolean @default(true)
 
@@ -748,6 +753,56 @@ model StudentAttendance {
   @@index([attendanceDate, centerId, classId])
   @@index([studentId])
   @@map("student_attendances")
+}
+
+model TeacherAttendance {
+  id             String   @id @default(cuid())
+  attendanceDate DateTime @map("attendance_date") @db.Date
+  teacherId      String   @map("teacher_id")
+  teacher        Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  centerId       String?  @map("center_id")
+  center         Center?  @relation(fields: [centerId], references: [id], onDelete: SetNull)
+
+  checkInAt                 DateTime? @map("check_in_at")
+  checkInLatitude           Decimal?  @map("check_in_latitude") @db.Decimal(9, 6)
+  checkInLongitude          Decimal?  @map("check_in_longitude") @db.Decimal(9, 6)
+  checkInAccuracyMeters     Decimal?  @map("check_in_accuracy_meters") @db.Decimal(8, 2)
+  checkOutAt                DateTime? @map("check_out_at")
+  checkOutLatitude          Decimal?  @map("check_out_latitude") @db.Decimal(9, 6)
+  checkOutLongitude         Decimal?  @map("check_out_longitude") @db.Decimal(9, 6)
+  checkOutAccuracyMeters    Decimal?  @map("check_out_accuracy_meters") @db.Decimal(8, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([attendanceDate, teacherId])
+  @@index([attendanceDate, centerId])
+  @@map("teacher_attendances")
+}
+
+model ManagementAttendance {
+  id             String     @id @default(cuid())
+  attendanceDate DateTime   @map("attendance_date") @db.Date
+  managementId   String     @map("management_id")
+  management     Management @relation(fields: [managementId], references: [id], onDelete: Cascade)
+  centerId       String?    @map("center_id")
+  center         Center?    @relation(fields: [centerId], references: [id], onDelete: SetNull)
+
+  checkInAt              DateTime? @map("check_in_at")
+  checkInLatitude        Decimal?  @map("check_in_latitude") @db.Decimal(9, 6)
+  checkInLongitude       Decimal?  @map("check_in_longitude") @db.Decimal(9, 6)
+  checkInAccuracyMeters  Decimal?  @map("check_in_accuracy_meters") @db.Decimal(8, 2)
+  checkOutAt             DateTime? @map("check_out_at")
+  checkOutLatitude       Decimal?  @map("check_out_latitude") @db.Decimal(9, 6)
+  checkOutLongitude      Decimal?  @map("check_out_longitude") @db.Decimal(9, 6)
+  checkOutAccuracyMeters Decimal?  @map("check_out_accuracy_meters") @db.Decimal(8, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([attendanceDate, managementId])
+  @@index([attendanceDate, centerId])
+  @@map("management_attendances")
 }
 
 model AssessmentAttendance {

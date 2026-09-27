@@ -13,6 +13,12 @@ const routeValues = {
   teachers: '/admin/teachers',
   centers: '/admin/centers',
   students: '/admin/students',
+  'student-attendance': '/admin/attendance/students',
+  'student-monthly-attendance': '/admin/attendance/monthly',
+  'management-monthly-attendance': '/admin/attendance/management/monthly',
+  'teacher-monthly-attendance': '/admin/attendance/teachers/monthly',
+  'teacher-attendance': '/admin/attendance/teachers',
+  'management-attendance': '/admin/attendance/management',
   attendance: '/admin/attendance',
   roles: '/admin/roles',
   'reset-password': '/admin/reset-password',
@@ -21,6 +27,12 @@ const routeValues = {
   results: '/admin/assessment-results',
   'results-3-16': '/admin/assessment-results-3-16',
 };
+
+const monthlyAttendanceViews = [
+  'student-monthly-attendance',
+  'management-monthly-attendance',
+  'teacher-monthly-attendance',
+];
 
 const getActiveView = (pathname) => {
   const normalized = (pathname || '').replace(/\/+$/, '');
@@ -146,10 +158,18 @@ function AdminLayoutContent({ children }) {
           transition: 'margin-left 0.3s ease-in-out',
           pt: 0,
           pb: { xs: 1, sm: 2, md: 3 },
-          px: { xs: ['attendance', 'results-3-16', 'users'].includes(activeView) ? 0 : 2, sm: 3, md: 0 },
-          pr: { xs: ['attendance', 'results-3-16', 'users'].includes(activeView) ? 0 : 2, sm: 3, md: 0 },
+          px: { xs: ['attendance', 'results-3-16', 'users'].includes(activeView) || monthlyAttendanceViews.includes(activeView) ? 0 : 2, sm: monthlyAttendanceViews.includes(activeView) ? 0 : 3, md: 0 },
+          pr: { xs: ['attendance', 'results-3-16', 'users'].includes(activeView) || monthlyAttendanceViews.includes(activeView) ? 0 : 2, sm: monthlyAttendanceViews.includes(activeView) ? 0 : 3, md: 0 },
           boxSizing: 'border-box',
-          minHeight: 'calc(100vh - 64px)',
+          height: monthlyAttendanceViews.includes(activeView) && !isMobile
+            ? (drawerOpen ? '100dvh' : 'calc(100dvh - 73px)')
+            : undefined,
+          minHeight: monthlyAttendanceViews.includes(activeView)
+            ? (isMobile
+              ? (drawerOpen ? '100dvh' : 'calc(100dvh - 73px)')
+              : (drawerOpen ? '100dvh' : 'calc(100dvh - 73px)'))
+            : 'calc(100vh - 64px)',
+          overflow: monthlyAttendanceViews.includes(activeView) && !isMobile ? 'hidden' : undefined,
         }}
       >
         {children}
