@@ -581,9 +581,9 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         fullScreen={isMobile}
         PaperProps={{ sx: { display: 'flex', flexDirection: 'column',  } }}
       >
-        <DialogTitle>Pending Students</DialogTitle>
-        <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-          <TextField label="Search by Name" value={pendingSearch} onChange={(event) => setPendingSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
+        <DialogTitle sx={{ bgcolor: '#0a336b', color: '#ffffff', fontWeight: 700, py: 2 }}>Pending Students</DialogTitle>
+        <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto', bgcolor: '#f3f6fb' }}>
+          <TextField label="Search by Name" value={pendingSearch} onChange={(event) => setPendingSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2, bgcolor: '#ffffff', borderRadius: 1 }} />
           {pendingLoading ? (
             <Loader variant='section' />
           ) : filteredPendingStudents.length === 0 ? (
@@ -592,12 +592,12 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
             <List dense disablePadding>
               {filteredPendingStudents.map((group) => (
                 <Box key={group.className} sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Class {group.className}</Typography>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, px: 1.25, py: 0.75, bgcolor: 'rgba(10, 51, 107, 0.08)', color: '#0a336b', borderLeft: '3px solid #0a336b', borderRadius: '0 4px 4px 0' }}>Class {group.className}</Typography>
                   {group.students.map((student) => (
-                    <ListItem key={student.id} disablePadding secondaryAction={
+                    <ListItem key={student.id} disablePadding sx={{ mb: 0.75, border: '1px solid #d7e0eb', borderRadius: 1, bgcolor: '#ffffff', overflow: 'hidden' }} secondaryAction={
                       <Checkbox edge="end" checked={selectedStudentsForAbsent.has(student.id)} onChange={() => toggleStudentForAbsent(student.id)} />
                     }>
-                      <ListItemButton onClick={() => openStudentAssessmentSubmission(student)}>
+                      <ListItemButton onClick={() => openStudentAssessmentSubmission(student)} sx={{ px: 1.5, py: 1.25, '&:hover': { bgcolor: '#f7faff' } }}>
                         <ListItemText primary={student.name} secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || 'N/A'}`} />
                       </ListItemButton>
                     </ListItem>
@@ -660,9 +660,9 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         fullScreen={isMobile}
         PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}
       >
-        <DialogTitle>Appeared Students</DialogTitle>
-        <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-          <TextField label="Search by Name" value={appearedSearch} onChange={(event) => setAppearedSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
+        <DialogTitle sx={{ bgcolor: '#0a336b', color: '#ffffff', fontWeight: 700, py: 2 }}>Appeared Students</DialogTitle>
+        <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto', bgcolor: '#f3f6fb' }}>
+          <TextField label="Search by Name" value={appearedSearch} onChange={(event) => setAppearedSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2, bgcolor: '#ffffff', borderRadius: 1 }} />
           {appearedLoading ? (
             <Loader variant='section' />
           ) : filteredAppearedStudents.length === 0 ? (
@@ -671,10 +671,10 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
             <List dense disablePadding>
               {filteredAppearedStudents.map((group) => (
                 <Box key={group.className} sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Class {group.className}</Typography>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, px: 1.25, py: 0.75, bgcolor: 'rgba(10, 51, 107, 0.08)', color: '#0a336b', borderLeft: '3px solid #0a336b', borderRadius: '0 4px 4px 0' }}>Class {group.className}</Typography>
                   {group.students.map((student) => (
-                    <ListItem key={student.id} disablePadding>
-                      <ListItemButton onClick={() => openAppearedStudentAssessmentEdit(student)}>
+                    <ListItem key={student.id} disablePadding sx={{ mb: 0.75, border: '1px solid #d7e0eb', borderRadius: 1, bgcolor: '#ffffff', overflow: 'hidden' }}>
+                      <ListItemButton onClick={() => openAppearedStudentAssessmentEdit(student)} sx={{ px: 1.5, py: 1.25, '&:hover': { bgcolor: '#f7faff' } }}>
                         <ListItemText primary={student.name} secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || 'N/A'}`} />
                       </ListItemButton>
                     </ListItem>
@@ -732,9 +732,9 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         fullScreen={isMobile}
         PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}
       >
-        <DialogTitle>Absent Students</DialogTitle>
-        <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-          <TextField label="Search by Name" value={absentSearch} onChange={(event) => setAbsentSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
+        <DialogTitle sx={{ bgcolor: '#0a336b', color: '#ffffff', fontWeight: 700, py: 2 }}>Absent Students</DialogTitle>
+        <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto', bgcolor: '#f3f6fb' }}>
+          <TextField label="Search by Name" value={absentSearch} onChange={(event) => setAbsentSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2, bgcolor: '#ffffff', borderRadius: 1 }} />
           {absentLoading ? (
             <Loader variant='section' />
           ) : filteredAbsentStudents.length === 0 ? (
@@ -743,12 +743,12 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
             <List dense disablePadding>
               {filteredAbsentStudents.map((group) => (
                 <Box key={group.className} sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Class {group.className}</Typography>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, px: 1.25, py: 0.75, bgcolor: 'rgba(10, 51, 107, 0.08)', color: '#0a336b', borderLeft: '3px solid #0a336b', borderRadius: '0 4px 4px 0' }}>Class {group.className}</Typography>
                   {group.students.map((student) => (
-                    <ListItem key={student.id} disablePadding secondaryAction={
+                    <ListItem key={student.id} disablePadding sx={{ mb: 0.75, border: '1px solid #d7e0eb', borderRadius: 1, bgcolor: '#ffffff', overflow: 'hidden' }} secondaryAction={
                       <Checkbox edge="end" checked={selectedStudentsForAbsent.has(student.id)} onChange={() => toggleStudentForAbsent(student.id)} />
                     }>
-                      <ListItemButton>
+                      <ListItemButton sx={{ px: 1.5, py: 1.25, '&:hover': { bgcolor: '#f7faff' } }}>
                         <ListItemText primary={student.name} secondary={student.reason ? `Reason: ${student.reason}` : 'Absent'} />
                       </ListItemButton>
                     </ListItem>

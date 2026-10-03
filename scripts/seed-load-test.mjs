@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import bcrypt from "bcryptjs";
+import { createHash } from "node:crypto";
 import { prisma } from "../server/prisma.js";
 
 const MARKER_KEY = "load-test.dataset.v1";
@@ -27,22 +28,15 @@ async function createInBatches(model, rows) {
 
 async function cleanup() {
   console.log("Removing load-test-prefixed records...");
-  const marker = await prisma.appSetting.findUnique({ where: { key: MARKER_KEY } });
-  const markerData = marker?.value ? JSON.parse(marker.value) : {};
   await prisma.appSetting.deleteMany({
     where: { OR: [{ key: MARKER_KEY }, { key: { startsWith: "rbac.userAccess.load_" } }] },
   });
+  await prisma.userAccessAssignment.deleteMany({ where: { userId: { startsWith: "load_" } } });
+  await prisma.customRole.deleteMany({ where: { id: { startsWith: "load_role_" } } });
   await prisma.user.deleteMany({ where: { id: { startsWith: "load_" } } });
   await prisma.assessment.deleteMany({ where: { id: { startsWith: "load_" } } });
   await prisma.class.deleteMany({ where: { id: { startsWith: "load_" } } });
   await prisma.center.deleteMany({ where: { id: { startsWith: "load_" } } });
-  if (markerData.previousRolesValue) {
-    await prisma.appSetting.upsert({
-      where: { key: "rbac.roles.v1" },
-      create: { key: "rbac.roles.v1", value: markerData.previousRolesValue },
-      update: { value: markerData.previousRolesValue },
-    });
-  }
   console.log("Load-test records removed.");
 }
 
@@ -52,11 +46,10 @@ async function seed() {
     throw new Error("A load-test dataset already exists. Run `node scripts/seed-load-test.mjs cleanup` first.");
   }
 
-  const existingRolesSetting = await prisma.appSetting.findUnique({ where: { key: "rbac.roles.v1" } });
   await prisma.appSetting.create({
     data: {
       key: MARKER_KEY,
-      value: JSON.stringify({ state: "seeding", previousRolesValue: existingRolesSetting?.value || null }),
+      value: JSON.stringify({ state: "seeding" }),
     },
   });
 
@@ -220,25 +213,41 @@ async function seed() {
     { id: "load_role_manager", name: "Load Manager", permissions: ["users.view", "teachers.view", "students.view", "results.view", "attendance.view"] },
     { id: "load_role_coordinator", name: "Load Coordinator", permissions: ["teachers.view", "students.view", "attendance.view", "attendance.mark", "assessments.view"] },
   ];
-  const existingRoles = existingRolesSetting?.value ? JSON.parse(existingRolesSetting.value) : [];
-  const mergedRoles = [
-    ...(Array.isArray(existingRoles) ? existingRoles.filter((role) => !String(role.id || "").startsWith("load_role_")) : []),
-    ...roles,
-  ];
-  await prisma.appSetting.upsert({ where: { key: "rbac.roles.v1" }, create: { key: "rbac.roles.v1", value: JSON.stringify(mergedRoles) }, update: { value: JSON.stringify(mergedRoles) } });
-  await prisma.appSetting.update({
-    where: { key: MARKER_KEY },
-    data: { value: JSON.stringify({ state: "ready", previousRolesValue: existingRolesSetting?.value || null, centers: CENTER_COUNT, students: studentUsers.length, teachers: teacherUsers.length, attendanceDays: ATTENDANCE_DAYS, assessments: assessments.length, assessmentResults: results.length }) },
+  const permissionKeys = Array.from(new Set(roles.flatMap((role) => role.permissions)));
+  await prisma.permission.createMany({
+    data: permissionKeys.map((key) => ({
+      id: `perm_${createHash("sha1").update(key).digest("hex")}`,
+      key,
+      label: key,
+      category: "Load Test",
+    })),
+    skipDuplicates: true,
   });
-  for (let index = 0; index < managementUsers.length; index += 1) {
-    const role = index < 10 ? roles[0] : index < 20 ? roles[1] : roles[2];
-    await prisma.appSetting.create({
+  for (const role of roles) {
+    await prisma.customRole.create({
       data: {
-        key: `rbac.userAccess.${managementUsers[index].id}.v1`,
-        value: JSON.stringify({ roleId: role.id, centerIds: centers.map((center) => center.id), updatedAt: new Date().toISOString() }),
+        id: role.id,
+        name: role.name,
+        permissions: {
+          create: role.permissions.map((key) => ({ permission: { connect: { key } } })),
+        },
       },
     });
   }
+  await prisma.appSetting.update({
+    where: { key: MARKER_KEY },
+    data: { value: JSON.stringify({ state: "ready", centers: CENTER_COUNT, students: studentUsers.length, teachers: teacherUsers.length, attendanceDays: ATTENDANCE_DAYS, assessments: assessments.length, assessmentResults: results.length }) },
+  });
+  const assignmentRows = [];
+  const assignmentCenterRows = [];
+  for (let index = 0; index < managementUsers.length; index += 1) {
+    const role = index < 10 ? roles[0] : index < 20 ? roles[1] : roles[2];
+    const userId = managementUsers[index].id;
+    assignmentRows.push({ userId, roleId: role.id });
+    assignmentCenterRows.push(...centers.map((center) => ({ userId, centerId: center.id })));
+  }
+  await createInBatches(prisma.userAccessAssignment, assignmentRows);
+  await createInBatches(prisma.userAccessAssignmentCenter, assignmentCenterRows);
 
   console.log(JSON.stringify({
     centers: centers.length,

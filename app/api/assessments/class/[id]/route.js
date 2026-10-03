@@ -1,6 +1,7 @@
 import { prisma } from '@/server/prisma'; // Update if your prisma import is different
 import { ApiResponse } from '@/utils/apiResponse';
 import { requireAdminPermission } from '@/lib/adminRbac';
+import { getAssessmentVisibleClassValues } from '@/lib/assessmentStudentScope';
 // import { buildAssessmentWithStats } from "@/lib/assessment"; // Update path if needed
 
 const getAccessibleCenterIds = (actor, scopedCenterId) => {
@@ -15,15 +16,9 @@ const getAccessibleCenterIds = (actor, scopedCenterId) => {
     ));
 };
 
-const getAssessmentEligibleStudentIds = async (assessment, accessibleCenterIds) => {
-    const visibleClassIds = Array.from(new Set([
-        assessment.classId,
-        ...((Array.isArray(assessment.allowedClasses) ? assessment.allowedClasses : []).map((item) => item.classId).filter(Boolean)),
-    ])).filter(Boolean);
-
-    if (!visibleClassIds.length) {
-        return [];
-    }
+const getAssessmentEligibleStudentIds = async (assessment, accessibleCenterIds, teacherClassIds) => {
+    const visibleClassValues = getAssessmentVisibleClassValues(assessment, accessibleCenterIds, teacherClassIds);
+    if (!visibleClassValues.length) return [];
 
     const centerFilter = accessibleCenterIds === null
         ? undefined
@@ -34,7 +29,7 @@ const getAssessmentEligibleStudentIds = async (assessment, accessibleCenterIds) 
             role: 'STUDENT',
             status: true,
             student: {
-                studyingClass: { in: visibleClassIds },
+                studyingClass: { in: visibleClassValues },
                 ...(centerFilter !== undefined ? { centerId: centerFilter } : {}),
             },
         },
@@ -44,34 +39,23 @@ const getAssessmentEligibleStudentIds = async (assessment, accessibleCenterIds) 
     return students.map((student) => student.id);
 };
 
-const buildAssessmentWithStats = async (assessment, accessibleCenterIds) => {
-    const eligibleStudentIds = await getAssessmentEligibleStudentIds(assessment, accessibleCenterIds);
-    const resultCenterFilter = accessibleCenterIds === null
-        ? {}
-        : { user: { student: { centerId: { in: accessibleCenterIds } } } };
+const buildAssessmentWithStats = async (assessment, accessibleCenterIds, teacherClassIds) => {
+    const eligibleStudentIds = await getAssessmentEligibleStudentIds(assessment, accessibleCenterIds, teacherClassIds);
 
-    const [attemptCount, attemptUsers, absentStudents] = await Promise.all([
-        prisma.assessmentResult.count({
-            where: {
-                assessmentId: assessment.id,
-                status: true,
-                ...resultCenterFilter,
-            },
-        }),
+    const [attemptUsers, absentStudents] = await Promise.all([
         prisma.assessmentResult.findMany({
             where: {
                 assessmentId: assessment.id,
                 status: true,
-                ...resultCenterFilter,
+                userId: { in: eligibleStudentIds },
             },
             select: { userId: true },
-            orderBy: { createdAt: 'asc' },
         }),
         prisma.assessmentAttendance.findMany({
             where: {
                 assessmentId: assessment.id,
                 status: 'ABSENT',
-                ...resultCenterFilter,
+                userId: { in: eligibleStudentIds },
             },
             select: { userId: true },
         }),
@@ -80,6 +64,7 @@ const buildAssessmentWithStats = async (assessment, accessibleCenterIds) => {
     const attemptUserIds = new Set(attemptUsers.map((item) => item.userId));
     const absentUserIds = new Set(absentStudents.map((item) => item.userId));
     const pending = eligibleStudentIds.filter((id) => !attemptUserIds.has(id) && !absentUserIds.has(id)).length;
+    const attemptCount = eligibleStudentIds.filter((id) => attemptUserIds.has(id)).length;
 
     return {
         ...assessment,
@@ -102,10 +87,15 @@ export async function GET(req, { params }) {
 
         let scopedCenterId = null;
         let teacherId = null;
+        let teacherClassIds = null;
         if (auth.actor.isTeacher) {
             const teacherProfile = await prisma.teacher.findUnique({
                 where: { userId: auth.actor.userId },
-            select: { id: true, centerId: true },
+                select: {
+                    id: true,
+                    centerId: true,
+                    user: { select: { classAccesses: { where: { status: true }, select: { classId: true } } } },
+                },
             });
 
             if (!teacherProfile?.centerId) {
@@ -114,10 +104,21 @@ export async function GET(req, { params }) {
 
             scopedCenterId = teacherProfile.centerId;
             teacherId = teacherProfile.id;
+            teacherClassIds = teacherProfile.user.classAccesses.map((access) => access.classId);
         }
 
         if (!classId) {
             return ApiResponse.error("Class ID is required", 400);
+        }
+
+        if (auth.actor.isTeacher) {
+            const classAccess = await prisma.userClassAccess.findFirst({
+                where: { userId: auth.actor.userId, classId, status: true },
+                select: { id: true },
+            });
+            if (!classAccess) {
+                return ApiResponse.error('You are not authorized to view this class.', 403);
+            }
         }
 
             // Load class record to also match students who have stored className in their profile
@@ -130,10 +131,6 @@ export async function GET(req, { params }) {
                 return ApiResponse.error('Forbidden', 403);
             }
 
-            const studyingClassValues = classRecord
-                ? [classId, classRecord.className]
-                : [classId];
-
             const assessments = await prisma.assessment.findMany({
             where: {
                 classId,
@@ -143,6 +140,7 @@ export async function GET(req, { params }) {
                 ...(teacherId ? { subject: { teacherSubjects: { some: { teacherId, status: true } } } } : {}),
             },
             include: {
+                class: { select: { id: true, className: true, centerId: true } },
                 subject: {
                     select: {
                         id: true,
@@ -156,6 +154,7 @@ export async function GET(req, { params }) {
                     },
                     select: {
                         classId: true,
+                        class: { select: { id: true, className: true, centerId: true } },
                     },
                 },
                 questions: {
@@ -191,14 +190,12 @@ export async function GET(req, { params }) {
         const accessibleCenterIds = getAccessibleCenterIds(auth.actor, scopedCenterId);
         const assessmentsWithStats = await Promise.all(
             assessments.map((assessment) =>
-                buildAssessmentWithStats(assessment, accessibleCenterIds)
+                buildAssessmentWithStats(assessment, accessibleCenterIds, teacherClassIds)
             )
         );
 
         return ApiResponse.success(assessmentsWithStats);
     } catch (error) {
-        console.error(error);
-
         return ApiResponse.error(
             "Unable to load assessments",
             500,

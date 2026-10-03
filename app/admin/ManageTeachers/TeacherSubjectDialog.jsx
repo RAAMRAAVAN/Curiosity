@@ -51,25 +51,28 @@ const TeacherSubjectDialog = ({
     }
 
 }, [open, teacherId]);
-    const fetchClasses = async () => {
+    const fetchClasses = async (assignedClassIds) => {
 
     try {
 
         const res = await fetch(
-            "/api/classes-with-subjects"
+            "/api/classes-with-subjects",
+            { credentials: "include" }
         );
         const data = await res.json();
         if(data.success){
+            const assignedClassIdSet = new Set(assignedClassIds);
+            const assignedClasses = (data.data || []).filter(item => assignedClassIdSet.has(item.id));
 
-            setClasses(data.data);
+            setClasses(assignedClasses);
 
 
             setExpanded(
-                data.data.map(
+                assignedClasses.map(
                     item=>item.id
                 )
             );
-            return data.data;
+            return assignedClasses;
         }
         return [];
     }
@@ -208,6 +211,7 @@ const TeacherSubjectDialog = ({
                 headers: {
                     "Content-Type": "application/json",
                 },
+                credentials: "include",
                 body: JSON.stringify(payload),
             });
 
@@ -281,7 +285,10 @@ const TeacherSubjectDialog = ({
 
 
 
-        setSelected(selectedIds);
+        return {
+            subjectIds: selectedIds,
+            classIds: Array.isArray(data.data.classIds) ? data.data.classIds : [],
+        };
 
 
 
@@ -295,7 +302,7 @@ const TeacherSubjectDialog = ({
         );
 
 
-        setSelected([]);
+        return { subjectIds: [], classIds: [] };
 
 
     }
@@ -311,11 +318,10 @@ const TeacherSubjectDialog = ({
         setPageLoading(true);
 
 
-        // Load classes and assigned subjects together
-        await Promise.all([
-            fetchClasses(),
-            loadAssignedSubjects(teacherId)
-        ]);
+        const assignment = await loadAssignedSubjects(teacherId);
+        const assignedClasses = await fetchClasses(assignment.classIds);
+        const visibleSubjectIds = new Set(assignedClasses.flatMap(cls => cls.subjects.map(subject => subject.id)));
+        setSelected(assignment.subjectIds.filter(subjectId => visibleSubjectIds.has(subjectId)));
 
 
     } catch(error){
@@ -547,6 +553,9 @@ const TeacherSubjectDialog = ({
                     ))
 
                 }
+                {classes.length === 0 ? (
+                    <Typography color="text.secondary">Map classes for this teacher before assigning subjects.</Typography>
+                ) : null}
 
 
 

@@ -1,6 +1,7 @@
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { ApiResponse } from '@/utils/apiResponse';
+import { canTeacherAccessAssessment316, getAssessment316TeacherAssignments } from '@/lib/assessment316Access';
 
 const normalizeIds = (value) => Array.from(new Set(
   (Array.isArray(value) ? value : [])
@@ -71,6 +72,10 @@ export async function GET(req, { params }) {
     const { id } = await params;
     const record = await loadRecord(id);
     if (!record || !record.status) return ApiResponse.error('Assessment not found.', 404);
+    const teacherAssignments = await getAssessment316TeacherAssignments(prisma, auth.actor);
+    if (!canTeacherAccessAssessment316(record, teacherAssignments)) {
+      return ApiResponse.error('You are not authorized to access this assessment.', 403);
+    }
 
     return ApiResponse.success(record);
   } catch (error) {
@@ -87,6 +92,10 @@ export async function PATCH(req, { params }) {
     const { id } = await params;
     const record = await loadRecord(id);
     if (!record || !record.status) return ApiResponse.error('Assessment not found.', 404);
+    const teacherAssignments = await getAssessment316TeacherAssignments(prisma, auth.actor);
+    if (!canTeacherAccessAssessment316(record, teacherAssignments)) {
+      return ApiResponse.error('You are not authorized to edit this assessment.', 403);
+    }
 
     const body = await req.json();
     const title = String(body?.title ?? record.title).trim();
@@ -153,6 +162,10 @@ export async function DELETE(req, { params }) {
     const { id } = await params;
     const record = await loadRecord(id);
     if (!record || !record.status) return ApiResponse.error('Assessment not found.', 404);
+    const teacherAssignments = await getAssessment316TeacherAssignments(prisma, auth.actor);
+    if (!canTeacherAccessAssessment316(record, teacherAssignments)) {
+      return ApiResponse.error('You are not authorized to delete this assessment.', 403);
+    }
 
     const deleted = await prisma.assessment316.update({
       where: { id },

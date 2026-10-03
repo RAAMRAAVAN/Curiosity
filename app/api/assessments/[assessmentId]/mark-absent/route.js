@@ -1,7 +1,7 @@
 import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
-import { teacherCanAccessAssessment } from '@/lib/teacherAssessmentAccess';
+import { getTeacherAssignedClassValues, teacherCanAccessAssessment } from '@/lib/teacherAssessmentAccess';
 
 export async function POST(req, { params }) {
   try {
@@ -27,10 +27,12 @@ export async function POST(req, { params }) {
     }
 
     let scopedCenterId = null;
+    let teacherAssignedClassValues = [];
+    let teacherVisibleClassValues = [];
     if (auth.actor.isTeacher) {
       const teacherProfile = await prisma.teacher.findUnique({
         where: { userId: auth.actor.userId },
-        select: { centerId: true },
+        select: { id: true, centerId: true },
       });
 
       if (!teacherProfile?.centerId) {
@@ -38,6 +40,7 @@ export async function POST(req, { params }) {
       }
 
       scopedCenterId = teacherProfile.centerId;
+  teacherAssignedClassValues = await getTeacherAssignedClassValues(prisma, teacherProfile.id);
     }
 
     const assessment = await prisma.assessment.findUnique({
@@ -74,8 +77,10 @@ export async function POST(req, { params }) {
         : [];
 
       if (auth.actor.isTeacher && scopedCenterId) {
-        const allowedVisibleClassIds = visibleClasses
-          .filter((item) => !item.centerId || item.centerId === scopedCenterId)
+        const allowedVisibleClasses = visibleClasses
+          .filter((item) => (!item.centerId || item.centerId === scopedCenterId)
+            && teacherAssignedClassValues.includes(String(item.id)));
+        const allowedVisibleClassIds = allowedVisibleClasses
           .map((item) => item.id)
           .filter(Boolean);
 
@@ -86,6 +91,9 @@ export async function POST(req, { params }) {
         if (visibleCenterIds.length && !visibleCenterIds.includes(scopedCenterId)) {
           return ApiResponse.error('Forbidden', 403);
         }
+        teacherVisibleClassValues = Array.from(new Set(
+          allowedVisibleClasses.flatMap((item) => [item.id, item.className]).filter(Boolean)
+        ));
       } else if (!auth.actor.isTeacher && managementAccessibleCenters.length > 0) {
         const accessibleVisibleClassIds = visibleClasses
           .filter((item) => !item.centerId || managementAccessibleCenters.includes(String(item.centerId).trim()))
@@ -106,7 +114,7 @@ export async function POST(req, { params }) {
         role: 'STUDENT',
         status: true,
         student: {
-          studyingClass: { in: visibleClassIds },
+          studyingClass: { in: auth.actor.isTeacher ? teacherVisibleClassValues : visibleClassIds },
           ...(scopedCenterId ? { centerId: scopedCenterId } : {}),
         },
       },

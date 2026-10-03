@@ -2,7 +2,11 @@ import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { buildAssessment316StatusGroups } from '@/lib/assessment316Status';
-import { getAssessment316AccessibleCenterIds } from '@/lib/assessment316Access';
+import {
+  getAssessment316AccessibleCenterIds,
+  getAssessment316TeacherAssignments,
+  getAssessment316TeacherVisibleClasses,
+} from '@/lib/assessment316Access';
 
 const normalizeStudent = (student) => {
   if (!student || !student.student) return student;
@@ -75,6 +79,7 @@ export async function GET(req, { params }) {
         id: true,
         centerId: true,
         allowedClasses: { select: { classId: true, class: { select: { id: true, className: true, centerId: true } } } },
+        subjects: { select: { subjectId: true, subject: { select: { classId: true } } } },
       },
     });
 
@@ -82,12 +87,16 @@ export async function GET(req, { params }) {
       return ApiResponse.error('Assessment not found', 404);
     }
 
-    const visibleClassIds = Array.from(
-      new Set(assessment.allowedClasses.map((item) => String(item.classId)).filter(Boolean))
-    );
+    const teacherAssignments = await getAssessment316TeacherAssignments(prisma, auth.actor);
+    const visibleClasses = getAssessment316TeacherVisibleClasses(assessment, teacherAssignments);
+    if (teacherAssignments && visibleClasses.length === 0) {
+      return ApiResponse.error('You are not authorized to view students in this assessment.', 403);
+    }
+
+    const visibleClassIds = Array.from(new Set(visibleClasses.map((item) => String(item.classId)).filter(Boolean)));
     const allowedClassNames = Array.from(
       new Set(
-        assessment.allowedClasses
+        visibleClasses
           .map((item) => item.class?.className)
           .filter((value) => typeof value === 'string' && value.trim())
       )

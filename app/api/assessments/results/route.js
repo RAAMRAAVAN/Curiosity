@@ -4,6 +4,7 @@ import { getUserFromRequest } from '@/server/auth';
 import { calculateGradeFromPercentage, DEFAULT_GRADE_BANDS } from '@/lib/assessmentGrading';
 import { createAssessmentResultRecord, getAssessmentMetadata, updateAssessmentResultRecord } from '@/lib/assessmentCompatibility';
 import { requireAdminPermission } from '@/lib/adminRbac';
+import { getTeacherAssignedClassValues, teacherCanAccessAssessment } from '@/lib/teacherAssessmentAccess';
 
 export async function POST(req) {
   try {
@@ -26,6 +27,8 @@ export async function POST(req) {
 
     const studentId = userId || user?.userId || user?.id;
     const actorId = user?.userId || user?.id || null;
+    let actingActor = null;
+    let targetStudent = null;
 
     if (!studentId) {
       return ApiResponse.error("User is required", 400);
@@ -41,10 +44,11 @@ export async function POST(req) {
       if (!auth.ok) {
         return ApiResponse.error(auth.message, auth.status);
       }
+      actingActor = auth.actor;
 
-      const targetStudent = await prisma.student.findUnique({
+      targetStudent = await prisma.student.findUnique({
         where: { userId: studentId },
-        select: { centerId: true },
+        select: { centerId: true, studyingClass: true },
       });
 
       if (!targetStudent) {
@@ -66,6 +70,20 @@ export async function POST(req) {
 
     if (!assessment) {
       return ApiResponse.error("Assessment not found", 404);
+    }
+
+    if (actingActor?.isTeacher) {
+      if (!(await teacherCanAccessAssessment(prisma, assessmentId, actingActor))) {
+        return ApiResponse.error('You are not authorized to manage this assessment.', 403);
+      }
+      const teacherProfile = await prisma.teacher.findUnique({
+        where: { userId: actingActor.userId },
+        select: { id: true },
+      });
+      const assignedClassValues = await getTeacherAssignedClassValues(prisma, teacherProfile?.id);
+      if (!assignedClassValues.includes(String(targetStudent?.studyingClass || '').trim())) {
+        return ApiResponse.error('You are not authorized to submit for students outside your assigned classes.', 403);
+      }
     }
 
     // ---------------------------------------------------
@@ -246,6 +264,17 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const assessmentId = searchParams.get('assessmentId');
     const userId = searchParams.get('userId');
+    let teacherId = null;
+    let teacherClassValues = [];
+    if (auth.actor.isTeacher) {
+      const teacherProfile = await prisma.teacher.findUnique({
+        where: { userId: auth.actor.userId },
+        select: { id: true },
+      });
+      if (!teacherProfile) return ApiResponse.error('Teacher account not found.', 404);
+      teacherId = teacherProfile.id;
+      teacherClassValues = await getTeacherAssignedClassValues(prisma, teacherId);
+    }
     const accessibleCenterIds = auth.actor.isAdmin
       ? null
       : Array.from(new Set(
@@ -253,16 +282,24 @@ export async function GET(req) {
             .map((centerId) => String(centerId).trim())
             .filter(Boolean)
         ));
-    const studentCenterFilter = accessibleCenterIds === null
-      ? {}
-      : { user: { student: { centerId: { in: accessibleCenterIds } } } };
+    const studentScope = {
+      ...(accessibleCenterIds === null ? {} : { centerId: { in: accessibleCenterIds } }),
+      ...(auth.actor.isTeacher ? { studyingClass: { in: teacherClassValues } } : {}),
+    };
+    const studentResultFilter = Object.keys(studentScope).length
+      ? { user: { student: studentScope } }
+      : {};
+    const teacherAssessmentFilter = teacherId
+      ? { assessment: { subject: { teacherSubjects: { some: { teacherId, status: true } } } } }
+      : {};
 
     const results = await prisma.assessmentResult.findMany({
       where: {
         ...(assessmentId ? { assessmentId } : {}),
         ...(userId ? { userId } : {}),
         status: true,
-        ...studentCenterFilter,
+        ...studentResultFilter,
+        ...teacherAssessmentFilter,
       },
       select: {
         id: true,

@@ -1,7 +1,7 @@
 import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
-import { teacherCanAccessAssessment } from '@/lib/teacherAssessmentAccess';
+import { getTeacherAssignedClassValues, teacherCanAccessAssessment } from '@/lib/teacherAssessmentAccess';
 
 const normalizeStudentCenter = (studentRecord) => {
   if (!studentRecord || !studentRecord.student) return studentRecord;
@@ -33,10 +33,11 @@ export async function GET(req, { params }) {
     const { assessmentId } = await params;
 
     let scopedCenterId = null;
+    let teacherAssignedClassValues = [];
     if (auth.actor.isTeacher) {
       const teacherProfile = await prisma.teacher.findUnique({
         where: { userId: auth.actor.userId },
-        select: { centerId: true },
+        select: { id: true, centerId: true },
       });
 
       if (!teacherProfile?.centerId) {
@@ -44,6 +45,7 @@ export async function GET(req, { params }) {
       }
 
       scopedCenterId = teacherProfile.centerId;
+  teacherAssignedClassValues = await getTeacherAssignedClassValues(prisma, teacherProfile.id);
     }
 
     const accessibleCenterIds = auth.actor.isAdmin
@@ -69,11 +71,36 @@ export async function GET(req, { params }) {
 
     const assessment = await prisma.assessment.findUnique({
       where: { id: assessmentId, status: true },
-      select: { id: true, class: { select: { centerId: true } } },
+      select: {
+        id: true,
+        class: { select: { id: true, className: true, centerId: true } },
+        allowedClasses: {
+          where: { active: true },
+          select: { classId: true, class: { select: { id: true, className: true, centerId: true } } },
+        },
+      },
     });
 
     if (!assessment) {
       return ApiResponse.error('Assessment not found', 404);
+    }
+
+    const visibleClasses = [assessment.class, ...assessment.allowedClasses.map((item) => item.class)].filter(Boolean);
+    const assignedVisibleClasses = auth.actor.isTeacher
+      ? visibleClasses.filter((item) =>
+          (!item.centerId || item.centerId === scopedCenterId)
+          && teacherAssignedClassValues.includes(String(item.id))
+        )
+      : auth.actor.isAdmin
+        ? visibleClasses
+        : visibleClasses.filter((item) =>
+            !item.centerId || accessibleCenterIds.includes(String(item.centerId).trim())
+          );
+    const visibleClassValues = Array.from(new Set(
+      assignedVisibleClasses.flatMap((item) => [item.id, item.className]).filter(Boolean)
+    ));
+    if (!visibleClassValues.length) {
+      return ApiResponse.error('You are not authorized to view students in this assessment.', 403);
     }
 
     if (!auth.actor.isAdmin && assessment.class?.centerId
@@ -81,12 +108,11 @@ export async function GET(req, { params }) {
       return ApiResponse.error('Forbidden', 403);
     }
 
-    const resultCenterFilter = accessibleCenterIds === null
-      ? {}
-      : { user: { student: { centerId: { in: accessibleCenterIds } } } };
-    const studentCenterFilter = accessibleCenterIds === null
-      ? {}
-      : { centerId: { in: accessibleCenterIds } };
+    const resultStudentFilter = {
+      ...(accessibleCenterIds === null ? {} : { centerId: { in: accessibleCenterIds } }),
+      studyingClass: { in: visibleClassValues },
+    };
+    const resultCenterFilter = { user: { student: resultStudentFilter } };
 
     const appearedResults = await prisma.assessmentResult.findMany({
       where: {
@@ -106,7 +132,7 @@ export async function GET(req, { params }) {
         role: 'STUDENT',
         status: true,
         id: { in: Array.from(appearedUserIds) },
-        student: studentCenterFilter,
+        ...(Object.keys(resultStudentFilter).length ? { student: resultStudentFilter } : {}),
       },
       select: {
         id: true,

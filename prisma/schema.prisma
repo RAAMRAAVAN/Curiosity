@@ -56,6 +56,7 @@ model Center {
   teacherAttendances TeacherAttendance[]
   managementAttendances ManagementAttendance[]
   assessments316     Assessment316[]
+  accessAssignments  UserAccessAssignmentCenter[]
 }
 
 //
@@ -88,6 +89,7 @@ model User {
   classAccesses               UserClassAccess[]
   subjectAccesses             UserSubjectAccess[]
   teacherSubjectAccesses      UserTeacherSubjectAccess[]
+  accessAssignment            UserAccessAssignment?
   assessmentResults            AssessmentResult[]
   assessmentReattemptRequests  AssessmentReattemptRequest[]
   assessmentsModified          Assessment[]                  @relation("AssessmentLastModifiedBy")
@@ -109,6 +111,69 @@ model AppSetting {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model CustomRole {
+  id          String                @id
+  name        String                @unique
+  description String                @default("") @db.Text
+  status      Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  permissions CustomRolePermission[]
+  assignments UserAccessAssignment[]
+
+  @@map("custom_roles")
+}
+
+model Permission {
+  id          String                @id @default(cuid())
+  key         String                @unique @map("permission_key")
+  label       String
+  category    String
+  description String?               @db.Text
+  status      Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  roles       CustomRolePermission[]
+
+  @@index([category, label])
+  @@map("permissions")
+}
+
+model CustomRolePermission {
+  roleId       String     @map("role_id")
+  permissionId String     @map("permission_id")
+  role         CustomRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model UserAccessAssignment {
+  userId    String                       @id @map("user_id")
+  roleId    String?                      @map("role_id")
+  createdAt DateTime                     @default(now())
+  updatedAt DateTime                     @updatedAt
+  user      User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      CustomRole?                  @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  centers   UserAccessAssignmentCenter[]
+
+  @@index([roleId])
+  @@map("user_access_assignments")
+}
+
+model UserAccessAssignmentCenter {
+  userId     String               @map("user_id")
+  centerId   String               @map("center_id")
+  assignment UserAccessAssignment @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  center     Center               @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@id([userId, centerId])
+  @@index([centerId])
+  @@map("user_access_assignment_centers")
 }
 
 //

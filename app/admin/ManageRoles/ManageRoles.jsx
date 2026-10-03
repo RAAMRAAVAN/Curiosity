@@ -32,87 +32,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import Tooltip from '@mui/material/Tooltip';
 
-const permissionGroups = [
-  {
-    title: 'Users',
-    permissions: ['users.view', 'users.create', 'users.edit', 'users.delete'],
-  },
-  {
-    title: 'Roles',
-    permissions: ['roles.view', 'roles.create', 'roles.edit', 'roles.delete', 'roles.assign'],
-  },
-  {
-    title: 'Centers',
-    permissions: ['centers.view', 'centers.create', 'centers.edit', 'centers.delete'],
-  },
-  {
-    title: 'Classes',
-    permissions: ['classes.view', 'classes.create', 'classes.edit', 'classes.delete', 'classes.mapping', 'class_content.edit'],
-  },
-  {
-    title: 'Subjects',
-    permissions: ['subjects.view', 'subjects.create', 'subjects.edit', 'subjects.delete'],
-  },
-  {
-    title: 'Assessments',
-    permissions: [
-      'assessments.view',
-      'assessments.create',
-      'assessments.edit',
-      'assessments.delete',
-      'assessments.pending.view',
-      'assessments.appeared.view',
-      'assessments.pending.appear',
-      'assessments.appeared.reappear',
-    ],
-  },
-  {
-    title: 'Assessment (3-16 years)',
-    permissions: [
-      'assessments316.view',
-      'assessments316.create',
-      'assessments316.edit',
-      'assessments316.delete',
-      'assessments316.pending.view',
-      'assessments316.appeared.view',
-      'assessments316.absent.view',
-      'assessments316.absent.mark',
-      'assessments316.absent.revoke',
-    ],
-  },
-  {
-    title: 'Teachers',
-    permissions: ['teachers.view', 'teachers.create', 'teachers.edit', 'teachers.delete', 'teachers.export'],
-  },
-  {
-    title: 'Students',
-    permissions: ['students.view', 'students.create', 'students.edit', 'students.delete', 'students.export'],
-  },
-  {
-    title: 'Assessment Results',
-    permissions: ['results.view', 'results.export'],
-  },
-  {
-    title: 'Attendance',
-    permissions: [
-      'attendance.view',
-      'attendance.students.view',
-      'attendance.students.monthly.view',
-      'attendance.management.monthly.view',
-      'attendance.teachers.monthly.view',
-      'attendance.teacher.self.view',
-      'attendance.management.self.view',
-      'attendance.mark',
-      'attendance.edit',
-      'attendance.holiday',
-    ],
-  },
-  {
-    title: 'Admin Navigation',
-    permissions: ['navigation.edit'],
-  },
-];
-
 const emptyForm = {
   name: '',
   description: '',
@@ -126,6 +45,7 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
   const [roles, setRoles] = useState([]);
+  const [permissionCatalog, setPermissionCatalog] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
@@ -157,13 +77,20 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
   const loadRoles = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/roles', { credentials: 'include' });
-      const data = await res.json();
-      if (!data.success) {
-        throw new Error(data.message || 'Unable to load roles');
+      const [rolesResponse, permissionsResponse] = await Promise.all([
+        fetch('/api/admin/roles', { credentials: 'include' }),
+        fetch('/api/admin/permissions', { credentials: 'include' }),
+      ]);
+      const [rolesData, permissionsData] = await Promise.all([rolesResponse.json(), permissionsResponse.json()]);
+      if (!rolesResponse.ok || !rolesData.success) {
+        throw new Error(rolesData.message || 'Unable to load roles');
+      }
+      if (!permissionsResponse.ok || !permissionsData.success) {
+        throw new Error(permissionsData.message || 'Unable to load permissions');
       }
 
-      setRoles(Array.isArray(data.data) ? data.data : []);
+      setRoles(Array.isArray(rolesData.data) ? rolesData.data : []);
+      setPermissionCatalog(Array.isArray(permissionsData.data) ? permissionsData.data : []);
     } catch (error) {
       console.error(error);
       setMessage(error.message || 'Unable to load roles.');
@@ -183,6 +110,17 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
     }
     return map;
   }, [roles]);
+
+  const permissionGroups = useMemo(() => {
+    const groups = new Map();
+    for (const permission of permissionCatalog) {
+      const category = permission.category || 'Other';
+      const group = groups.get(category) || [];
+      group.push(permission);
+      groups.set(category, group);
+    }
+    return Array.from(groups, ([title, permissions]) => ({ title, permissions }));
+  }, [permissionCatalog]);
 
   const startCreate = () => {
     if (!canCreateRoles) {
@@ -442,15 +380,15 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
                     <Stack spacing={0.5}>
                       {group.permissions.map((permission) => (
                         <FormControlLabel
-                          key={permission}
+                          key={permission.key}
                           control={
                             <Switch
                               size="small"
-                              checked={form.permissions.includes(permission)}
-                              onChange={() => togglePermission(permission)}
+                              checked={form.permissions.includes(permission.key)}
+                              onChange={() => togglePermission(permission.key)}
                             />
                           }
-                          label={permission}
+                          label={permission.label}
                         />
                       ))}
                     </Stack>

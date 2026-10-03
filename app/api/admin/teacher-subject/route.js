@@ -5,7 +5,8 @@ import { requireAdminPermission } from '@/lib/adminRbac';
 
 
 export async function GET(req) {
-    const auth = await requireAdminPermission(req, 'teachers.view');
+    const viewAuth = await requireAdminPermission(req, 'teachers.view');
+    const auth = viewAuth.ok ? viewAuth : await requireAdminPermission(req, 'teachers.edit');
     if (!auth.ok) {
         return NextResponse.json({ success: false, message: auth.message }, { status: auth.status || 403 });
     }
@@ -46,7 +47,8 @@ export async function GET(req) {
 
             select:{
                 id:true,
-                name:true
+                name:true,
+                userId:true
             }
 
         });
@@ -70,10 +72,17 @@ export async function GET(req) {
 
 
         // Fetch assigned subjects
-        const assignedSubjects = await prisma.teacherSubject.findMany({
+        const classAccesses = await prisma.userClassAccess.findMany({
+            where: { userId: teacher.userId, status: true },
+            select: { classId: true },
+        });
+        const classIds = classAccesses.map((access) => access.classId);
+        const assignedSubjects = classIds.length ? await prisma.teacherSubject.findMany({
 
             where:{
-                teacherId
+                teacherId,
+                status: true,
+                subject: { classId: { in: classIds }, status: true },
             },
 
 
@@ -129,7 +138,7 @@ export async function GET(req) {
 
             }
 
-        });
+        }) : [];
 
 
 
@@ -166,6 +175,8 @@ export async function GET(req) {
                     teacherId:teacher.id,
 
                     teacherName:teacher.name,
+
+                    classIds,
 
                     subjects
                 }
@@ -263,9 +274,13 @@ export async function POST(request) {
 
 
 
-        const selectedSubjectIds = [
-            ...new Set(subjectIds)
-        ];
+        const selectedSubjectIds = Array.from(new Set(subjectIds.map((id) => String(id).trim()).filter(Boolean)));
+
+        const classAccesses = await prisma.userClassAccess.findMany({
+            where: { userId: teacher.userId, status: true },
+            select: { classId: true },
+        });
+        const mappedClassIds = new Set(classAccesses.map((access) => access.classId));
 
 
 
@@ -277,11 +292,13 @@ export async function POST(request) {
                 where:{
                     id:{
                         in:selectedSubjectIds
-                    }
+                    },
+                    status: true,
                 },
 
                 select:{
-                    id:true
+                    id:true,
+                    classId:true,
                 }
 
             });
@@ -302,6 +319,13 @@ export async function POST(request) {
 
             }
 
+            if (subjects.some((subject) => !mappedClassIds.has(subject.classId))) {
+                return NextResponse.json(
+                    { success: false, message: "Subjects can only be assigned from classes mapped to this teacher." },
+                    { status: 403 }
+                );
+            }
+
         }
 
 
@@ -310,26 +334,29 @@ export async function POST(request) {
         const existingMappings = await prisma.teacherSubject.findMany({
 
             where:{
-                teacherId
+                teacherId,
             },
 
             select:{
-                subjectId:true
+                subjectId:true,
+                status:true,
             }
 
         });
 
 
 
-        const existingSubjectIds = existingMappings.map(
-            item => item.subjectId
-        );
+        const existingSubjectIds = existingMappings.map((item) => item.subjectId);
+        const existingSubjectIdSet = new Set(existingSubjectIds);
+        const subjectsToReactivate = existingMappings
+            .filter((item) => !item.status && selectedSubjectIds.includes(item.subjectId))
+            .map((item) => item.subjectId);
 
 
 
         // New subjects
         const subjectsToAdd = selectedSubjectIds.filter(
-            id => !existingSubjectIds.includes(id)
+            id => !existingSubjectIdSet.has(id)
         );
 
 
@@ -359,6 +386,13 @@ export async function POST(request) {
 
                 });
 
+            }
+
+            if (subjectsToReactivate.length > 0) {
+                await tx.teacherSubject.updateMany({
+                    where: { teacherId, subjectId: { in: subjectsToReactivate } },
+                    data: { status: true },
+                });
             }
 
 

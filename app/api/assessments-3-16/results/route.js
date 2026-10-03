@@ -2,7 +2,12 @@ import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { buildAssessment316ResultSummary } from '@/lib/assessment316Results';
-import { getAssessment316AccessibleCenterIds } from '@/lib/assessment316Access';
+import {
+  canTeacherAccessAssessment316,
+  getAssessment316AccessibleCenterIds,
+  getAssessment316TeacherAssignments,
+  getAssessment316TeacherVisibleClasses,
+} from '@/lib/assessment316Access';
 
 const getMostSelectedOption = (responses = []) => {
   const counts = new Map();
@@ -29,6 +34,7 @@ export async function GET(req) {
     }
 
     const accessibleCenterIds = getAssessment316AccessibleCenterIds(auth.actor);
+    const teacherAssignments = await getAssessment316TeacherAssignments(prisma, auth.actor);
     const studentCenterFilter = accessibleCenterIds === null
       ? {}
       : { centerId: { in: accessibleCenterIds } };
@@ -48,6 +54,7 @@ export async function GET(req) {
         responses: {
           where: { status: true, ...resultCenterFilter },
           include: {
+            user: { select: { student: { select: { studyingClass: true, centerId: true } } } },
             items: {
               include: {
                 option: { select: { id: true, optionText: true } },
@@ -57,17 +64,48 @@ export async function GET(req) {
         },
         attendances: {
           where: { status: 'ABSENT', ...resultCenterFilter },
-          select: { userId: true },
+          select: {
+            userId: true,
+            user: { select: { student: { select: { studyingClass: true, centerId: true } } } },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    const summaries = await Promise.all(
-      assessments.map(async (assessment) => {
+    const visibleAssessments = assessments.filter((assessment) =>
+      canTeacherAccessAssessment316(assessment, teacherAssignments)
+    );
+    const summaries = (await Promise.all(
+      visibleAssessments.map(async (assessment) => {
+        const visibleClasses = getAssessment316TeacherVisibleClasses(assessment, teacherAssignments);
+        const visibleClassIds = new Set(visibleClasses.map((item) => String(item.classId)));
+        const visibleClassValues = new Set(
+          visibleClasses.flatMap((item) => [item.classId, item.class?.className]).filter(Boolean).map(String)
+        );
+        const visibleClassValueList = Array.from(visibleClassValues);
+        const visibleSubjectIds = teacherAssignments
+          ? new Set(teacherAssignments.subjectMappings
+              .filter((mapping) => visibleClassIds.has(mapping.classId))
+              .map((mapping) => mapping.subjectId))
+          : null;
+        const visibleResponses = assessment.responses.filter((response) => {
+          if (!teacherAssignments) return true;
+          const student = response.user?.student;
+          return student
+            && visibleClassValues.has(String(student.studyingClass || ''))
+            && accessibleCenterIds.includes(String(student.centerId || ''));
+        });
+        const visibleAttendances = (assessment.attendances || []).filter((attendance) => {
+          if (!teacherAssignments) return true;
+          const student = attendance.user?.student;
+          return student
+            && visibleClassValues.has(String(student.studyingClass || ''))
+            && accessibleCenterIds.includes(String(student.centerId || ''));
+        });
         const classNames = Array.from(
           new Set(
-            (assessment.allowedClasses || [])
+            visibleClasses
               .map((item) => item.class?.className)
               .filter(Boolean)
           )
@@ -75,7 +113,7 @@ export async function GET(req) {
 
         const subjectNames = Array.from(
           new Set(
-            (assessment.subjects || [])
+            (assessment.subjects || []).filter((item) => !visibleSubjectIds || visibleSubjectIds.has(item.subjectId))
               .map((item) => item.subject?.subjectName)
               .filter(Boolean)
           )
@@ -86,12 +124,7 @@ export async function GET(req) {
             role: 'STUDENT',
             status: true,
             student: {
-              OR: [
-                ...(classNames.length ? [{ studyingClass: { in: classNames } }] : []),
-                ...(assessment.allowedClasses.length
-                  ? [{ studyingClass: { in: assessment.allowedClasses.map((item) => String(item.classId)) } }]
-                  : []),
-              ],
+              studyingClass: { in: visibleClassValueList },
               ...studentCenterFilter,
             },
           },
@@ -99,26 +132,24 @@ export async function GET(req) {
         });
 
         const attemptedUserIds = new Set(
-          assessment.responses.map((response) => response.userId).filter(Boolean)
+          visibleResponses.map((response) => response.userId).filter(Boolean)
         );
 
         const absentUserIds = new Set(
-          (assessment.attendances || []).map((attendance) => attendance.userId).filter(Boolean)
+          visibleAttendances.map((attendance) => attendance.userId).filter(Boolean)
         );
 
         const pendingCount = eligibleStudents.filter(
           (student) => !attemptedUserIds.has(student.id) && !absentUserIds.has(student.id)
         ).length;
 
-        const appearedCount = Array.from(attemptedUserIds).filter(
-          (userId) => !absentUserIds.has(userId)
-        ).length;
+        const appearedCount = attemptedUserIds.size;
 
-        const firstResponseSummary = assessment.responses?.[0]
+        const firstResponseSummary = visibleResponses[0]
           ? buildAssessment316ResultSummary(
-              assessment.responses[0].items || [],
-              new Map((assessment.responses[0].items || []).map((item) => [String(item?.checklistId || ''), item?.checklist?.itemText || 'Field'])),
-              new Map((assessment.responses[0].items || []).map((item) => [String(item?.optionId || ''), item?.option?.optionText || 'No value']))
+              visibleResponses[0].items || [],
+              new Map((visibleResponses[0].items || []).map((item) => [String(item?.checklistId || ''), item?.checklist?.itemText || 'Field'])),
+              new Map((visibleResponses[0].items || []).map((item) => [String(item?.optionId || ''), item?.option?.optionText || 'No value']))
             )
           : 'No data';
 
@@ -129,11 +160,11 @@ export async function GET(req) {
           subjectName: subjectNames.join(', ') || 'N/A',
           appearedCount,
           pendingCount,
-          absentCount: (assessment.attendances || []).length,
-          result: getMostSelectedOption(assessment.responses) || firstResponseSummary,
+          absentCount: visibleAttendances.length,
+          result: getMostSelectedOption(visibleResponses) || firstResponseSummary,
         };
       })
-    );
+    )).filter(Boolean);
 
     return ApiResponse.success(summaries, 'Assessment results loaded successfully.');
   } catch (error) {

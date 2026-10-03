@@ -275,7 +275,7 @@ export async function PATCH(req, { params }) {
 
         if (body.classIds !== undefined) {
             const selectedClassIds = Array.isArray(body.classIds)
-                ? body.classIds.filter(Boolean)
+                ? Array.from(new Set(body.classIds.map((classId) => String(classId || '').trim()).filter(Boolean)))
                 : [];
 
             if (teacherRole && selectedClassIds.length > 0) {
@@ -301,6 +301,17 @@ export async function PATCH(req, { params }) {
                         skipDuplicates: true,
                     });
                 }
+
+                const mappedSubjects = selectedClassIds.length
+                    ? await transaction.subject.findMany({ where: { classId: { in: selectedClassIds } }, select: { id: true } })
+                    : [];
+                const mappedSubjectIds = mappedSubjects.map((subject) => subject.id);
+                await transaction.teacherSubject.deleteMany({
+                    where: {
+                        teacherId: teacher.id,
+                        ...(mappedSubjectIds.length ? { subjectId: { notIn: mappedSubjectIds } } : {}),
+                    },
+                });
             });
         }
 

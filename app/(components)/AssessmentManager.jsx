@@ -27,11 +27,12 @@ import {
   Select,
   Stack,
   TextField,
+  Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { AddCircleOutline, CheckCircleOutline, Close, DeleteOutline, RadioButtonUnchecked, Quiz, SaveOutlined } from '@mui/icons-material';
+import { AddCircleOutline, CheckCircleOutline, Close, DeleteOutline, EditOutlined, RadioButtonUnchecked, Quiz, SaveOutlined } from '@mui/icons-material';
 
 const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessments, loading, addQuestion, subjectId, classId, chapterId, title, setTitle, description, setDescription, type, setType, questions, setQuestions, feedback, setFeedback, editingAssessment, setEditingAssessment, open, setOpen, saving, setSaving, allowSubjectSelection = false, assessmentSubjectOptions = [], assessmentVisibleClassOptions = [], onAssessmentSubjectChange, onAllowedClassIdsChange, fullWidth = false }) => {
   const theme = useTheme();
@@ -49,6 +50,8 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
   const [appearedStudents, setAppearedStudents] = useState([]);
   const [appearedLoading, setAppearedLoading] = useState(false);
   const [selectedAssessment, setSelectedAssessment] = useState(null);
+    const [deleteAssessment, setDeleteAssessment] = useState(null);
+    const [deletingAssessment, setDeletingAssessment] = useState(false);
   const [studentAssessmentOpen, setStudentAssessmentOpen] = useState(false);
   const [studentAssessmentContext, setStudentAssessmentContext] = useState(null);
   const [totalMarks, setTotalMarks] = useState(0);
@@ -64,6 +67,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
   const [canManageAssessments, setCanManageAssessments] = useState(true);
   const [canCreateAssessments, setCanCreateAssessments] = useState(false);
   const [canEditAssessments, setCanEditAssessments] = useState(false);
+  const [canDeleteAssessments, setCanDeleteAssessments] = useState(false);
   const [permissionChecked, setPermissionChecked] = useState(false);
   const [assessmentUpdateStatus, setAssessmentUpdateStatus] = useState(null);
   const [statusOperationId, setStatusOperationId] = useState(null);
@@ -113,6 +117,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
     // Permission checks disabled - all features are open
     setCanCreateAssessments(true);
     setCanEditAssessments(true);
+    setCanDeleteAssessments(true);
     setCanManageAssessments(true);
     setPermissionChecked(true);
   }, []);
@@ -311,6 +316,34 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
     setGradeBands(normalizedGradeBands.length ? normalizedGradeBands : defaultGradeBands);
     setQuestions(normalizedQuestions.length ? normalizedQuestions : [emptyQuestion()]);
     setOpen(true);
+  };
+
+  const openDeleteConfirmation = (assessment) => setDeleteAssessment(assessment);
+
+  const closeDeleteConfirmation = () => {
+    if (!deletingAssessment) setDeleteAssessment(null);
+  };
+
+  const confirmDeleteAssessment = async () => {
+    if (!deleteAssessment?.id) return;
+
+    try {
+      setDeletingAssessment(true);
+      const response = await fetch(`/api/assessments/${encodeURIComponent(deleteAssessment.id)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Unable to delete assessment.');
+
+      setDeleteAssessment(null);
+      setFeedback({ severity: 'success', message: result.message || 'Assessment deleted successfully.' });
+      await fetchAssessments();
+    } catch (error) {
+      setFeedback({ severity: 'error', message: error.message || 'Unable to delete assessment.' });
+    } finally {
+      setDeletingAssessment(false);
+    }
   };
 
   const handleOpenPendingDialog = async (assessment) => {
@@ -806,52 +839,74 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
               sx={{
                 width: { xs: '100%', sm: '100%' },
                 mx: 'auto',
-                backgroundColor: '#f9f9f9',
+                backgroundColor: '#082b57',
+                backgroundImage: 'conic-gradient(from 30deg at 25% 25%, rgba(22,78,126,0.2) 0deg 60deg, rgba(2,23,49,0.24) 60deg 120deg, transparent 120deg 180deg, rgba(12,56,101,0.18) 180deg 240deg, transparent 240deg 360deg), conic-gradient(from 210deg at 75% 75%, rgba(35,98,145,0.13) 0deg 60deg, transparent 60deg 180deg, rgba(1,19,44,0.28) 180deg 240deg, transparent 240deg 360deg), linear-gradient(135deg, rgba(17,68,113,0.15) 0% 24%, transparent 24% 48%, rgba(2,27,58,0.26) 48% 72%, transparent 72%), linear-gradient(180deg, #041832 0%, #062a4a 52%, #083d63 100%)',
+                backgroundSize: '150px 150px, 180px 180px, 210px 210px, 100% 100%',
+                borderColor: 'rgba(255, 255, 255, 0.22)',
+                color: '#ffffff',
+                transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
+                '&:hover': {
+                  backgroundColor: '#0b3968',
+                  boxShadow: '0 4px 14px rgba(2, 23, 49, 0.28)',
+                },
               }}
             >
-              <CardContent>
+              <CardContent sx={{ color: '#ffffff' }}>
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2 }}>
                   <Box sx={{ width: '100%', minWidth: 0 }}>
                     <Typography fontWeight="bold">{assessment.title}</Typography>
-                    <Typography variant="body2" color="text.secondary">{assessment.description || 'No description'}</Typography>
+                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.78)' }}>{assessment.description || 'No description'}</Typography>
                     {(assessment.subject?.subjectName || assessment.class?.className) ? (
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.72)' }}>
                         {assessment.subject?.subjectName || 'Subject'}{assessment.class?.className ? ` • ${assessment.class.className}` : ''}
                       </Typography>
                     ) : null}
                   </Box>
-                  <Chip
-                    label={`View ${assessment.type}`}
-                    color="primary"
-                    variant="outlined"
-                    onClick={() => openEditDialog(assessment)}
-                    sx={{ fontWeight: 600, alignSelf: { xs: 'flex-center', sm: 'auto' } }}
-                  />
+                  <Stack direction="row" spacing={0.5} sx={{ alignSelf: { xs: 'flex-end', sm: 'auto' } }}>
+                    {canEditAssessments ? (
+                      <Tooltip title="Edit assessment" arrow>
+                        <IconButton aria-label="Edit assessment" onClick={() => openEditDialog(assessment)}>
+                          <EditOutlined sx={{ color: '#ffffff' }} />
+                        </IconButton>
+                      </Tooltip>
+                    ) : null}
+                    {canDeleteAssessments ? (
+                      <Tooltip title="Delete assessment" arrow>
+                        <IconButton aria-label="Delete assessment" color="error" onClick={() => openDeleteConfirmation(assessment)}>
+                          <DeleteOutline sx={{ color: '#ffffff' }} />
+                        </IconButton>
+                      </Tooltip>
+                    ) : null}
+                  </Stack>
                 </Box>
-                <Divider sx={{ my: 1.5 }} />
+                <Divider sx={{ my: 1.5, borderColor: 'rgba(255, 255, 255, 0.22)' }} />
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1 }}>
-                  <Chip label={`Questions: ${assessment.questions?.length || 0}`} variant="outlined" />
+                  <Chip
+                    label={`Questions: ${assessment.questions?.length || 0}`}
+                    variant="outlined"
+                    sx={{ color: '#ffffff', borderColor: 'rgba(255, 255, 255, 0.45)' }}
+                  />
                   {/* <Chip label={`Appeared: ${assessment.attempts || 0}`} color="success" variant="outlined" /> */}
                   <Chip
                     label={`Pending: ${assessment.pending || 0}`}
                     color="warning"
-                    variant="outlined"
+                    variant="filled"
                     onClick={() => handleOpenPendingDialog(assessment)}
-                    sx={{ cursor: 'pointer', fontWeight: 600 }}
+                    sx={{ cursor: 'pointer', fontWeight: 600, color: '#ffffff' }}
                   />
                   <Chip
                     label={`Appeared: ${assessment.attempts || 0}`}
                     color="success"
-                    variant="outlined"
+                    variant="filled"
                     onClick={() => handleOpenAppearedDialog(assessment)}
-                    sx={{ cursor: 'pointer', fontWeight: 600 }}
+                    sx={{ cursor: 'pointer', fontWeight: 600, color: '#ffffff' }}
                   />
                   <Chip
                     label={`Absent: ${absentCounts[assessment.id] || 0}`}
                     color="error"
-                    variant="outlined"
+                    variant="filled"
                     onClick={() => handleOpenAbsentDialog(assessment)}
-                    sx={{ cursor: 'pointer', fontWeight: 600 }}
+                    sx={{ cursor: 'pointer', fontWeight: 600, color: '#ffffff' }}
                   />
                 </Stack>
                 {/* <Button size="small" onClick={() => openEditDialog(assessment)}>
@@ -863,6 +918,31 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         </Stack>
       </>
       )}
+
+      <Dialog
+        open={Boolean(deleteAssessment)}
+        onClose={closeDeleteConfirmation}
+        fullWidth
+        maxWidth="xs"
+        fullScreen={isMobile}
+        PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}
+      >
+        <DialogTitle>Delete assessment?</DialogTitle>
+        <DialogContent dividers>
+          <Typography>
+            Are you sure you want to delete <strong>{deleteAssessment?.title || 'this assessment'}</strong>?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            The assessment will no longer appear in active assessment lists.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteConfirmation} disabled={deletingAssessment}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={confirmDeleteAssessment} disabled={deletingAssessment}>
+            {deletingAssessment ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={pendingDialogOpen}
@@ -879,15 +959,17 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
           },
         } : {}}
       >
-        <DialogTitle>Pending Students</DialogTitle>
-        <DialogContent dividers sx={{ overflowY: 'auto' }}>
+        <DialogTitle sx={{ bgcolor: '#0a336b', color: '#ffffff', fontWeight: 700, py: 2 }}>
+          Pending Students
+        </DialogTitle>
+        <DialogContent dividers sx={{ overflowY: 'auto', bgcolor: '#f3f6fb' }}>
           <TextField
             label="Search by Name"
             value={pendingSearch}
             onChange={(event) => setPendingSearch(event.target.value)}
             fullWidth
             size="small"
-            sx={{ mb: 2 }}
+            sx={{ mb: 2, bgcolor: '#ffffff', borderRadius: 1 }}
           />
           {pendingLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -899,7 +981,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             <Stack spacing={2}>
               {filteredPendingStudents.map((group) => (
                 <Box key={group.className}>
-                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1, px: 1.25, py: 0.75, bgcolor: 'rgba(10, 51, 107, 0.08)', color: '#0a336b', borderLeft: '3px solid #0a336b', borderRadius: '0 4px 4px 0' }}>
                     Class {group.className}
                   </Typography>
                   <List dense disablePadding>
@@ -907,6 +989,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                       <ListItem
                         key={student.id}
                         disablePadding
+                        sx={{ mb: 0.75, border: '1px solid #d7e0eb', borderRadius: 1, bgcolor: '#ffffff', overflow: 'hidden' }}
                         secondaryAction={
                           <Checkbox
                             edge="end"
@@ -915,7 +998,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                           />
                         }
                       >
-                        <ListItemButton onClick={() => handleOpenPendingStudentAttempt(student)}>
+                        <ListItemButton onClick={() => handleOpenPendingStudentAttempt(student)} sx={{ px: 1.5, py: 1.25, '&:hover': { bgcolor: '#f7faff' } }}>
                           <ListItemText 
                             primary={student.name} 
                             secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || 'N/A'}`}
@@ -971,15 +1054,17 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
           },
         } : {}}
       >
-        <DialogTitle>Appeared Students</DialogTitle>
-        <DialogContent dividers sx={{ overflowY: 'auto' }}>
+        <DialogTitle sx={{ bgcolor: '#0a336b', color: '#ffffff', fontWeight: 700, py: 2 }}>
+          Appeared Students
+        </DialogTitle>
+        <DialogContent dividers sx={{ overflowY: 'auto', bgcolor: '#f3f6fb' }}>
           <TextField
             label="Search by Name"
             value={appearedSearch}
             onChange={(event) => setAppearedSearch(event.target.value)}
             fullWidth
             size="small"
-            sx={{ mb: 2 }}
+            sx={{ mb: 2, bgcolor: '#ffffff', borderRadius: 1 }}
           />
           {appearedLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -991,13 +1076,13 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             <Stack spacing={2}>
               {filteredAppearedStudents.map((group) => (
                 <Box key={group.className}>
-                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1, px: 1.25, py: 0.75, bgcolor: 'rgba(10, 51, 107, 0.08)', color: '#0a336b', borderLeft: '3px solid #0a336b', borderRadius: '0 4px 4px 0' }}>
                     Class {group.className}
                   </Typography>
                   <List dense disablePadding>
                     {group.students.map((student) => (
-                      <ListItem key={student.id} disablePadding>
-                        <ListItemButton onClick={() => handleOpenAppearedStudentAttempt(student)}>
+                      <ListItem key={student.id} disablePadding sx={{ mb: 0.75, border: '1px solid #d7e0eb', borderRadius: 1, bgcolor: '#ffffff', overflow: 'hidden' }}>
+                        <ListItemButton onClick={() => handleOpenAppearedStudentAttempt(student)} sx={{ px: 1.5, py: 1.25, '&:hover': { bgcolor: '#f7faff' } }}>
                           <ListItemText primary={student.name} secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || student.centerName || 'N/A'}`} />
                         </ListItemButton>
                       </ListItem>
@@ -1028,15 +1113,17 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
           },
         } : {}}
       >
-        <DialogTitle>Absent Students</DialogTitle>
-        <DialogContent dividers sx={{ overflowY: 'auto' }}>
+        <DialogTitle sx={{ bgcolor: '#0a336b', color: '#ffffff', fontWeight: 700, py: 2 }}>
+          Absent Students
+        </DialogTitle>
+        <DialogContent dividers sx={{ overflowY: 'auto', bgcolor: '#f3f6fb' }}>
           <TextField
             label="Search by Name"
             value={absentSearch}
             onChange={(event) => setAbsentSearch(event.target.value)}
             fullWidth
             size="small"
-            sx={{ mb: 2 }}
+            sx={{ mb: 2, bgcolor: '#ffffff', borderRadius: 1 }}
           />
           {absentLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -1048,7 +1135,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             <Stack spacing={2}>
               {filteredAbsentStudents.map((group) => (
                 <Box key={group.className}>
-                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1, px: 1.25, py: 0.75, bgcolor: 'rgba(10, 51, 107, 0.08)', color: '#0a336b', borderLeft: '3px solid #0a336b', borderRadius: '0 4px 4px 0' }}>
                     Class {group.className}
                   </Typography>
                   <List dense disablePadding>
@@ -1056,6 +1143,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                       <ListItem
                         key={student.id}
                         disablePadding
+                        sx={{ mb: 0.75, border: '1px solid #d7e0eb', borderRadius: 1, bgcolor: '#ffffff', overflow: 'hidden' }}
                         secondaryAction={
                           <Checkbox
                             edge="end"

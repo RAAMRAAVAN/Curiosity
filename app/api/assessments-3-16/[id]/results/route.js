@@ -2,7 +2,11 @@ import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { buildAssessment316ResultSummary } from '@/lib/assessment316Results';
-import { getAssessment316AccessibleCenterIds } from '@/lib/assessment316Access';
+import {
+  getAssessment316AccessibleCenterIds,
+  getAssessment316TeacherAssignments,
+  getAssessment316TeacherVisibleClasses,
+} from '@/lib/assessment316Access';
 
 const buildAssessmentMaps = (checklist = []) => {
   const checklistMap = new Map();
@@ -31,9 +35,7 @@ export async function GET(req, { params }) {
     }
 
     const accessibleCenterIds = getAssessment316AccessibleCenterIds(auth.actor);
-    const responseCenterFilter = accessibleCenterIds === null
-      ? {}
-      : { user: { student: { centerId: { in: accessibleCenterIds } } } };
+    const teacherAssignments = await getAssessment316TeacherAssignments(prisma, auth.actor);
 
     const { id: assessmentId } = await params;
     if (!assessmentId) {
@@ -45,8 +47,11 @@ export async function GET(req, { params }) {
       select: {
         id: true,
         title: true,
+        allowedClasses: {
+          select: { classId: true, class: { select: { id: true, className: true } } },
+        },
         subjects: {
-          include: { subject: { select: { id: true, subjectName: true } } },
+          include: { subject: { select: { id: true, subjectName: true, classId: true } } },
         },
         checklist: {
           where: { status: true },
@@ -59,6 +64,26 @@ export async function GET(req, { params }) {
     if (!assessment) {
       return ApiResponse.error('Assessment not found', 404);
     }
+
+    const visibleClasses = getAssessment316TeacherVisibleClasses(assessment, teacherAssignments);
+    if (teacherAssignments && visibleClasses.length === 0) {
+      return ApiResponse.error('You are not authorized to access results for this assessment.', 403);
+    }
+    const visibleClassValues = Array.from(new Set(
+      visibleClasses.flatMap((item) => [item.classId, item.class?.className]).filter(Boolean).map(String)
+    ));
+    const visibleSubjectIds = teacherAssignments
+      ? new Set(teacherAssignments.subjectMappings
+          .filter((mapping) => visibleClasses.some((item) => String(item.classId) === mapping.classId))
+          .map((mapping) => mapping.subjectId))
+      : null;
+    const studentScope = {
+      ...(accessibleCenterIds === null ? {} : { centerId: { in: accessibleCenterIds } }),
+      ...(teacherAssignments ? { studyingClass: { in: visibleClassValues } } : {}),
+    };
+    const responseCenterFilter = Object.keys(studentScope).length
+      ? { user: { student: studentScope } }
+      : {};
 
     const responses = await prisma.assessment316Response.findMany({
       where: { assessmentId, status: true, ...responseCenterFilter },
@@ -86,7 +111,9 @@ export async function GET(req, { params }) {
       },
     });
 
-    const subjectName = assessment.subjects?.[0]?.subject?.subjectName || 'N/A';
+    const subjectName = assessment.subjects
+      ?.find((item) => !visibleSubjectIds || visibleSubjectIds.has(item.subjectId))
+      ?.subject?.subjectName || 'N/A';
     const { checklistMap, optionMap } = buildAssessmentMaps(assessment?.checklist || []);
 
     const classIds = Array.from(
@@ -99,7 +126,7 @@ export async function GET(req, { params }) {
 
     const classRecords = classIds.length
       ? await prisma.class.findMany({
-          where: { id: { in: classIds } },
+          where: { OR: [{ id: { in: classIds } }, { className: { in: classIds } }] },
           select: { id: true, className: true },
         })
       : [];

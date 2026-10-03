@@ -1,6 +1,7 @@
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { ApiResponse } from '@/utils/apiResponse';
+import { canTeacherAccessAssessment316, getAssessment316TeacherAssignments } from '@/lib/assessment316Access';
 
 const canAccessCenter = (actor, centerId, accessibleCenterIds) => {
   if (!centerId || actor?.isAdmin) return true;
@@ -64,6 +65,7 @@ export async function GET(req) {
       return ApiResponse.error('Assessment (3-16 years) database model is unavailable. Run Prisma generate and apply migrations.', 500);
     }
 
+    const teacherAssignments = await getAssessment316TeacherAssignments(prisma, auth.actor);
     const records = await prisma.assessment316.findMany({
       where: { status: true },
       include: {
@@ -73,7 +75,7 @@ export async function GET(req) {
       },
       orderBy: { createdAt: 'desc' },
     });
-    return ApiResponse.success(records);
+    return ApiResponse.success(records.filter((record) => canTeacherAccessAssessment316(record, teacherAssignments)));
   } catch (error) {
     console.error('Load 3-16 assessments error:', error);
     return ApiResponse.error('Unable to load Assessment (3-16 years) records.', 500, error);

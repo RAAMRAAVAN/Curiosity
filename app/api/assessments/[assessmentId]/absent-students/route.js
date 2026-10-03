@@ -1,7 +1,7 @@
 import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
-import { teacherCanAccessAssessment } from '@/lib/teacherAssessmentAccess';
+import { getTeacherAssignedClassValues, teacherCanAccessAssessment } from '@/lib/teacherAssessmentAccess';
 
 const normalizeAbsentStudent = (student) => {
   const studentInfo = student?.student || {};
@@ -73,10 +73,11 @@ export async function GET(req, { params }) {
     const { assessmentId } = await params;
 
     let scopedCenterId = null;
+    let teacherAssignedClassValues = [];
     if (auth.actor.isTeacher) {
       const teacherProfile = await prisma.teacher.findUnique({
         where: { userId: auth.actor.userId },
-        select: { centerId: true },
+        select: { id: true, centerId: true },
       });
 
       if (!teacherProfile?.centerId) {
@@ -84,6 +85,7 @@ export async function GET(req, { params }) {
       }
 
       scopedCenterId = teacherProfile.centerId;
+  teacherAssignedClassValues = await getTeacherAssignedClassValues(prisma, teacherProfile.id);
     }
 
     if (!assessmentId) {
@@ -128,8 +130,11 @@ export async function GET(req, { params }) {
         : [];
 
       if (auth.actor.isTeacher && scopedCenterId) {
-        const allowedVisibleClassIds = visibleClasses
-          .filter((item) => !item.centerId || item.centerId === scopedCenterId)
+        const allowedVisibleClasses = visibleClasses
+          .filter((item) => (!item.centerId || item.centerId === scopedCenterId)
+            && teacherAssignedClassValues.includes(String(item.id)));
+        const allowedVisibleClassValues = Array.from(new Set(allowedVisibleClasses.flatMap((item) => [item.id, item.className]).filter(Boolean)));
+        const allowedVisibleClassIds = allowedVisibleClasses
           .map((item) => item.id)
           .filter(Boolean);
 
@@ -147,7 +152,7 @@ export async function GET(req, { params }) {
             status: 'ABSENT',
             user: {
               student: {
-                studyingClass: { in: allowedVisibleClassIds },
+                studyingClass: { in: allowedVisibleClassValues },
                 centerId: scopedCenterId,
               },
             },
@@ -193,10 +198,14 @@ export async function GET(req, { params }) {
       }
 
       if (!auth.actor.isTeacher && managementAccessibleCenters.length > 0) {
-        const accessibleVisibleClassIds = visibleClasses
-          .filter((item) => !item.centerId || managementAccessibleCenters.includes(String(item.centerId).trim()))
+        const accessibleVisibleClasses = visibleClasses
+          .filter((item) => !item.centerId || managementAccessibleCenters.includes(String(item.centerId).trim()));
+        const accessibleVisibleClassIds = accessibleVisibleClasses
           .map((item) => item.id)
           .filter(Boolean);
+        const accessibleVisibleClassValues = Array.from(new Set(
+          accessibleVisibleClasses.flatMap((item) => [item.id, item.className]).filter(Boolean)
+        ));
 
         if (!accessibleVisibleClassIds.length) {
           return ApiResponse.error('You are not authorized to perform this operation.', 403);
@@ -208,7 +217,7 @@ export async function GET(req, { params }) {
             status: 'ABSENT',
             user: {
               student: {
-                studyingClass: { in: accessibleVisibleClassIds },
+                studyingClass: { in: accessibleVisibleClassValues },
                 centerId: { in: managementAccessibleCenters },
               },
             },
@@ -258,13 +267,14 @@ export async function GET(req, { params }) {
       }
     }
 
+    const visibleClassValues = Array.from(new Set(visibleClasses.flatMap((item) => [item.id, item.className]).filter(Boolean)));
     const absentRecords = await prisma.assessmentAttendance.findMany({
       where: {
         assessmentId,
         status: 'ABSENT',
         user: {
           student: {
-            studyingClass: { in: visibleClassIds },
+            studyingClass: { in: visibleClassValues },
             ...(scopedCenterId ? { centerId: scopedCenterId } : {}),
           },
         },
