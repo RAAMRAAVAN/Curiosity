@@ -2,17 +2,6 @@ import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { ApiResponse } from '@/utils/apiResponse';
 
-const getAccessibleCenterIds = (actor) => new Set(
-  (Array.isArray(actor?.assignedCenterIds) ? actor.assignedCenterIds : [])
-    .map((id) => String(id).trim())
-    .filter(Boolean)
-);
-
-const canAccessRecord = (actor, record, accessibleCenterIds) => {
-  if (actor?.isAdmin || !record?.centerId) return true;
-  return accessibleCenterIds.has(String(record.centerId)) || actor?.canAccessCenter?.(String(record.centerId));
-};
-
 const normalizeIds = (value) => Array.from(new Set(
   (Array.isArray(value) ? value : [])
     .map((item) => String(item || '').trim())
@@ -83,11 +72,6 @@ export async function GET(req, { params }) {
     const record = await loadRecord(id);
     if (!record || !record.status) return ApiResponse.error('Assessment not found.', 404);
 
-    const accessibleCenterIds = getAccessibleCenterIds(auth.actor);
-    if (!canAccessRecord(auth.actor, record, accessibleCenterIds)) {
-      return ApiResponse.error('You are not authorized to access this assessment.', 403);
-    }
-
     return ApiResponse.success(record);
   } catch (error) {
     console.error('Load 3-16 assessment error:', error);
@@ -103,11 +87,6 @@ export async function PATCH(req, { params }) {
     const { id } = await params;
     const record = await loadRecord(id);
     if (!record || !record.status) return ApiResponse.error('Assessment not found.', 404);
-
-    const accessibleCenterIds = getAccessibleCenterIds(auth.actor);
-    if (!canAccessRecord(auth.actor, record, accessibleCenterIds)) {
-      return ApiResponse.error('You are not authorized to edit this assessment.', 403);
-    }
 
     const body = await req.json();
     const title = String(body?.title ?? record.title).trim();
@@ -140,6 +119,7 @@ export async function PATCH(req, { params }) {
         data: {
           title,
           description,
+          centerId: null,
           allowedClasses: { create: classIds.map((classId) => ({ classId })) },
           subjects: { create: subjectIds.map((subjectId) => ({ subjectId })) },
           checklist: {
@@ -173,11 +153,6 @@ export async function DELETE(req, { params }) {
     const { id } = await params;
     const record = await loadRecord(id);
     if (!record || !record.status) return ApiResponse.error('Assessment not found.', 404);
-
-    const accessibleCenterIds = getAccessibleCenterIds(auth.actor);
-    if (!canAccessRecord(auth.actor, record, accessibleCenterIds)) {
-      return ApiResponse.error('You are not authorized to delete this assessment.', 403);
-    }
 
     const deleted = await prisma.assessment316.update({
       where: { id },

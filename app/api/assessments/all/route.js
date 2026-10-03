@@ -2,37 +2,52 @@ import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 
-const getEligibleStudentIds = async (assessment, actor, scopedCenterId) => {
+const getAccessibleCenterIds = (actor, scopedCenterId) => {
+  if (actor?.isAdmin) return null;
+
+  return Array.from(new Set(
+    (scopedCenterId
+      ? [scopedCenterId]
+      : Array.isArray(actor?.assignedCenterIds) ? actor.assignedCenterIds : [])
+      .map((centerId) => String(centerId).trim())
+      .filter(Boolean)
+  ));
+};
+
+const getEligibleStudentIds = async (assessment, accessibleCenterIds) => {
   const visibleClassIds = Array.from(new Set([
     assessment.classId,
     ...(assessment.allowedClasses || []).map((item) => item.classId),
   ].filter(Boolean)));
-  const centerFilter = scopedCenterId
-    ? { centerId: scopedCenterId }
-    : actor?.isAdmin || !Array.isArray(actor?.assignedCenterIds)
-      ? {}
-      : { centerId: { in: actor.assignedCenterIds } };
+  const centerFilter = accessibleCenterIds === null
+    ? {}
+    : { centerId: { in: accessibleCenterIds } };
 
   const students = await prisma.user.findMany({
     where: {
       role: 'STUDENT',
       status: true,
-      ...centerFilter,
-      student: { studyingClass: { in: visibleClassIds } },
+      student: {
+        studyingClass: { in: visibleClassIds },
+        ...centerFilter,
+      },
     },
     select: { id: true },
   });
   return students.map((student) => student.id);
 };
 
-const addStats = async (assessment, actor, scopedCenterId) => {
-  const eligibleStudentIds = await getEligibleStudentIds(assessment, actor, scopedCenterId);
+const addStats = async (assessment, accessibleCenterIds) => {
+  const eligibleStudentIds = await getEligibleStudentIds(assessment, accessibleCenterIds);
+  const resultCenterFilter = accessibleCenterIds === null
+    ? {}
+    : { user: { student: { centerId: { in: accessibleCenterIds } } } };
   const [attempts, absent] = await Promise.all([
     prisma.assessmentResult.count({
-      where: { assessmentId: assessment.id, status: true, ...(scopedCenterId ? { user: { student: { centerId: scopedCenterId } } } : {}) },
+      where: { assessmentId: assessment.id, status: true, ...resultCenterFilter },
     }),
     prisma.assessmentAttendance.count({
-      where: { assessmentId: assessment.id, status: 'ABSENT', ...(scopedCenterId ? { user: { student: { centerId: scopedCenterId } } } : {}) },
+      where: { assessmentId: assessment.id, status: 'ABSENT', ...resultCenterFilter },
     }),
   ]);
   return { ...assessment, attempts, pending: Math.max(eligibleStudentIds.length - attempts - absent, 0) };
@@ -57,6 +72,8 @@ export async function GET(req) {
       scopedCenterId = teacher.centerId;
     }
 
+    const accessibleCenterIds = getAccessibleCenterIds(auth.actor, scopedCenterId);
+
     const assessments = await prisma.assessment.findMany({
       where: {
         status: true,
@@ -75,7 +92,7 @@ export async function GET(req) {
       orderBy: { createdAt: 'desc' },
     });
 
-    const result = await Promise.all(assessments.map((assessment) => addStats(assessment, auth.actor, scopedCenterId)));
+    const result = await Promise.all(assessments.map((assessment) => addStats(assessment, accessibleCenterIds)));
     return ApiResponse.success(result);
   } catch (error) {
     console.error('Load all assessments error:', error);

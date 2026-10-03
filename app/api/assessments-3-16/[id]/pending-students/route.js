@@ -2,6 +2,7 @@ import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { buildAssessment316StatusGroups } from '@/lib/assessment316Status';
+import { getAssessment316AccessibleCenterIds } from '@/lib/assessment316Access';
 
 const normalizeStudent = (student) => {
   if (!student || !student.student) return student;
@@ -92,7 +93,6 @@ export async function GET(req, { params }) {
       )
     );
 
-    let scopedCenterId = null;
     if (auth.actor.isTeacher) {
       const teacherProfile = await prisma.teacher.findUnique({
         where: { userId: auth.actor.userId },
@@ -101,8 +101,15 @@ export async function GET(req, { params }) {
       if (!teacherProfile?.centerId) {
         return ApiResponse.error('Teacher account is not mapped to any center.', 400);
       }
-      scopedCenterId = teacherProfile.centerId;
     }
+
+    const accessibleCenterIds = getAssessment316AccessibleCenterIds(auth.actor);
+    const studentCenterFilter = accessibleCenterIds === null
+      ? {}
+      : { centerId: { in: accessibleCenterIds } };
+    const responseCenterFilter = accessibleCenterIds === null
+      ? {}
+      : { user: { student: studentCenterFilter } };
 
     const [eligibleStudents, attemptedResults, absentResults] = await Promise.all([
       prisma.user.findMany({
@@ -114,7 +121,7 @@ export async function GET(req, { params }) {
               { studyingClass: { in: visibleClassIds } },
               ...(allowedClassNames.length ? [{ studyingClass: { in: allowedClassNames } }] : []),
             ],
-            ...(scopedCenterId ? { centerId: scopedCenterId } : {}),
+            ...studentCenterFilter,
           },
         },
         select: {
@@ -126,11 +133,11 @@ export async function GET(req, { params }) {
         orderBy: [{ student: { studyingClass: 'asc' } }, { name: 'asc' }],
       }),
       prisma.assessment316Response.findMany({
-        where: { assessmentId, status: true },
+        where: { assessmentId, status: true, ...responseCenterFilter },
         select: { userId: true },
       }),
       prisma.assessment316Attendance.findMany({
-        where: { assessmentId, status: 'ABSENT' },
+        where: { assessmentId, status: 'ABSENT', ...responseCenterFilter },
         select: { userId: true },
       }),
     ]);

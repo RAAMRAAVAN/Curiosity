@@ -2,12 +2,6 @@ import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { ApiResponse } from '@/utils/apiResponse';
 
-const getAccessibleCenterIds = (actor) => new Set(
-  (Array.isArray(actor?.assignedCenterIds) ? actor.assignedCenterIds : [])
-    .map((id) => String(id).trim())
-    .filter(Boolean)
-);
-
 const canAccessCenter = (actor, centerId, accessibleCenterIds) => {
   if (!centerId || actor?.isAdmin) return true;
   return accessibleCenterIds.has(String(centerId)) || actor?.canAccessCenter?.(String(centerId));
@@ -33,7 +27,7 @@ const normalizeChecklist = (value) => (Array.isArray(value) ? value : [])
   .slice(0, 1)
   .map((item) => ({ ...item, itemText: 'Field 1' }));
 
-const validateMappings = async (actor, classIds, subjectIds, accessibleCenterIds) => {
+const validateMappings = async (actor, classIds, subjectIds) => {
   if (!classIds.length) return { error: 'Select at least one class.' };
   if (!subjectIds.length) return { error: 'Select at least one subject.' };
 
@@ -45,6 +39,11 @@ const validateMappings = async (actor, classIds, subjectIds, accessibleCenterIds
   if (classes.length !== classIds.length) return { error: 'One or more selected classes are unavailable.' };
   if (subjects.length !== subjectIds.length) return { error: 'One or more selected subjects are unavailable.' };
 
+  const accessibleCenterIds = new Set(
+    (Array.isArray(actor?.assignedCenterIds) ? actor.assignedCenterIds : [])
+      .map((id) => String(id).trim())
+      .filter(Boolean)
+  );
   const inaccessible = [...classes, ...subjects].some((item) => !canAccessCenter(actor, item.centerId, accessibleCenterIds));
   if (inaccessible) return { error: 'You are not authorized to use one or more selected records.' };
 
@@ -65,7 +64,6 @@ export async function GET(req) {
       return ApiResponse.error('Assessment (3-16 years) database model is unavailable. Run Prisma generate and apply migrations.', 500);
     }
 
-    const accessibleCenterIds = getAccessibleCenterIds(auth.actor);
     const records = await prisma.assessment316.findMany({
       where: { status: true },
       include: {
@@ -75,11 +73,7 @@ export async function GET(req) {
       },
       orderBy: { createdAt: 'desc' },
     });
-    const visibleRecords = auth.actor.isAdmin
-      ? records
-      : records.filter((record) => canAccessCenter(auth.actor, record.centerId, accessibleCenterIds));
-
-    return ApiResponse.success(visibleRecords);
+    return ApiResponse.success(records);
   } catch (error) {
     console.error('Load 3-16 assessments error:', error);
     return ApiResponse.error('Unable to load Assessment (3-16 years) records.', 500, error);
@@ -98,32 +92,23 @@ export async function POST(req) {
     const body = await req.json();
     const title = String(body?.title || '').trim();
     const description = String(body?.description || '').trim() || null;
-    const requestedCenterId = body?.centerId == null ? null : String(body.centerId).trim() || null;
     const classIds = normalizeIds(body?.classIds);
     const subjectIds = normalizeIds(body?.subjectIds);
     const checklist = normalizeChecklist(body?.checklist);
-    const accessibleCenterIds = getAccessibleCenterIds(auth.actor);
 
     if (!title) return ApiResponse.error('Assessment title is required.', 400);
-    if (!auth.actor.isAdmin && !requestedCenterId && accessibleCenterIds.size === 0) {
-      return ApiResponse.error('A center is required for this account.', 400);
-    }
-    if (!canAccessCenter(auth.actor, requestedCenterId, accessibleCenterIds)) {
-      return ApiResponse.error('You are not authorized to use this center.', 403);
-    }
 
-    const mappings = await validateMappings(auth.actor, classIds, subjectIds, accessibleCenterIds);
+    const mappings = await validateMappings(auth.actor, classIds, subjectIds);
     if (mappings.error) return ApiResponse.error(mappings.error, 400);
     if (!checklist.length || checklist.some((item) => item.options.length === 0)) {
       return ApiResponse.error('Each evaluation field must have at least one option.', 400);
     }
 
-    const centerId = requestedCenterId || (auth.actor.isAdmin ? null : Array.from(accessibleCenterIds)[0]);
     const created = await prisma.assessment316.create({
       data: {
         title,
         description,
-        centerId,
+        centerId: null,
         allowedClasses: { create: classIds.map((classId) => ({ classId })) },
         subjects: { create: subjectIds.map((subjectId) => ({ subjectId })) },
         checklist: {

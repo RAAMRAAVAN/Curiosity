@@ -46,6 +46,19 @@ export async function GET(req, { params }) {
       scopedCenterId = teacherProfile.centerId;
     }
 
+    const accessibleCenterIds = auth.actor.isAdmin
+      ? null
+      : Array.from(new Set(
+          (scopedCenterId
+            ? [scopedCenterId]
+            : Array.isArray(auth.actor.assignedCenterIds) ? auth.actor.assignedCenterIds : [])
+            .map((centerId) => String(centerId).trim())
+            .filter(Boolean)
+        ));
+    if (accessibleCenterIds && accessibleCenterIds.length === 0) {
+      return ApiResponse.error('You are not authorized to perform this operation.', 403);
+    }
+
     if (!assessmentId) {
       return ApiResponse.error('Assessment ID is required', 400);
     }
@@ -63,32 +76,23 @@ export async function GET(req, { params }) {
       return ApiResponse.error('Assessment not found', 404);
     }
 
-    if (scopedCenterId && assessment.class?.centerId && assessment.class.centerId !== scopedCenterId) {
+    if (!auth.actor.isAdmin && assessment.class?.centerId
+      && !accessibleCenterIds.includes(String(assessment.class.centerId).trim())) {
       return ApiResponse.error('Forbidden', 403);
     }
 
-    // For non-teachers (management/admin), verify center access
-    // If class has a center, verify the user can access it
-    // If class has no center, allow access if user has permission
-    if (!auth.actor.isAdmin && !scopedCenterId && assessment.class?.centerId) {
-      if (!auth.actor.canAccessCenter(assessment.class.centerId)) {
-        return ApiResponse.error('You are not authorized to perform this operation.', 403);
-      }
-    }
+    const resultCenterFilter = accessibleCenterIds === null
+      ? {}
+      : { user: { student: { centerId: { in: accessibleCenterIds } } } };
+    const studentCenterFilter = accessibleCenterIds === null
+      ? {}
+      : { centerId: { in: accessibleCenterIds } };
 
     const appearedResults = await prisma.assessmentResult.findMany({
       where: {
         assessmentId,
         status: true,
-        ...(scopedCenterId
-          ? {
-              user: {
-                student: {
-                  centerId: scopedCenterId,
-                },
-              },
-            }
-          : {}),
+        ...resultCenterFilter,
       },
       select: {
         userId: true,
@@ -102,13 +106,7 @@ export async function GET(req, { params }) {
         role: 'STUDENT',
         status: true,
         id: { in: Array.from(appearedUserIds) },
-        ...(scopedCenterId
-          ? {
-              student: {
-                centerId: scopedCenterId,
-              },
-            }
-          : {}),
+        student: studentCenterFilter,
       },
       select: {
         id: true,

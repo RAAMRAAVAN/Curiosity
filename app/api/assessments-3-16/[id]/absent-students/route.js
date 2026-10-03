@@ -1,6 +1,7 @@
 import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
+import { getAssessment316AccessibleCenterIds } from '@/lib/assessment316Access';
 
 const normalizeStudentCenter = (studentRecord) => {
   if (!studentRecord || !studentRecord.student) return studentRecord;
@@ -98,7 +99,6 @@ export async function GET(req, { params }) {
       )
     );
 
-    let scopedCenterId = null;
     if (auth.actor.isTeacher) {
       const teacherProfile = await prisma.teacher.findUnique({
         where: { userId: auth.actor.userId },
@@ -107,13 +107,18 @@ export async function GET(req, { params }) {
       if (!teacherProfile?.centerId) {
         return ApiResponse.error('Teacher account is not mapped to any center.', 400);
       }
-      scopedCenterId = teacherProfile.centerId;
     }
+
+    const accessibleCenterIds = getAssessment316AccessibleCenterIds(auth.actor);
+    const responseCenterFilter = accessibleCenterIds === null
+      ? {}
+      : { user: { student: { centerId: { in: accessibleCenterIds } } } };
 
     const absentRecords = await prisma.assessment316Attendance.findMany({
       where: {
         assessmentId,
         status: 'ABSENT',
+        ...responseCenterFilter,
       },
       select: {
         id: true,
@@ -147,7 +152,7 @@ export async function GET(req, { params }) {
         if (!student?.student?.studyingClass) return false;
         const classValue = String(student.student.studyingClass).trim();
         const classMatches = visibleClassIds.includes(classValue) || allowedClassNames.includes(classValue);
-        return classMatches && (!scopedCenterId || String(student.student.centerId || '').trim() === String(scopedCenterId).trim());
+        return classMatches;
       });
 
     return ApiResponse.success(await groupStudentsByClass(absentStudents));

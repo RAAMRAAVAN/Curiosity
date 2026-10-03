@@ -1,54 +1,15 @@
 import { Delete, Edit, MenuBook, School } from "@mui/icons-material";
 import { Button, Typography, IconButton, Stack, TableCell, TableRow, Tooltip } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import TeacherSubjectDialog from "./TeacherSubjectDialog";
 import TeacherClassDialog from "./TeacherClassDialog";
-import Loader from '@/app/(components)/Loader';
 
 const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeacher, canEditTeachers = false, canDeleteTeachers = false, canMapSubjects = false, canMapClasses = false }) => {
 
-    const [subjects, setSubjects] = useState([]);
-    const [subjectLoading, setSubjectsLoading] = useState(false);
     const [subjectDialog, setSubjectDialog] = useState(false);
     const [selectedTeacher, setSelectedTeacher] = useState(null);
     const [classDialog, setClassDialog] = useState(false);
     const [selectedClassTeacher, setSelectedClassTeacher] = useState(null);
-
-
-    const FetchAllSubjects = async () => {
-
-        setSubjectsLoading(true);
-
-        try {
-
-            const res = await fetch("/api/subjects", {
-                method: "GET",
-                credentials: "include",
-            });
-
-
-            const data = await res.json();
-
-
-            if (!res.ok || !data.success) {
-                throw new Error(data.message || "Failed to load subjects");
-            }
-
-
-            setSubjects(data.data);
-
-
-        } catch (error) {
-
-            alert(error.message);
-
-        } finally {
-
-            setSubjectsLoading(false);
-
-        }
-    }
-
 
 
     const handleDeleteTeacher = async (teacherId) => {
@@ -100,14 +61,6 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
 
 
 
-    useEffect(() => {
-
-        FetchAllSubjects();
-
-    }, []);
-
-
-
     return (
         <>
             {teachers.map((teacher) => (
@@ -155,31 +108,19 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
                     <TableCell>
 
                         {canMapSubjects ? (
-                            subjectLoading ?
-
+                            <Tooltip title="Map subjects" arrow>
                                 <IconButton
                                     color="primary"
                                     size="small"
-                                    disabled
+                                    aria-label={`Map subjects for ${teacher.name}`}
+                                    onClick={() => {
+                                        setSelectedTeacher(teacher.id);
+                                        setSubjectDialog(true);
+                                    }}
                                 >
-                                    <Loader variant='inline' size={18} />
+                                    <MenuBook fontSize="small" />
                                 </IconButton>
-
-                                :
-
-                                <Tooltip title="Map subjects" arrow>
-                                    <IconButton
-                                        color="primary"
-                                        size="small"
-                                        aria-label={`Map subjects for ${teacher.name}`}
-                                        onClick={() => {
-                                            setSelectedTeacher(teacher.id);
-                                            setSubjectDialog(true);
-                                        }}
-                                    >
-                                        <MenuBook fontSize="small" />
-                                    </IconButton>
-                                </Tooltip>
+                            </Tooltip>
                         ) : (
                             <Typography variant="caption" color="text.secondary">—</Typography>
                         )}

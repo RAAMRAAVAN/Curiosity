@@ -32,6 +32,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import DisplayTeachers from "./DisplayTeachers";
 import TeacherSubjectDialog from "./TeacherSubjectDialog";
 import Loader from '@/app/(components)/Loader';
+import { useAdminAuth } from '../AdminAuthContext';
 
 const ALL_CENTERS = "ALL";
 
@@ -51,6 +52,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+    const { admin: authUser } = useAdminAuth();
     
     const [open, setOpen] = useState(false);
     const [pageLoading, setPageLoading] = useState(false);
@@ -60,7 +62,6 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
     const [editingTeacher, setEditingTeacher] = useState(null);
     const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
     const [selectedTeacherId, setSelectedTeacherId] = useState(null);
-    const [authUser, setAuthUser] = useState(null);
     const [exporting, setExporting] = useState(false);
     const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
     const [teacherSearch, setTeacherSearch] = useState("");
@@ -207,15 +208,9 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
 
     const fetchMeta = async () => {
         try {
-            const [meRes, centersRes] = await Promise.all([
-                fetch("/api/admin/me", { credentials: "include" }),
-                fetch("/api/admin/centers", { credentials: "include" }),
-            ]);
-
-            const meData = await meRes.json();
+            const centersRes = await fetch("/api/admin/centers", { credentials: "include" });
             const centersData = await centersRes.json();
 
-            if (meData.success) setAuthUser(meData.data || null);
             if (centersData.success) setCenters(centersData.data || []);
         } catch (error) {
             console.error(error);

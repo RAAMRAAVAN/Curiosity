@@ -3,7 +3,19 @@ import { ApiResponse } from '@/utils/apiResponse';
 import { requireAdminPermission } from '@/lib/adminRbac';
 // import { buildAssessmentWithStats } from "@/lib/assessment"; // Update path if needed
 
-const getAssessmentEligibleStudentIds = async (assessment, actor, scopedCenterId = null) => {
+const getAccessibleCenterIds = (actor, scopedCenterId) => {
+    if (actor?.isAdmin) return null;
+
+    return Array.from(new Set(
+        (scopedCenterId
+            ? [scopedCenterId]
+            : Array.isArray(actor?.assignedCenterIds) ? actor.assignedCenterIds : [])
+            .map((centerId) => String(centerId).trim())
+            .filter(Boolean)
+    ));
+};
+
+const getAssessmentEligibleStudentIds = async (assessment, accessibleCenterIds) => {
     const visibleClassIds = Array.from(new Set([
         assessment.classId,
         ...((Array.isArray(assessment.allowedClasses) ? assessment.allowedClasses : []).map((item) => item.classId).filter(Boolean)),
@@ -13,13 +25,9 @@ const getAssessmentEligibleStudentIds = async (assessment, actor, scopedCenterId
         return [];
     }
 
-    const centerFilter = !actor?.isAdmin && !scopedCenterId && Array.isArray(actor?.assignedCenterIds)
-        ? {
-            in: actor.assignedCenterIds.map((centerId) => String(centerId).trim()).filter(Boolean),
-        }
-        : scopedCenterId
-            ? scopedCenterId
-            : undefined;
+    const centerFilter = accessibleCenterIds === null
+        ? undefined
+        : { in: accessibleCenterIds };
 
     const students = await prisma.user.findMany({
         where: {
@@ -36,30 +44,25 @@ const getAssessmentEligibleStudentIds = async (assessment, actor, scopedCenterId
     return students.map((student) => student.id);
 };
 
-const buildAssessmentWithStats = async (assessment, actor, scopedCenterId = null) => {
-    const eligibleStudentIds = await getAssessmentEligibleStudentIds(assessment, actor, scopedCenterId);
+const buildAssessmentWithStats = async (assessment, accessibleCenterIds) => {
+    const eligibleStudentIds = await getAssessmentEligibleStudentIds(assessment, accessibleCenterIds);
+    const resultCenterFilter = accessibleCenterIds === null
+        ? {}
+        : { user: { student: { centerId: { in: accessibleCenterIds } } } };
 
     const [attemptCount, attemptUsers, absentStudents] = await Promise.all([
         prisma.assessmentResult.count({
             where: {
                 assessmentId: assessment.id,
                 status: true,
-                user: {
-                    student: {
-                        ...(scopedCenterId ? { centerId: scopedCenterId } : {}),
-                    },
-                },
+                ...resultCenterFilter,
             },
         }),
         prisma.assessmentResult.findMany({
             where: {
                 assessmentId: assessment.id,
                 status: true,
-                user: {
-                    student: {
-                        ...(scopedCenterId ? { centerId: scopedCenterId } : {}),
-                    },
-                },
+                ...resultCenterFilter,
             },
             select: { userId: true },
             orderBy: { createdAt: 'asc' },
@@ -68,6 +71,7 @@ const buildAssessmentWithStats = async (assessment, actor, scopedCenterId = null
             where: {
                 assessmentId: assessment.id,
                 status: 'ABSENT',
+                ...resultCenterFilter,
             },
             select: { userId: true },
         }),
@@ -184,9 +188,10 @@ export async function GET(req, { params }) {
         //     assessmentIds: assessments.map((assessment) => assessment.id),
         // });
 
+        const accessibleCenterIds = getAccessibleCenterIds(auth.actor, scopedCenterId);
         const assessmentsWithStats = await Promise.all(
             assessments.map((assessment) =>
-                buildAssessmentWithStats(assessment, auth.actor, scopedCenterId)
+                buildAssessmentWithStats(assessment, accessibleCenterIds)
             )
         );
 
