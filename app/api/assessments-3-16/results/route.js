@@ -2,6 +2,7 @@ import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { buildAssessment316ResultSummary } from '@/lib/assessment316Results';
+import { getAssessment316AccessibleCenterIds } from '@/lib/assessment316Access';
 
 const getMostSelectedOption = (responses = []) => {
   const counts = new Map();
@@ -27,6 +28,14 @@ export async function GET(req) {
       return ApiResponse.error(auth.message, auth.status);
     }
 
+    const accessibleCenterIds = getAssessment316AccessibleCenterIds(auth.actor);
+    const studentCenterFilter = accessibleCenterIds === null
+      ? {}
+      : { centerId: { in: accessibleCenterIds } };
+    const resultCenterFilter = accessibleCenterIds === null
+      ? {}
+      : { user: { student: studentCenterFilter } };
+
     const assessments = await prisma.assessment316.findMany({
       where: { status: true },
       include: {
@@ -37,7 +46,7 @@ export async function GET(req) {
           include: { subject: { select: { id: true, subjectName: true, classId: true } } },
         },
         responses: {
-          where: { status: true },
+          where: { status: true, ...resultCenterFilter },
           include: {
             items: {
               include: {
@@ -47,7 +56,7 @@ export async function GET(req) {
           },
         },
         attendances: {
-          where: { status: 'ABSENT' },
+          where: { status: 'ABSENT', ...resultCenterFilter },
           select: { userId: true },
         },
       },
@@ -83,6 +92,7 @@ export async function GET(req) {
                   ? [{ studyingClass: { in: assessment.allowedClasses.map((item) => String(item.classId)) } }]
                   : []),
               ],
+              ...studentCenterFilter,
             },
           },
           select: { id: true },

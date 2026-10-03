@@ -246,12 +246,23 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const assessmentId = searchParams.get('assessmentId');
     const userId = searchParams.get('userId');
+    const accessibleCenterIds = auth.actor.isAdmin
+      ? null
+      : Array.from(new Set(
+          (Array.isArray(auth.actor.assignedCenterIds) ? auth.actor.assignedCenterIds : [])
+            .map((centerId) => String(centerId).trim())
+            .filter(Boolean)
+        ));
+    const studentCenterFilter = accessibleCenterIds === null
+      ? {}
+      : { user: { student: { centerId: { in: accessibleCenterIds } } } };
 
     const results = await prisma.assessmentResult.findMany({
       where: {
         ...(assessmentId ? { assessmentId } : {}),
         ...(userId ? { userId } : {}),
         status: true,
+        ...studentCenterFilter,
       },
       select: {
         id: true,

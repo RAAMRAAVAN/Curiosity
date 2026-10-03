@@ -2,6 +2,7 @@ import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { buildAssessment316ResultSummary } from '@/lib/assessment316Results';
+import { getAssessment316AccessibleCenterIds } from '@/lib/assessment316Access';
 
 const buildAssessmentMaps = (checklist = []) => {
   const checklistMap = new Map();
@@ -29,6 +30,11 @@ export async function GET(req, { params }) {
       return ApiResponse.error(auth.message, auth.status);
     }
 
+    const accessibleCenterIds = getAssessment316AccessibleCenterIds(auth.actor);
+    const responseCenterFilter = accessibleCenterIds === null
+      ? {}
+      : { user: { student: { centerId: { in: accessibleCenterIds } } } };
+
     const { id: assessmentId } = await params;
     if (!assessmentId) {
       return ApiResponse.error('Assessment ID is required', 400);
@@ -55,7 +61,7 @@ export async function GET(req, { params }) {
     }
 
     const responses = await prisma.assessment316Response.findMany({
-      where: { assessmentId, status: true },
+      where: { assessmentId, status: true, ...responseCenterFilter },
       orderBy: { submittedAt: 'desc' },
       include: {
         user: {
