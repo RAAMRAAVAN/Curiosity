@@ -62,6 +62,7 @@ const AddTeacher = ({ open, setOpen, form, setForm,  pageLoading, users, setPage
             open={open}
             onClose={() => setOpen(false)}
             fullWidth
+            scroll="paper"
             maxWidth="sm"
         >
             <DialogTitle>Add Teacher</DialogTitle>
@@ -69,7 +70,7 @@ const AddTeacher = ({ open, setOpen, form, setForm,  pageLoading, users, setPage
             <DialogContent>
 
                 <Autocomplete
-                    sx={{ mt: 1 }}
+                    sx={{ mt: 1, minWidth: 0 }}
                     options={availableUsers}
                     getOptionLabel={(option) =>
                         `${option.name} (${option.email})`
@@ -103,6 +104,7 @@ const AddTeacher = ({ open, setOpen, form, setForm,  pageLoading, users, setPage
                     variant="contained"
                     onClick={handleSubmit}
                     disabled={pageLoading}
+                    sx={{ minHeight: 40, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}
                 >
                     Add as a Teacher
                 </Button>

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Box, Button, Typography } from '@mui/material';
+import { Box, Button, TablePagination, TextField, Typography } from '@mui/material';
 import { AddCircleOutline } from '@mui/icons-material';
 import AssessmentManager from '@/app/(components)/AssessmentManager';
+import usePagedData from './usePagedData';
 
 const emptyQuestion = () => ({
   questionText: '',
@@ -14,8 +15,9 @@ const emptyQuestion = () => ({
 });
 
 const AdminAssessmentsPage = ({ heading = 'View Assessment - A', moduleDescription = 'Review and manage assessments across all available subjects.' }) => {
-  const [assessments, setAssessments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const paged = usePagedData({ endpoint: '/api/assessments/all', initialPageSize: 10 });
+  const assessments = paged.rows;
+  const loading = paged.loading;
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -40,20 +42,12 @@ const AdminAssessmentsPage = ({ heading = 'View Assessment - A', moduleDescripti
   };
 
   const fetchAssessments = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/assessments/all', { credentials: 'include' });
-      const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load assessments');
-      setAssessments(Array.isArray(result.data) ? result.data : []);
-    } catch (error) {
-      console.error(error);
-      setAssessments([]);
-      setFeedback({ severity: 'error', message: error.message || 'Unable to load assessments' });
-    } finally {
-      setLoading(false);
-    }
+    paged.reload();
   };
+
+  useEffect(() => {
+    if (paged.error) setFeedback({ severity: 'error', message: paged.error });
+  }, [paged.error]);
 
   const loadAssessmentOptions = async () => {
     try {
@@ -122,22 +116,24 @@ const AdminAssessmentsPage = ({ heading = 'View Assessment - A', moduleDescripti
   };
 
   useEffect(() => {
-    fetchAssessments();
     loadAssessmentOptions();
   }, []);
 
   return (
-    <Box sx={{ width: { xs: 'calc(100% + 32px)', sm: '100%' }, ml: { xs: -2, sm: 0 }, p: { xs: 0, sm: 2, md: 3 } }}>
+    <Box sx={{ width: '100%', maxWidth: 1400, mx: 'auto', minWidth: 0, p: { xs: 0, sm: 2, md: 3 } }}>
       <Box paddingX={2} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 2 }}>
-        <Box>
-          <Typography variant="h6" fontWeight={700} sx={{ mb: 1, fontSize: { xs: 16, sm: 20 } }}>{heading}</Typography>
-          <Typography color="text.secondary" sx={{ fontSize: { xs: 12, sm: 16 } }}>{moduleDescription}</Typography>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h6" fontWeight={700} sx={{ mb: 1, fontSize: { xs: 16, sm: 20 }, overflowWrap: 'anywhere' }}>{heading}</Typography>
+          <Typography color="text.secondary" sx={{ fontSize: { xs: 12, sm: 16 }, overflowWrap: 'anywhere' }}>{moduleDescription}</Typography>
         </Box>
         {canCreateAssessments ? (
-          <Button variant="contained" startIcon={<AddCircleOutline />} onClick={handleOpenCreate} disabled={!selectedSubjectId} sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
+          <Button variant="contained" startIcon={<AddCircleOutline />} onClick={handleOpenCreate} disabled={!selectedSubjectId} sx={{ width: { xs: '100%', sm: 'auto' }, minHeight: 44, flexShrink: 0, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
             Add New Assessment
           </Button>
         ) : null}
+      </Box>
+      <Box paddingX={2} sx={{ mb: 2 }}>
+        <TextField size="small" label="Search assessments" value={paged.search} onChange={(event) => paged.setSearch(event.target.value)} sx={{ width: { xs: '100%', sm: 360 }, maxWidth: '100%' }} />
       </Box>
       <AssessmentManager
         resetForm={resetForm}
@@ -171,6 +167,7 @@ const AdminAssessmentsPage = ({ heading = 'View Assessment - A', moduleDescripti
         onAssessmentSubjectChange={handleAssessmentSubjectChange}
         onAllowedClassIdsChange={handleVisibleClassIdsChange}
       />
+      <TablePagination {...paged.paginationProps} rowsPerPageOptions={[10, 25, 50]} sx={{ maxWidth: '100%' }} />
     </Box>
   );
 };

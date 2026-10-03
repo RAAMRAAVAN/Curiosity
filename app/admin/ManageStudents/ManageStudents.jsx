@@ -1,6 +1,7 @@
 "use client";
 
 import Loader from '@/app/(components)/Loader';
+import usePagedData from '../usePagedData';
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -39,7 +40,6 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
-  const [students, setStudents] = useState([]);
   const [centers, setCenters] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,9 +55,6 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   const fileInputRef = useRef(null);
   const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
   const [selectedClassFilter, setSelectedClassFilter] = useState(ALL_CLASSES);
-  const [studentSearch, setStudentSearch] = useState("");
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(50);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -92,6 +89,17 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   const canEditStudents = hasPermission('students.edit');
   const canDeleteStudents = hasPermission('students.delete');
 
+  const canUseCenterFilter = authUser?.role === "ADMIN" || authUser?.role === "MANAGEMENT";
+  const paged = usePagedData({
+    endpoint: '/api/admin/students',
+    params: {
+      centerId: canUseCenterFilter && selectedCenter !== ALL_CENTERS ? selectedCenter : '',
+      classId: selectedClassFilter !== ALL_CLASSES ? selectedClassFilter : '',
+    },
+    initialPageSize: 50,
+  });
+  const { rows: students, search: studentSearch, setSearch: setStudentSearch } = paged;
+
   const classNameById = useMemo(() => {
     const entries = classes
       .filter((item) => item?.id)
@@ -121,25 +129,21 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
     return classIdByName.get(asString.toLowerCase()) || "";
   };
 
-  const loadData = async () => {
+  const loadData = async ({ reloadList = true } = {}) => {
+    if (reloadList) paged.reload();
     try {
       setLoading(true);
-      const [meRes, studentsRes, centersRes, classesRes] = await Promise.all([
+      const [meRes, centersRes, classesRes] = await Promise.all([
         fetch("/api/admin/me", { credentials: "include" }),
-        fetch("/api/admin/students", { credentials: "include" }),
         fetch("/api/admin/centers", { credentials: "include" }),
         fetch("/api/admin/classes", { credentials: "include" }),
       ]);
 
       const meData = await meRes.json();
-      const studentsData = await studentsRes.json();
       const centersData = await centersRes.json();
       const classesData = await classesRes.json();
 
       if (meData.success) setAuthUser(meData.data || null);
-
-      if (studentsData.success) setStudents(studentsData.data || []);
-      else setMessage(studentsData.message || "Unable to load students.");
 
       if (centersData.success) setCenters(centersData.data || []);
       else setMessage(centersData.message || "Unable to load centers.");
@@ -155,7 +159,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   };
 
   useEffect(() => {
-    loadData();
+    loadData({ reloadList: false });
   }, []);
 
   const openCreateDialog = () => {
@@ -457,7 +461,6 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   );
 
   const teacherLocked = authUser?.role === "TEACHER";
-  const canUseCenterFilter = authUser?.role === "ADMIN" || authUser?.role === "MANAGEMENT";
 
   const centerFilterOptions = useMemo(() => {
     const knownCenters = centers
@@ -485,27 +488,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
     return [{ id: ALL_CLASSES, name: "All" }, ...knownClasses, ...dynamicClasses];
   }, [classes, students]);
 
-  const filteredStudents = useMemo(() => {
-    const search = studentSearch.trim().toLowerCase();
-
-    return students.filter((student) => {
-      const matchesCenter = !canUseCenterFilter
-        || selectedCenter === ALL_CENTERS
-        || (student.centerId || "") === selectedCenter;
-      const matchesClass = selectedClassFilter === ALL_CLASSES
-        || (student.studyingClass || "") === selectedClassFilter;
-      const matchesSearch = !search
-        || String(student.name || "").toLowerCase().includes(search)
-        || String(student.id || "").toLowerCase().includes(search);
-
-      return matchesCenter && matchesClass && matchesSearch;
-    });
-  }, [students, canUseCenterFilter, selectedCenter, selectedClassFilter, studentSearch]);
-
-  useEffect(() => {
-    const lastPage = Math.max(0, Math.ceil(filteredStudents.length / rowsPerPage) - 1);
-    if (page > lastPage) setPage(lastPage);
-  }, [filteredStudents.length, page, rowsPerPage]);
+  const filteredStudents = students;
 
   const centerOptions = useMemo(() => {
     if (!teacherLocked) return centers;
@@ -542,22 +525,19 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   }, [dialogOpen, classes, form.studyingClass]);
 
   return (
-    <Box sx={{ width: '100%', p: { xs: 0, sm: 2, md: 3 } }}>
-      <Box padding={1} sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 3, flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
-        <Box>
+    <Box sx={{ width: '100%', minWidth: 0, p: { xs: 0, sm: 2, md: 3 }, pb: { xs: 12, sm: 12 } }}>
+      <Box padding={1} sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 3, flexDirection: { xs: "column", md: "row" }, flexWrap: 'wrap', gap: 2 }}>
+        <Box sx={{ minWidth: 0 }}>
           <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: 16, sm: 18, md: 20 } }}>Manage Students</Typography>
         </Box>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 2, sm: 1 }} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 2, sm: 0 }} useFlexGap sx={{ width: { xs: '100%', md: 'auto' }, minWidth: 0, flexWrap: 'wrap', gap: { sm: 1 } }}>
           <TextField
             size="small"
             label="Search Students"
             placeholder="Name or Enrollment ID"
             value={studentSearch}
-            onChange={(event) => {
-              setStudentSearch(event.target.value);
-              setPage(0);
-            }}
-            sx={{ minWidth: 240, width: { xs: '100%', sm: 'auto' } }}
+            onChange={(event) => setStudentSearch(event.target.value)}
+            sx={{ minWidth: { xs: 0, sm: 240 }, width: { xs: '100%', sm: 'auto' } }}
           />
           {canUseCenterFilter ? (
             <TextField
@@ -565,11 +545,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
               size="small"
               label="Filter By Center"
               value={selectedCenter}
-              onChange={(event) => {
-                setSelectedCenter(event.target.value);
-                setPage(0);
-              }}
-              sx={{ minWidth: 220, width: { xs: '100%', sm: 'auto' } }}
+              onChange={(event) => setSelectedCenter(event.target.value)}
+              sx={{ minWidth: { xs: 0, sm: 220 }, width: { xs: '100%', sm: 'auto' } }}
               InputLabelProps={{ shrink: true }}
             >
               {centerFilterOptions.map((center) => (
@@ -584,11 +561,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
             size="small"
             label="Filter By Class"
             value={selectedClassFilter}
-            onChange={(event) => {
-              setSelectedClassFilter(event.target.value);
-              setPage(0);
-            }}
-            sx={{ minWidth: 180, width: { xs: '100%', sm: 'auto' } }}
+            onChange={(event) => setSelectedClassFilter(event.target.value)}
+            sx={{ minWidth: { xs: 0, sm: 180 }, width: { xs: '100%', sm: 'auto' } }}
             InputLabelProps={{ shrink: true }}
           >
             {classFilterOptions.map((item) => (
@@ -597,7 +571,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
               </MenuItem>
             ))}
           </TextField>
-          <Button variant="outlined" onClick={handleDownloadStudents} disabled={exporting || loading} size="small" sx={{ display: { xs: 'none', sm: 'inline-flex' }, width: { xs: '100%', sm: 'auto' }, fontSize: 12, py: 0.5, px: 1.5 }}>
+          <Button variant="outlined" onClick={handleDownloadStudents} disabled={exporting || loading} size="small" sx={{ width: { xs: '100%', sm: 'auto' }, minHeight: { xs: 40, sm: 'auto' }, fontSize: 12, py: 0.5, px: 1.5 }}>
             {exporting ? "Exporting..." : "Export Students"}
           </Button>
           {canCreateStudents ? (
@@ -614,7 +588,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
         </Alert>
       ) : null}
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
+      <TableContainer component={Paper} sx={{ maxWidth: '100%', borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
         <Table sx={{ minWidth: { xs: 600, sm: 720 } }}>
           <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff' } }}>
             <TableRow>
@@ -628,7 +602,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
             </TableRow>
           </TableHead>
           <TableBody>
-            {loading ? (
+            {paged.loading ? (
               <TableRow>
                 <TableCell colSpan={isMobile ? 5 : isTablet ? 6 : 7} align="center" sx={{ py: 4 }}>
                   <Loader variant='section' label='Loading students...' sx={{ minHeight: 'auto', py: 0 }} />
@@ -637,20 +611,19 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
             ) : filteredStudents.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={isMobile ? 5 : isTablet ? 6 : 7} align="center" sx={{ py: 4 }}>
-                  {students.length === 0
+                  {paged.total === 0 && !studentSearch.trim() && selectedCenter === ALL_CENTERS && selectedClassFilter === ALL_CLASSES
                     ? "No students found."
                     : studentSearch.trim()
                       ? "No students match your search."
-                      : "No students found for the selected center."}
+                      : "No students found for the selected filters."}
                 </TableCell>
               </TableRow>
             ) : (
               filteredStudents
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((student) => (
                 <TableRow key={student.id} hover sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}>
                   <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, whiteSpace: 'nowrap' }}>{student.id || "—"}</TableCell>
-                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{student.name}</TableCell>
+                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, overflowWrap: 'anywhere', minWidth: 120 }}>{student.name}</TableCell>
                   {/* <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{student.email}</TableCell> */}
                   <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{student.centerName || "—"}</TableCell>
                   <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{student.className || classNameById[student.studyingClass] || "—"}</TableCell>
@@ -658,17 +631,17 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
                     <Chip label={student.status ? "Active" : "Inactive"} color={student.status ? "success" : "default"} size="small" />
                   </TableCell>
                   <TableCell align="right">
-                    <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                    <Stack direction="row" spacing={0.5} justifyContent="flex-end" sx={{ flexWrap: 'nowrap' }}>
                       {canEditStudents ? (
                         <Tooltip title="Edit student" arrow>
-                          <IconButton onClick={() => openEditDialog(student)} size="small" sx={{ backgroundColor: '#e0f2fe', color: '#0a336b', '&:hover': { backgroundColor: '#bae6fd' } }}>
+                          <IconButton aria-label={`Edit ${student.name || 'student'}`} onClick={() => openEditDialog(student)} size="small" sx={{ backgroundColor: '#e0f2fe', color: '#0a336b', '&:hover': { backgroundColor: '#bae6fd' } }}>
                             <Edit fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       ) : null}
                       {canDeleteStudents ? (
                         <Tooltip title="Delete student" arrow>
-                          <IconButton onClick={() => requestDelete(student)} size="small" sx={{ backgroundColor: '#fee2e2', color: '#b91c1c', '&:hover': { backgroundColor: '#fecaca' } }}>
+                          <IconButton aria-label={`Delete ${student.name || 'student'}`} onClick={() => requestDelete(student)} size="small" sx={{ backgroundColor: '#fee2e2', color: '#b91c1c', '&:hover': { backgroundColor: '#fecaca' } }}>
                             <Delete fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -681,18 +654,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
           </TableBody>
         </Table>
       </TableContainer>
-      <TablePagination
-        component="div"
-        count={filteredStudents.length}
-        page={page}
-        onPageChange={(_, nextPage) => setPage(nextPage)}
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={(event) => {
-          setRowsPerPage(Number(event.target.value));
-          setPage(0);
-        }}
-        rowsPerPageOptions={[25, 50, 100]}
-      />
+      <TablePagination {...paged.paginationProps} rowsPerPageOptions={[25, 50, 100]} />
 
       {canCreateStudents ? (
         <Box
@@ -730,7 +692,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
           direction="row"
           spacing={1}
           justifyContent="flex-end"
-          sx={{ display: { xs: "none", xl: "flex" }, mt: 2 }}
+          useFlexGap
+          sx={{ display: { xs: "none", xl: "flex" }, mt: 2, flexWrap: 'wrap' }}
         >
           <Button variant="outlined" onClick={handleDownloadTemplate} disabled={templateLoading || loading}>
             {templateLoading ? "Preparing..." : "Download Template"}
@@ -747,6 +710,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
         onClose={() => setDeleteConfirmation(null)}
         maxWidth="xs"
         fullWidth
+        scroll="paper"
       >
         <DialogTitle>Delete Student?</DialogTitle>
         <DialogContent>
@@ -767,6 +731,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
         onClose={() => setDialogOpen(false)}
         maxWidth={isMobile ? false : "sm"}
         fullWidth
+        scroll="paper"
         sx={isMobile ? {
           '& .MuiDialog-paper': {
             margin: 0,

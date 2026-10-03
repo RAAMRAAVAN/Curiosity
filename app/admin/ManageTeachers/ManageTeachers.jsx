@@ -18,6 +18,7 @@ import {
     TableCell,
     TableContainer,
     TableHead,
+    TablePagination,
     TableRow,
     TextField,
     Tooltip,
@@ -33,6 +34,7 @@ import DisplayTeachers from "./DisplayTeachers";
 import TeacherSubjectDialog from "./TeacherSubjectDialog";
 import Loader from '@/app/(components)/Loader';
 import { useAdminAuth } from '../AdminAuthContext';
+import usePagedData from '../usePagedData';
 
 const ALL_CENTERS = "ALL";
 
@@ -56,7 +58,6 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
     
     const [open, setOpen] = useState(false);
     const [pageLoading, setPageLoading] = useState(false);
-    const [teachers, setTeachers] = useState([]);
     const [centers, setCenters] = useState([]);
     const [form, setForm] = useState(emptyForm);
     const [editingTeacher, setEditingTeacher] = useState(null);
@@ -64,7 +65,14 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
     const [selectedTeacherId, setSelectedTeacherId] = useState(null);
     const [exporting, setExporting] = useState(false);
     const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
-    const [teacherSearch, setTeacherSearch] = useState("");
+
+    const paged = usePagedData({
+        endpoint: '/api/admin/teachers',
+        params: {
+            centerId: (authUser?.role === "ADMIN" || authUser?.role === "MANAGEMENT") && selectedCenter !== ALL_CENTERS ? selectedCenter : '',
+        },
+    });
+    const { rows: teachers, search: teacherSearch, setSearch: setTeacherSearch } = paged;
 
     const hasPermission = (permission) => {
         if (String(role || '').toUpperCase() === 'ADMIN') return true;
@@ -181,29 +189,8 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
         }
     };
 
-    const FetchTeachers = async (showLoader = true) => {
-        if (showLoader) setPageLoading(true);
-
-        try {
-            const res = await fetch("/api/admin/teachers", {
-                credentials: "include",
-            });
-
-            const data = await res.json();
-
-            if (!res.ok || !data.success) {
-                throw new Error(data.message);
-            }
-
-            setTeachers(data.data);
-        } catch (err) {
-            console.error(err);
-            alert(err.message);
-        } finally {
-            if (showLoader) {
-                setPageLoading(false);
-            }
-        }
+    const FetchTeachers = async () => {
+        paged.reload();
     };
 
     const fetchMeta = async () => {
@@ -299,7 +286,6 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
     };
 
     useEffect(() => {
-        FetchTeachers(false);
         fetchMeta();
     }, []);
 
@@ -337,19 +323,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
         return [{ id: ALL_CENTERS, name: "All" }, ...knownCenters, ...dynamicCenters];
     }, [centers, teachers]);
 
-    const filteredTeachers = useMemo(() => {
-        const normalizedSearch = teacherSearch.trim().toLowerCase();
-
-        return teachers.filter((teacher) => {
-            const matchesSearch = !normalizedSearch
-                || `${teacher.name || ""} ${teacher.email || ""}`.toLowerCase().includes(normalizedSearch);
-            const matchesCenter = !canUseCenterFilter
-                || selectedCenter === ALL_CENTERS
-                || (teacher.centerId || "") === selectedCenter;
-
-            return matchesSearch && matchesCenter;
-        });
-    }, [teachers, canUseCenterFilter, selectedCenter, teacherSearch]);
+    const filteredTeachers = teachers;
 
     useEffect(() => {
         if (!canUseCenterFilter) {
@@ -364,11 +338,11 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
     }, [canUseCenterFilter, centerFilterOptions, selectedCenter]);
 
     return (
-        <Box sx={{ width: { xs: 'calc(100% + 32px)', sm: '100%' }, ml: { xs: -2, sm: 0 }, p: { xs: 0, sm: 2, md: 3 } }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', p: { xs: 2, sm: 3 }, borderRadius: 3, backgroundColor: 'white', boxShadow: 3, marginBottom: 5 }}>
-                <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+        <Box sx={{ width: '100%', minWidth: 0, p: { xs: 0, sm: 2, md: 3 }, pb: { xs: 12, sm: 12 } }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0, p: { xs: 2, sm: 3 }, borderRadius: 3, backgroundColor: 'white', boxShadow: 3, marginBottom: 5 }}>
+                <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', md: 'row' }, flexWrap: 'wrap', gap: 2 }}>
                     <Typography fontWeight='bold' sx={{ fontSize: { xs: 14, sm: 16 } }}>Teachers</Typography>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap sx={{ width: { xs: '100%', md: 'auto' }, minWidth: 0, flexWrap: 'wrap' }}>
                         {canUseCenterFilter ? (
                             <TextField
                                 select
@@ -376,7 +350,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                                 label="Filter By Center"
                                 value={selectedCenter}
                                 onChange={(event) => setSelectedCenter(event.target.value)}
-                                sx={{ minWidth: 220, width: { xs: '100%', sm: 'auto' }, marginBottom: { xs: 1, sm: 0 } }}
+                                sx={{ minWidth: { xs: 0, sm: 220 }, width: { xs: '100%', sm: 'auto' } }}
                                 InputLabelProps={{ shrink: true }}
                             >
                                 {centerFilterOptions.map((center) => (
@@ -384,7 +358,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                                 ))}
                             </TextField>
                         ) : null}
-                        <Button variant='outlined' onClick={handleDownloadTeachers} disabled={exporting || pageLoading} size={isMobile ? "small" : "medium"} sx={{ display: { xs: 'none', sm: 'inline-flex' }, width: { xs: '100%', sm: 'auto' } }}>
+                        <Button variant='outlined' onClick={handleDownloadTeachers} disabled={exporting || pageLoading} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' }, minHeight: { xs: 40, sm: 'auto' } }}>
                             {exporting ? "Exporting..." : "Download Excel"}
                         </Button>
                         {canCreateTeachers ? (
@@ -412,8 +386,8 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                         )}
                     />
                 </Box>
-                <Box sx={{ marginTop: 2, overflow: 'auto' }}>
-                    <TableContainer sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
+                <Box sx={{ marginTop: 2, overflow: 'auto', maxWidth: '100%' }}>
+                    <TableContainer sx={{ maxWidth: '100%', borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
                         <Table sx={{ minWidth: { xs: 600, sm: 720 } }}>
                             <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff' } }}>
                                 <TableRow>
@@ -444,6 +418,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                             </TableBody>
                         </Table>
                     </TableContainer>
+                    <TablePagination {...paged.paginationProps} />
                 </Box>
             </Box>
 
@@ -482,6 +457,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                 open={open}
                 onClose={() => setOpen(false)}
                 fullWidth
+                scroll="paper"
                 maxWidth={isMobile ? false : "md"}
                 sx={isMobile ? {
                     '& .MuiDialog-paper': {
@@ -498,7 +474,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                     <IconButton
                         aria-label="Close"
                         onClick={() => setOpen(false)}
-                        sx={{ position: 'absolute', top: 6, right: 8 }}
+                        sx={{ position: 'absolute', top: 6, right: 8, color: '#ffffff' }}
                     >
                         <CloseIcon />
                     </IconButton>
@@ -613,7 +589,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                     </Stack>
                 </DialogContent>
                 <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 2 } }}>
-                    <Button variant="contained" onClick={handleSubmit} disabled={pageLoading} size={isMobile ? "small" : "medium"} sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
+                    <Button variant="contained" onClick={handleSubmit} disabled={pageLoading} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' }, minHeight: 40, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
                         {editingTeacher ? "Save Changes" : "Create Teacher"}
                     </Button>
                 </DialogActions>

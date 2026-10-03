@@ -17,6 +17,7 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -59,6 +60,13 @@ export default function StudentMonthlyAttendancePage() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [rows, setRows] = useState([]);
+  const [hasReport, setHasReport] = useState(false);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  const [total, setTotal] = useState(0);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [reloadToken, setReloadToken] = useState(0);
+  const latestRequest = useRef(0);
   const [studentSearch, setStudentSearch] = useState('');
   const [centersLoaded, setCentersLoaded] = useState(false);
   const [loadingOptions, setLoadingOptions] = useState(true);
@@ -139,32 +147,61 @@ export default function StudentMonthlyAttendancePage() {
     return dates;
   }, [selectedMonth, selectedYear]);
 
-  const filteredRows = useMemo(() => {
-    const query = studentSearch.trim().toLocaleLowerCase();
-    if (!query) return rows;
-    return rows.filter((row) => String(row.studentName || '').toLocaleLowerCase().includes(query));
-  }, [rows, studentSearch]);
+  const filteredRows = rows;
+  const showReport = hasReport && (rows.length > 0 || Boolean(debouncedSearch) || Boolean(studentSearch.trim()));
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(studentSearch.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [studentSearch]);
+
+  useEffect(() => { setPage(0); }, [debouncedSearch, pageSize]);
+
+  const viewReport = () => {
+    setHasReport(true);
+    setPage(0);
+    setReloadToken((value) => value + 1);
+  };
 
   const fetchMonthlyReport = async () => {
     if (!selectedCenterId || !selectedClassIds.length) return;
     setLoadingRows(true);
     setError('');
+    const requestId = latestRequest.current + 1;
+    latestRequest.current = requestId;
 
     try {
-      const response = await fetch(`/api/admin/attendance/monthly?centerId=${encodeURIComponent(selectedCenterId)}&classId=${encodeURIComponent(selectedClassIds.join(','))}&month=${String(selectedMonth).padStart(2, '0')}&year=${selectedYear}`, { credentials: 'include' });
+      const params = new URLSearchParams({
+        centerId: selectedCenterId,
+        classId: selectedClassIds.join(','),
+        month: String(selectedMonth).padStart(2, '0'),
+        year: String(selectedYear),
+        page: String(page + 1),
+        pageSize: String(pageSize),
+      });
+      if (debouncedSearch) params.set('search', debouncedSearch);
+      const response = await fetch(`/api/admin/attendance/monthly?${params}`, { credentials: 'include' });
       const data = await response.json();
       if (!response.ok || !data.success) {
         throw new Error(data.message || 'Unable to load monthly attendance report.');
       }
+      if (latestRequest.current !== requestId) return;
 
       setRows(data.data?.rows || []);
+      setTotal(data.pagination?.total ?? (data.data?.rows || []).length);
     } catch (err) {
+      if (latestRequest.current !== requestId) return;
       setError(err.message || 'Unable to load monthly attendance report.');
       setRows([]);
+      setTotal(0);
     } finally {
-      setLoadingRows(false);
+      if (latestRequest.current === requestId) setLoadingRows(false);
     }
   };
+
+  useEffect(() => {
+    if (hasReport) fetchMonthlyReport();
+  }, [hasReport, page, pageSize, debouncedSearch, reloadToken]);
 
   useEffect(() => {
     if (!isPortraitPhone && !loadingRows && rows.length) {
@@ -199,8 +236,8 @@ export default function StudentMonthlyAttendancePage() {
     <Box sx={{ width: '100%', height: isCompactScreen ? 'auto' : '100%', minWidth: 0, minHeight: 0, p: 0, overflow: isCompactScreen ? 'visible' : 'hidden' }}>
       <Paper sx={{ height: isCompactScreen ? 'auto' : '100%', minWidth: 0, minHeight: isCompactScreen ? 'calc(100dvh - 73px)' : 0, display: 'flex', flexDirection: 'column', overflow: isCompactScreen ? 'visible' : 'hidden', p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: '0 20px 48px rgba(15, 23, 42, 0.08)' }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ md: 'center' }} sx={{ mb: 3 }}>
-          <Box>
-            <Typography variant='h5' fontWeight={700} sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' }, lineHeight: { xs: 1.2, sm: 1.334 } }}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant='h5' fontWeight={700} sx={{ color: '#0a336b', fontSize: { xs: '1.25rem', sm: '1.5rem' }, lineHeight: { xs: 1.2, sm: 1.334 } }}>
               Student's Monthly Attendance
             </Typography>
             <Typography color='text.secondary'>Review and download student monthly attendance reports.</Typography>
@@ -220,7 +257,7 @@ export default function StudentMonthlyAttendancePage() {
             {!isCompactScreen ? (
               <Button
                 variant='contained'
-                onClick={fetchMonthlyReport}
+                onClick={viewReport}
                 disabled={!selectedCenterId || !selectedClassIds.length || loadingRows}
               >
                 View report
@@ -271,7 +308,7 @@ export default function StudentMonthlyAttendancePage() {
               }}
               MenuProps={{
                 PaperProps: {
-                  sx: { maxHeight: 'min(320px, calc(100dvh - 160px))' },
+                  sx: { maxHeight: 'min(320px, calc(100dvh - 160px))', maxWidth: 'calc(100vw - 32px)' },
                 },
               }}
             >
@@ -308,7 +345,7 @@ export default function StudentMonthlyAttendancePage() {
         {isCompactScreen ? (
           <Button
             variant='contained'
-            onClick={fetchMonthlyReport}
+            onClick={viewReport}
             disabled={!selectedCenterId || !selectedClassIds.length || loadingRows}
             sx={{ width: '100%', mb: 2 }}
           >
@@ -318,11 +355,11 @@ export default function StudentMonthlyAttendancePage() {
 
         {error ? <Alert severity='error' sx={{ mb: 2 }}>{error}</Alert> : null}
 
-        {loadingRows ? (
+        {loadingRows && !showReport ? (
           <Loader variant='section' label='Loading monthly attendance' />
         ) : null}
 
-        {!loadingRows && rows.length ? (
+        {showReport ? (
           <Box
             ref={reportRef}
             sx={{
@@ -367,6 +404,7 @@ export default function StudentMonthlyAttendancePage() {
                     left: 0,
                     zIndex: 5,
                     width: { xs: '100%', sm: 360 },
+                    maxWidth: '100%',
                     mb: 1.5,
                     backgroundColor: 'background.paper',
                   }}
@@ -423,7 +461,7 @@ export default function StudentMonthlyAttendancePage() {
                     hover
                     sx={{
                       '&:nth-of-type(even) > td': { backgroundColor: '#f8fafc' },
-                      '&:hover > td': { backgroundColor: '#edf5fb' },
+                      '&:hover > td': { backgroundColor: '#f8fbff' },
                     }}
                   >
                     <TableCell align='center' sx={{
@@ -523,19 +561,29 @@ export default function StudentMonthlyAttendancePage() {
                 {!filteredRows.length ? (
                   <TableRow>
                     <TableCell align='center' colSpan={monthDates.length + 5} sx={{ py: 3, color: 'text.secondary' }}>
-                      No students match that name.
+                      {loadingRows ? 'Loading...' : 'No students match that name.'}
                     </TableCell>
                   </TableRow>
                 ) : null}
               </TableBody>
             </Table>
+                <TablePagination
+                  component='div'
+                  count={total}
+                  page={page}
+                  onPageChange={(_event, next) => setPage(next)}
+                  rowsPerPage={pageSize}
+                  onRowsPerPageChange={(event) => setPageSize(Number(event.target.value))}
+                  rowsPerPageOptions={[25, 50, 100, 200]}
+                  sx={{ position: 'sticky', left: 0, maxWidth: '100%' }}
+                />
                 </Box>
               </>
             )}
           </Box>
         ) : null}
 
-        {!loadingRows && !rows.length && !error && (
+        {!loadingRows && !rows.length && !error && !showReport && (
           <Alert severity='info'>Select a centre and class, then click View report.</Alert>
         )}
       </Paper>

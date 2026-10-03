@@ -121,11 +121,12 @@ const TeacherClassDialog = ({ open, setOpen, teacherId, setPageLoading }) => {
                 open={open}
                 onClose={() => setOpen(false)}
                 fullWidth
+                scroll="paper"
                 maxWidth="sm"
             >
                 <DialogTitle>Map Classes</DialogTitle>
                 <DialogContent dividers sx={{ overflowY: "auto" }}>
-                    <Box display="flex" gap={2} mb={2}>
+                    <Box display="flex" flexWrap="wrap" gap={2} mb={2}>
                         <Button variant="outlined" onClick={selectAll}>Select All</Button>
                         <Button variant="outlined" onClick={deselectAll}>Deselect All</Button>
                     </Box>
@@ -136,7 +137,7 @@ const TeacherClassDialog = ({ open, setOpen, teacherId, setPageLoading }) => {
                         classes.map((item) => (
                             <FormControlLabel
                                 key={item.id}
-                                sx={{ display: "flex", ml: 0 }}
+                                sx={{ display: "flex", ml: 0, overflowWrap: 'anywhere' }}
                                 control={
                                     <Checkbox
                                         checked={selected.includes(item.id)}
@@ -150,7 +151,7 @@ const TeacherClassDialog = ({ open, setOpen, teacherId, setPageLoading }) => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpen(false)}>Cancel</Button>
-                    <Button variant="contained" onClick={save}>Save</Button>
+                    <Button variant="contained" onClick={save} sx={{ minHeight: 40, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>Save</Button>
                 </DialogActions>
             </Dialog>
 

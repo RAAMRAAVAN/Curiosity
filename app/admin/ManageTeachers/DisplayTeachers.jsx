@@ -70,7 +70,7 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
                     sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}
                 >
 
-                    <TableCell>{teacher.name}</TableCell>
+                    <TableCell sx={{ overflowWrap: 'anywhere', minWidth: 120 }}>{teacher.name}</TableCell>
 
                     <TableCell>{teacher.centerName || "—"}</TableCell>
 
@@ -128,15 +128,16 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
 
                     </TableCell>
 
-                    <TableCell>{teacher.email}</TableCell>
+                    <TableCell sx={{ overflowWrap: 'anywhere', minWidth: 160 }}>{teacher.email}</TableCell>
 
 
-                    <TableCell>
-                        <Stack direction="row" spacing={1} alignItems="center">
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'nowrap' }}>
                             {canEditTeachers ? (
                                 <Tooltip title="Edit teacher" arrow>
                                     <IconButton
                                         size="small"
+                                        aria-label={`Edit ${teacher.name}`}
                                         onClick={() => onEditTeacher(teacher)}
                                         sx={{
                                             backgroundColor: '#e0f2fe',
@@ -152,6 +153,7 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
                                 <Tooltip title="Delete teacher" arrow>
                                     <IconButton
                                         size="small"
+                                        aria-label={`Delete ${teacher.name}`}
                                         onClick={() => handleDeleteTeacher(teacher.id)}
                                         sx={{
                                             backgroundColor: '#fee2e2',

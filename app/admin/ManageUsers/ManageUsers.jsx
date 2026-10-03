@@ -1,6 +1,6 @@
 'use client'
 
-import { Alert, Autocomplete, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, Fab, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography, useMediaQuery, useTheme } from "@mui/material"
+import { Alert, Autocomplete, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, Fab, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField, Tooltip, Typography, useMediaQuery, useTheme } from "@mui/material"
 import { useEffect, useMemo, useRef, useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -29,7 +29,7 @@ const roleOptions = ["management"];
 
 
 
-const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessage, loading, setLoading, role, permissions = [] }) => {
+const ManageUsersPage = ({ users = [], paged, setUsers, messgae, refreshUsers, setMessage, loading, setLoading, role, permissions = [] }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -64,7 +64,8 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
         schoolName: "",
         studyingClass: "",
     });
-      const [userSearch, setUserSearch] = useState("");
+      const userSearch = paged?.search ?? "";
+      const setUserSearch = paged?.setSearch ?? (() => {});
 
     const startNewUser = () => {
         setSelectedUserId(null);
@@ -275,22 +276,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
       return users.filter((user) => String(user.role || "").toUpperCase() === "MANAGEMENT");
     }, [users]);
 
-    const filteredUsers = useMemo(() => {
-      const normalizedSearch = userSearch.trim().toLowerCase();
-
-        return visibleUsers.filter((user) => {
-        if (normalizedSearch) {
-          const searchableText = `${user.name || ""} ${user.email || ""}`.toLowerCase();
-          if (!searchableText.includes(normalizedSearch)) return false;
-        }
-
-            return Object.entries(filters).every(([key, value]) => {
-                if (!value) return true;
-                const fieldValue = String(user[key] || "").toLowerCase();
-                return fieldValue.includes(value.toLowerCase());
-            });
-        });
-    }, [visibleUsers, filters, userSearch]);
+    const filteredUsers = visibleUsers;
 
     
 
@@ -325,10 +311,10 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
       && (selectedUserId || userForm.password?.trim())
   );
 
-    return (<Box sx={{ width: { xs: '100%', sm: '100%' }, ml: { xs: 0, sm: 0 } }}>
+    return (<Box sx={{ width: '100%', minWidth: 0, pb: { xs: 12, sm: 10 } }}>
       <Paper sx={{ p: { xs: 0, sm: 0 }, px: { xs: 1, sm: 2 }, mb: 4, borderRadius: { xs: 0, sm: 3 }, boxShadow: { xs: 'none', sm: "0 20px 48px rgba(15, 23, 42, 0.08)" } }}>
-            <Box padding={1} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", mb: 2 }}>
-                <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 14, sm: 16 } }}>
+            <Box padding={1} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1, mb: 2 }}>
+                <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 14, sm: 16 }, minWidth: 0, overflowWrap: 'anywhere' }}>
                     Management Users
                 </Typography>
                 {canCreateUsers ? (
@@ -369,7 +355,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
               />
             </Box>
 
-            <TableContainer sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' }, background: 'linear-gradient(180deg, #edf7ff 0%, #eef6ff 35%, #f4ecff 100%)', border: '1px solid rgba(59, 130, 246, 0.18)' }}>
+            <TableContainer sx={{ maxWidth: '100%', borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' }, background: 'linear-gradient(180deg, #edf7ff 0%, #eef6ff 35%, #f4ecff 100%)', border: '1px solid rgba(59, 130, 246, 0.18)' }}>
                 <Table sx={{ minWidth: { xs: 600, sm: 720 }, backgroundColor: '#f5f9ff', whiteSpace: 'nowrap' }}>
                     <TableHead sx={{ background: '#0a336b' }}>
                         <TableRow>
@@ -409,6 +395,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
                                           <Tooltip title="Edit user" arrow>
                                             <IconButton
                                               size="small"
+                                              aria-label={`Edit ${user.name || 'user'}`}
                                               onClick={() => handleEditUser(user)}
                                               sx={{
                                                 backgroundColor: '#e0f2fe',
@@ -424,6 +411,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
                                           <Tooltip title="Delete user" arrow>
                                             <IconButton
                                               size="small"
+                                              aria-label={`Delete ${user.name || 'user'}`}
                                               onClick={() => handleDeleteUser(user)}
                                               disabled={loading || deletingUserId === user.id}
                                               sx={{
@@ -451,6 +439,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
                     </TableBody>
                 </Table>
             </TableContainer>
+            {paged ? <TablePagination {...paged.paginationProps} /> : null}
         </Paper>
 
         <Dialog
@@ -460,6 +449,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
           }}
           maxWidth="xs"
           fullWidth
+          scroll="paper"
           PaperProps={{
             sx: {
               borderRadius: 3,
@@ -468,7 +458,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
             },
           }}
         >
-          <DialogTitle sx={{ fontWeight: 700, color: '#7f1d1d' }}>
+          <DialogTitle sx={{ fontWeight: 700, color: '#ffffff', bgcolor: '#b91c1c' }}>
             Delete user?
           </DialogTitle>
           <DialogContent>
@@ -538,6 +528,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
             open={openUserModal} 
             onClose={() => setOpenUserModal(false)} 
             fullWidth 
+            scroll="paper"
             maxWidth={isMobile ? false : "xl"}
             slotProps={{
               paper: {
@@ -550,7 +541,7 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
               '& .MuiDialog-paper': {
                 margin: isMobile ? 0 : 8,
                 width: isMobile ? '100%' : 'calc(100% - 16px)',
-                maxWidth: isMobile ? '100%' : 'none',
+                maxWidth: isMobile ? '100%' : 1280,
                 height: isMobile ? '100dvh' : 'auto',
                 maxHeight: isMobile ? '100dvh' : 'none',
                 display: isMobile ? 'flex' : 'block',
@@ -772,6 +763,8 @@ const ManageUsersPage = ({ users = [], setUsers, messgae, refreshUsers, setMessa
                 size={isMobile ? "small" : "medium"}
                 disabled={loading || !canSubmitUserForm}
                 sx={{
+                  minHeight: 40,
+                  width: { xs: '100%', sm: 'auto' },
                   backgroundColor: '#0a336b',
                   color: '#ffffff',
                   '&:hover': { backgroundColor: '#082b57' },

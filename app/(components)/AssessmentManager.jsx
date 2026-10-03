@@ -854,15 +854,15 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
               <CardContent sx={{ color: '#ffffff' }}>
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2 }}>
                   <Box sx={{ width: '100%', minWidth: 0 }}>
-                    <Typography fontWeight="bold">{assessment.title}</Typography>
-                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.78)' }}>{assessment.description || 'No description'}</Typography>
+                    <Typography fontWeight="bold" sx={{ overflowWrap: 'anywhere' }}>{assessment.title}</Typography>
+                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.78)', overflowWrap: 'anywhere' }}>{assessment.description || 'No description'}</Typography>
                     {(assessment.subject?.subjectName || assessment.class?.className) ? (
-                      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.72)' }}>
+                      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.72)', overflowWrap: 'anywhere' }}>
                         {assessment.subject?.subjectName || 'Subject'}{assessment.class?.className ? ` • ${assessment.class.className}` : ''}
                       </Typography>
                     ) : null}
                   </Box>
-                  <Stack direction="row" spacing={0.5} sx={{ alignSelf: { xs: 'flex-end', sm: 'auto' } }}>
+                  <Stack direction="row" spacing={0.5} sx={{ alignSelf: { xs: 'flex-end', sm: 'auto' }, flexShrink: 0 }}>
                     {canEditAssessments ? (
                       <Tooltip title="Edit assessment" arrow>
                         <IconButton aria-label="Edit assessment" onClick={() => openEditDialog(assessment)}>
@@ -880,11 +880,11 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                   </Stack>
                 </Box>
                 <Divider sx={{ my: 1.5, borderColor: 'rgba(255, 255, 255, 0.22)' }} />
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1 }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
                   <Chip
                     label={`Questions: ${assessment.questions?.length || 0}`}
                     variant="outlined"
-                    sx={{ color: '#ffffff', borderColor: 'rgba(255, 255, 255, 0.45)' }}
+                    sx={{ color: '#ffffff', borderColor: 'rgba(255, 255, 255, 0.45)', width: { xs: '100%', sm: 'auto' }, maxWidth: '100%' }}
                   />
                   {/* <Chip label={`Appeared: ${assessment.attempts || 0}`} color="success" variant="outlined" /> */}
                   <Chip
@@ -892,23 +892,23 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                     color="warning"
                     variant="filled"
                     onClick={() => handleOpenPendingDialog(assessment)}
-                    sx={{ cursor: 'pointer', fontWeight: 600, color: '#ffffff' }}
+                    sx={{ cursor: 'pointer', fontWeight: 600, color: '#ffffff', width: { xs: '100%', sm: 'auto' }, maxWidth: '100%' }}
                   />
                   <Chip
                     label={`Appeared: ${assessment.attempts || 0}`}
                     color="success"
                     variant="filled"
                     onClick={() => handleOpenAppearedDialog(assessment)}
-                    sx={{ cursor: 'pointer', fontWeight: 600, color: '#ffffff' }}
+                    sx={{ cursor: 'pointer', fontWeight: 600, color: '#ffffff', width: { xs: '100%', sm: 'auto' }, maxWidth: '100%' }}
                   />
                   <Chip
                     label={`Absent: ${absentCounts[assessment.id] || 0}`}
                     color="error"
                     variant="filled"
                     onClick={() => handleOpenAbsentDialog(assessment)}
-                    sx={{ cursor: 'pointer', fontWeight: 600, color: '#ffffff' }}
+                    sx={{ cursor: 'pointer', fontWeight: 600, color: '#ffffff', width: { xs: '100%', sm: 'auto' }, maxWidth: '100%' }}
                   />
-                </Stack>
+                </Box>
                 {/* <Button size="small" onClick={() => openEditDialog(assessment)}>
                   Edit
                 </Button> */}
@@ -925,18 +925,19 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         fullWidth
         maxWidth="xs"
         fullScreen={isMobile}
+        scroll="paper"
         PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}
       >
-        <DialogTitle>Delete assessment?</DialogTitle>
-        <DialogContent dividers>
-          <Typography>
+        <DialogTitle sx={{ bgcolor: '#0a336b', color: '#fff', fontWeight: 700 }}>Delete assessment?</DialogTitle>
+        <DialogContent dividers sx={{ overflowY: 'auto', overflowWrap: 'anywhere' }}>
+          <Typography sx={{ overflowWrap: 'anywhere' }}>
             Are you sure you want to delete <strong>{deleteAssessment?.title || 'this assessment'}</strong>?
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             The assessment will no longer appear in active assessment lists.
           </Typography>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
           <Button onClick={closeDeleteConfirmation} disabled={deletingAssessment}>Cancel</Button>
           <Button color="error" variant="contained" onClick={confirmDeleteAssessment} disabled={deletingAssessment}>
             {deletingAssessment ? 'Deleting...' : 'Delete'}
@@ -949,6 +950,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         onClose={() => setPendingDialogOpen(false)}
         maxWidth={isMobile ? false : "sm"}
         fullWidth
+        scroll="paper"
         sx={isMobile ? {
           '& .MuiDialog-paper': {
             margin: 0,
@@ -993,15 +995,17 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                         secondaryAction={
                           <Checkbox
                             edge="end"
+                            inputProps={{ 'aria-label': `Select ${student.name || 'student'} to mark absent` }}
                             checked={selectedStudentsForAbsent.has(student.id)}
                             onChange={() => toggleStudentForAbsent(student.id)}
                           />
                         }
                       >
-                        <ListItemButton onClick={() => handleOpenPendingStudentAttempt(student)} sx={{ px: 1.5, py: 1.25, '&:hover': { bgcolor: '#f7faff' } }}>
+                        <ListItemButton onClick={() => handleOpenPendingStudentAttempt(student)} sx={{ px: 1.5, py: 1.25, minHeight: 44, '&:hover': { bgcolor: '#f8fbff' } }}>
                           <ListItemText 
                             primary={student.name} 
                             secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || 'N/A'}`}
+                            sx={{ minWidth: 0, overflowWrap: 'anywhere' }}
                           />
                         </ListItemButton>
                       </ListItem>
@@ -1012,7 +1016,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             </Stack>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
           <Button
             onClick={() => {
               setSelectedStudentsForAbsent(new Set());
@@ -1044,6 +1048,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         onClose={() => setAppearedDialogOpen(false)}
         maxWidth={isMobile ? false : "sm"}
         fullWidth
+        scroll="paper"
         sx={isMobile ? {
           '& .MuiDialog-paper': {
             margin: 0,
@@ -1082,8 +1087,8 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                   <List dense disablePadding>
                     {group.students.map((student) => (
                       <ListItem key={student.id} disablePadding sx={{ mb: 0.75, border: '1px solid #d7e0eb', borderRadius: 1, bgcolor: '#ffffff', overflow: 'hidden' }}>
-                        <ListItemButton onClick={() => handleOpenAppearedStudentAttempt(student)} sx={{ px: 1.5, py: 1.25, '&:hover': { bgcolor: '#f7faff' } }}>
-                          <ListItemText primary={student.name} secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || student.centerName || 'N/A'}`} />
+                        <ListItemButton onClick={() => handleOpenAppearedStudentAttempt(student)} sx={{ px: 1.5, py: 1.25, minHeight: 44, '&:hover': { bgcolor: '#f8fbff' } }}>
+                          <ListItemText primary={student.name} secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || student.centerName || 'N/A'}`} sx={{ minWidth: 0, overflowWrap: 'anywhere' }} />
                         </ListItemButton>
                       </ListItem>
                     ))}
@@ -1093,7 +1098,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             </Stack>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
           <Button onClick={() => setAppearedDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
@@ -1103,6 +1108,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         onClose={() => setAbsentDialogOpen(false)}
         maxWidth={isMobile ? false : "sm"}
         fullWidth
+        scroll="paper"
         sx={isMobile ? {
           '& .MuiDialog-paper': {
             margin: 0,
@@ -1147,12 +1153,14 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                         secondaryAction={
                           <Checkbox
                             edge="end"
+                            inputProps={{ 'aria-label': `Select ${student.name || 'student'} to revoke absent` }}
                             checked={selectedStudentsForAbsent.has(student.id)}
                             onChange={() => toggleStudentForAbsent(student.id)}
                           />
                         }
                       >
                         <ListItemText
+                          sx={{ minWidth: 0, px: 1.5, py: 0.5, pr: 7, overflowWrap: 'anywhere' }}
                           primary={student.name}
                           secondary={
                             <>
@@ -1178,7 +1186,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             </Stack>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
           <Button
             onClick={() => {
               setSelectedStudentsForAbsent(new Set());
@@ -1210,6 +1218,8 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         onClose={() => setStudentAssessmentOpen(false)}
         maxWidth={false}
         fullWidth
+        fullScreen={isMobile}
+        scroll="paper"
         sx={{
           '& .MuiDialog-paper': {
             display: 'flex',
@@ -1217,17 +1227,18 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             margin: 0,
             width: '100%',
             maxWidth: '100%',
-            height: '90vh',
-            maxHeight: '90vh',
+            height: { xs: '100%', sm: '90vh' },
+            maxHeight: { xs: '100%', sm: '90vh' },
           },
         }}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, bgcolor: '#0a336b', color: '#fff', fontWeight: 700 }}>
           Student Assessment
           <IconButton
             aria-label="Close student assessment"
             onClick={() => setStudentAssessmentOpen(false)}
             edge="end"
+            sx={{ color: '#fff' }}
           >
             <Close />
           </IconButton>
@@ -1235,7 +1246,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflow: 'hidden', p: 0 }}>
           {studentAssessmentContext ? (
             <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <Typography variant="subtitle1" fontWeight={700} sx={{ px: { xs: 1.5, sm: 2 }, py: 1, mb: 0 }}>
+              <Typography variant="subtitle1" fontWeight={700} sx={{ px: { xs: 1.5, sm: 2 }, py: 1, mb: 0, overflowWrap: 'anywhere' }}>
                 {studentAssessmentContext.studentName || 'Student assessment'}
               </Typography>
               {/* <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -1256,20 +1267,22 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
         onClose={() => setOpen(false)}
         maxWidth={isMobile ? false : "lg"}
         fullWidth
+        fullScreen={isMobile}
+        scroll="paper"
         sx={isMobile ? {
           '& .MuiDialog-paper': {
             margin: 0,
             width: '100%',
             maxWidth: '100%',
-            height: '90vh',
-            maxHeight: '90vh',
+            height: '100%',
+            maxHeight: '100%',
             borderRadius: 0,
           },
         } : {}}
         PaperProps={{ sx: { minHeight: { xs: 'auto', sm: 620 }, borderRadius: 3, overflow: 'hidden' } }}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontWeight: 700, px: { xs: 2, sm: 3 } }}>
-          <Quiz sx={{ fontSize: 28, color: '#1a73e8' }} />
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontWeight: 700, px: { xs: 2, sm: 3 }, bgcolor: '#0a336b', color: '#fff' }}>
+          <Quiz sx={{ fontSize: 28, color: '#fff', flexShrink: 0 }} />
           <Typography component="span" sx={{ flex: 1, minWidth: 0, fontWeight: 700 }}>
             {editingAssessment ? 'Edit Assessment' : 'Create Assessment'}
           </Typography>
@@ -1277,12 +1290,12 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
             aria-label="Close assessment dialog"
             onClick={() => setOpen(false)}
             edge="end"
-            sx={{ flexShrink: 0 }}
+            sx={{ flexShrink: 0, color: '#fff' }}
           >
             <Close />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers sx={{ p: { xs: 2.5, sm: 3.5, md: 4 }, overflowY: 'auto' }}>
+        <DialogContent dividers sx={{ p: { xs: 1.5, sm: 3.5, md: 4 }, overflowY: 'auto', overflowX: 'hidden', bgcolor: '#f8fbff' }}>
           <Stack spacing={3} sx={{ mt: 1 }}>
             <TextField
               label="Assessment Title"
@@ -1366,7 +1379,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
               </Typography> */}
             </Stack>
 
-            <Box sx={{ border: '1px solid #e5e7eb', borderRadius: 3, p: 2 }}>
+            <Box sx={{ border: '1px solid #d7e0eb', bgcolor: '#fff', borderRadius: 3, p: 2 }}>
               <Typography fontWeight={700} sx={{ mb: 1.5 }}>Grade Bands</Typography>
               <Stack spacing={1.5}>
                 {gradeBands.map((band, bandIndex) => (
@@ -1375,11 +1388,12 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                       label="Label"
                       value={band.label || ''}
                       onChange={(event) => updateGradeBand(bandIndex, 'label', event.target.value)}
-                      sx={{ minWidth: 120 }}
+                      sx={{ minWidth: { sm: 120 }, width: { xs: '100%', sm: 'auto' } }}
                     />
                     <TextField
                       label="Min %"
                       type="number"
+                      sx={{ width: { xs: '100%', sm: 'auto' } }}
                       value={band.minPercentage ?? 0}
                       onChange={(event) => updateGradeBand(bandIndex, 'minPercentage', Number(event.target.value) || 0)}
                       inputProps={{ min: 0, max: 100 }}
@@ -1396,9 +1410,10 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                   bgcolor: "#fff",
                   borderRadius: 4,
                   boxShadow: "0 2px 10px rgba(0,0,0,.08)",
-                  borderLeft: "6px solid #673ab7",
-                  p: { xs: 2, sm: 3 },
+                  borderLeft: "6px solid #0a336b",
+                  p: { xs: 1.5, sm: 3 },
                   mb: 3,
+                  minWidth: 0,
                   transition: ".25s",
                   "&:hover": {
                     boxShadow: "0 6px 18px rgba(0,0,0,.12)",
@@ -1410,6 +1425,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                   display="flex"
                   justifyContent="space-between"
                   alignItems="center"
+                  gap={1}
                   mb={2}
                 >
                   <Typography
@@ -1423,6 +1439,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                   {questions.length > 1 && (
                     <IconButton
                       color="error"
+                      aria-label={`Delete question ${questionIndex + 1}`}
                       onClick={() => removeQuestion(questionIndex)}
                     >
                       <DeleteOutline />
@@ -1472,7 +1489,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                   value={question.marks ?? 1}
                   onChange={(e) => updateQuestion(questionIndex, 'marks', Number(e.target.value) || 0)}
                   inputProps={{ min: 0 }}
-                  sx={{ mb: 3, maxWidth: 180 }}
+                  sx={{ mb: 3, width: { xs: '100%', sm: 180 }, maxWidth: '100%' }}
                 />
 
                 <Divider sx={{ mb: 3 }} />
@@ -1498,7 +1515,8 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                           <InputAdornment position="start">
                             <IconButton
                               size="small"
-                              sx={{ mr: 1 }}
+                              aria-label={`Mark option ${optionIndex + 1} as correct`}
+                              sx={{ mr: 1, minWidth: 44, minHeight: 44 }}
                               onClick={() =>
                                 updateQuestion(
                                   questionIndex,
@@ -1520,6 +1538,7 @@ const AssessmentManager = ({ resetForm, fetchAssessments, emptyQuestion, assessm
                         "& .MuiOutlinedInput-root": {
                           borderRadius: 3,
                         },
+                        "& .MuiInputBase-input": { overflowWrap: 'anywhere' },
                       }}
                     />
                   ))}

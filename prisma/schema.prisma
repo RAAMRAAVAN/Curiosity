@@ -30,6 +30,39 @@ enum TeacherRole {
   VIEWER
 }
 
+enum AssetCondition {
+  GOOD
+  FAIR
+  NEEDS_REPAIR
+  DAMAGED
+}
+
+enum AssetLifecycle {
+  AVAILABLE
+  UNDER_REPAIR
+  DISPOSED
+}
+
+enum AssetTransferStatus {
+  PENDING
+  RECEIVED
+  REJECTED
+  CANCELLED
+}
+
+enum AssetEventType {
+  PURCHASED
+  UPDATED
+  TRANSFER_REQUESTED
+  TRANSFER_RECEIVED
+  TRANSFER_REJECTED
+  TRANSFER_CANCELLED
+  SPLIT
+  SENT_FOR_REPAIR
+  RETURNED_FROM_REPAIR
+  DISPOSED
+}
+
 //
 // CENTER
 //
@@ -57,6 +90,7 @@ model Center {
   managementAttendances ManagementAttendance[]
   assessments316     Assessment316[]
   accessAssignments  UserAccessAssignmentCenter[]
+  assetRecords       AssetList[]
 }
 
 //
@@ -111,6 +145,116 @@ model AppSetting {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ItemCategory {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  codePrefix  String       @unique @map("code_prefix")
+  codeCounter Int          @default(0) @map("code_counter")
+  description String?      @db.Text
+  status      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  items       ItemMaster[]
+
+  @@map("item_categories")
+}
+
+model ItemMaster {
+  id           String      @id @default(cuid())
+  name         String
+  categoryId   String      @map("category_id")
+  category     ItemCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  description  String?     @db.Text
+  unit         String      @default("unit")
+  manufacturer String?
+  modelNumber  String?     @map("model_number")
+  status       Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  assets       AssetList[]
+
+  @@unique([categoryId, name])
+  @@index([categoryId, status])
+  @@map("item_masters")
+}
+
+model AssetList {
+  id           String         @id @default(cuid())
+  itemMasterId String         @map("item_master_id")
+  itemMaster   ItemMaster     @relation(fields: [itemMasterId], references: [id], onDelete: Restrict)
+  centerId     String         @map("center_id")
+  center       Center         @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  assetCode    String         @unique @map("asset_code")
+  quantity     Int            @default(1)
+  assetTag     String?        @unique @map("asset_tag")
+  serialNumber String?        @map("serial_number")
+  condition    AssetCondition @default(GOOD)
+  lifecycle    AssetLifecycle @default(AVAILABLE)
+  parentAssetId String?       @map("parent_asset_id")
+  location     String?
+  purchaseDate DateTime?      @map("purchase_date")
+  purchaseCost Decimal?       @map("purchase_cost") @db.Decimal(12, 2)
+  vendor       String?
+  invoiceNumber String?       @map("invoice_number")
+  warrantyExpiry DateTime?    @map("warranty_expiry")
+  notes        String?        @db.Text
+  status       Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  events       AssetEvent[]
+  transfers    AssetTransfer[]
+
+  @@unique([itemMasterId, serialNumber])
+  @@index([centerId, status])
+  @@index([itemMasterId, status])
+  @@index([serialNumber])
+  @@map("asset_list")
+}
+
+model AssetTransfer {
+  id               String              @id @default(cuid())
+  transferNo       String              @unique @map("transfer_no")
+  assetId          String              @map("asset_id")
+  asset            AssetList           @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  fromCenterId     String              @map("from_center_id")
+  toCenterId       String              @map("to_center_id")
+  quantity         Int
+  status           AssetTransferStatus @default(PENDING)
+  remarks          String?             @db.Text
+  requestedById    String              @map("requested_by_id")
+  respondedById    String?             @map("responded_by_id")
+  respondedAt      DateTime?           @map("responded_at")
+  responseRemarks  String?             @map("response_remarks") @db.Text
+  resultingAssetId String?             @map("resulting_asset_id")
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([fromCenterId, status])
+  @@index([toCenterId, status])
+  @@index([assetId, status])
+  @@map("asset_transfers")
+}
+
+model AssetEvent {
+  id           String         @id @default(cuid())
+  assetId      String         @map("asset_id")
+  asset        AssetList      @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  type         AssetEventType
+  centerId     String?        @map("center_id")
+  fromCenterId String?        @map("from_center_id")
+  toCenterId   String?        @map("to_center_id")
+  quantity     Int?
+  remarks      String?        @db.Text
+  performedById String?       @map("performed_by_id")
+  referenceNo  String?        @map("reference_no")
+  vendor       String?
+  cost         Decimal?       @db.Decimal(12, 2)
+  createdAt    DateTime       @default(now())
+
+  @@index([assetId, createdAt])
+  @@map("asset_events")
 }
 
 model CustomRole {

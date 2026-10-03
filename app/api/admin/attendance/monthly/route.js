@@ -2,6 +2,7 @@ import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { ApiResponse } from '@/utils/apiResponse';
 import { getTeacherAssignedClassIds } from '@/lib/teacherClassAccess';
+import { buildPaginationMeta, containsFilter, parsePagination } from '@/lib/pagination';
 
 function getMonthDates(year, month) {
   const start = new Date(year, month - 1, 1);
@@ -76,27 +77,35 @@ export async function GET(req) {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
 
-    const users = await prisma.user.findMany({
-      where: {
-        role: 'STUDENT',
-        status: true,
-        student: {
-          centerId,
-          studyingClass: { in: requestedClassIds },
+    const pagination = parsePagination(req);
+    const userWhere = {
+      role: 'STUDENT',
+      status: true,
+      student: {
+        centerId,
+        studyingClass: { in: requestedClassIds },
+      },
+      ...(pagination?.search ? { name: containsFilter(pagination.search) } : {}),
+    };
+    const [totalStudents, users] = await Promise.all([
+      pagination ? prisma.user.count({ where: userWhere }) : Promise.resolve(0),
+      prisma.user.findMany({
+        where: userWhere,
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+        ...(pagination ? { skip: pagination.skip, take: pagination.take } : {}),
+        select: {
+          id: true,
+          name: true,
+          student: { select: { studyingClass: true } },
         },
-      },
-      orderBy: { name: 'asc' },
-      select: {
-        id: true,
-        name: true,
-        student: { select: { studyingClass: true } },
-      },
-    });
+      }),
+    ]);
 
     const attendanceRecords = await prisma.studentAttendance.findMany({
       where: {
         centerId,
         classId: { in: requestedClassIds },
+        ...(pagination ? { studentId: { in: users.map((user) => user.id) } } : {}),
         attendanceDate: {
           gte: new Date(year, month - 1, 1),
           lte: new Date(year, month, 0, 23, 59, 59, 999),
@@ -143,14 +152,17 @@ export async function GET(req) {
       };
     });
 
-    return ApiResponse.success({
+    const payload = {
       centerId,
       classId,
       month,
       year,
       rows,
       monthLabel: new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1)),
-    });
+    };
+    return pagination
+      ? ApiResponse.paginated(payload, buildPaginationMeta(totalStudents, pagination))
+      : ApiResponse.success(payload);
   } catch (error) {
     console.error('Monthly attendance fetch error:', error);
     return ApiResponse.error('Unable to load monthly attendance report.', 500);

@@ -347,6 +347,7 @@ const TeacherSubjectDialog = ({
             open={open}
             onClose={() => setOpen(false)}
             fullWidth
+            scroll="paper"
             maxWidth={false}
             sx={{
                 '& .MuiDialog-paper': {
@@ -371,6 +372,7 @@ const TeacherSubjectDialog = ({
 
                 <Box
                     display="flex"
+                    flexWrap="wrap"
                     gap={2}
                     mb={2}
                 >
@@ -535,6 +537,8 @@ const TeacherSubjectDialog = ({
 
                                             label={subject.subjectName}
 
+                                            sx={{ overflowWrap: 'anywhere', mr: 2 }}
+
                                         />
 
 
@@ -576,6 +580,7 @@ const TeacherSubjectDialog = ({
                 <Button
                     variant="contained"
                     onClick={save}
+                    sx={{ minHeight: 40, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}
                     // disabled={
                     //     selected.length === 0
                     // }

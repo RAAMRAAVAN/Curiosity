@@ -50,9 +50,9 @@ export default function AttendanceAutomationOverlay() {
         backdropFilter: 'blur(6px)',
       }}
     >
-      <Box sx={{ width: 'min(560px, calc(100vw - 32px))', color: '#fff', textAlign: 'center' }}>
+      <Box sx={{ width: 'min(560px, calc(100vw - 32px))', maxHeight: '100dvh', overflowY: 'auto', py: 2, color: '#fff', textAlign: 'center', overflowWrap: 'anywhere' }}>
         <Loader variant='inline' size={58} thickness={4} spinnerSx={{ color: '#90caf9', mb: 3 }} />
-        <Typography variant="h5" fontWeight={700} sx={{ mb: 1 }}>
+        <Typography variant="h5" fontWeight={700} sx={{ mb: 1, fontSize: { xs: 20, sm: 24 } }}>
           Finalizing daily attendance
         </Typography>
         <Typography sx={{ color: 'rgba(255,255,255,0.78)', mb: 3 }}>

@@ -4,6 +4,7 @@ import { requireAdminPermission } from '@/lib/adminRbac';
 import bcrypt from "bcryptjs";
 import { nextStudentId } from "@/lib/studentId";
 import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
+import { buildPaginationMeta, containsFilter, parsePagination } from "@/lib/pagination";
 
 function formatDateValue(value) {
   if (!value) return "";
@@ -58,6 +59,52 @@ export async function GET(req) {
 
       scopedCenterId = teacherProfile?.centerId || null;
       assignedClassIds = await getTeacherAssignedClassIds(prisma, auth.actor.userId);
+    }
+
+    const pagination = parsePagination(req);
+    if (pagination) {
+      const centerId = pagination.params.get('centerId');
+      const classId = pagination.params.get('classId');
+      const studentWhere = {
+        ...(teacherRole
+          ? { centerId: scopedCenterId || "__NO_CENTER__", ...(assignedClassIds ? { studyingClass: { in: assignedClassIds } } : {}) }
+          : auth.actor.isAdmin ? {} : { centerId: { in: auth.actor.assignedCenterIds.length ? auth.actor.assignedCenterIds : ["__NO_CENTER__"] } }),
+        ...(centerId && (auth.actor.isAdmin || teacherRole || auth.actor.canAccessCenter(centerId)) ? { centerId } : {}),
+        ...(classId ? { studyingClass: classId } : {}),
+      };
+      const term = containsFilter(pagination.search);
+      const where = {
+        role: "STUDENT",
+        student: studentWhere,
+        ...(pagination.search ? {
+          OR: [
+            { id: term },
+            { name: term },
+            { email: term },
+            { student: { is: { phone: term } } },
+            { student: { is: { schoolName: term } } },
+            { student: { is: { guardianName: term } } },
+            { student: { is: { teaGarden: term } } },
+            { student: { is: { center: { name: term } } } },
+          ],
+        } : {}),
+      };
+      const [total, users] = await Promise.all([
+        prisma.user.count({ where }),
+        prisma.user.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          include: { student: { include: { center: true } } },
+          skip: pagination.skip,
+          take: pagination.take,
+        }),
+      ]);
+      const classIds = [...new Set(users.map((user) => user.student?.studyingClass).filter(Boolean))];
+      const classes = classIds.length
+        ? await prisma.class.findMany({ where: { id: { in: classIds } }, select: { id: true, className: true } })
+        : [];
+      const classMap = Object.fromEntries(classes.map((cls) => [cls.id, cls.className]));
+      return ApiResponse.paginated(users.map((user) => mapStudent(user, classMap)), buildPaginationMeta(total, pagination));
     }
 
     let [users, classes] = await Promise.all([

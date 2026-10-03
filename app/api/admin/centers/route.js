@@ -2,6 +2,7 @@ import { ApiResponse } from "@/utils/apiResponse";
 import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { isValidCenterSlug, normalizeCenterSlug } from "@/lib/centerSlug";
+import { buildPaginationMeta, containsFilter, parsePagination } from "@/lib/pagination";
 
 export async function GET(req) {
   const auth = await requireAdminPermission(req, [
@@ -17,6 +18,20 @@ export async function GET(req) {
   }
 
   try {
+    const pagination = parsePagination(req);
+    if (pagination) {
+      const term = containsFilter(pagination.search);
+      const where = {
+        ...(auth.actor.isAdmin ? {} : { id: { in: auth.actor.assignedCenterIds.length ? auth.actor.assignedCenterIds : ["__NO_CENTER__"] } }),
+        ...(pagination.search ? { OR: [{ name: term }, { slug: term }] } : {}),
+      };
+      const [total, rows] = await Promise.all([
+        prisma.center.count({ where }),
+        prisma.center.findMany({ where, orderBy: { createdAt: "asc" }, skip: pagination.skip, take: pagination.take }),
+      ]);
+      return ApiResponse.paginated(rows, buildPaginationMeta(total, pagination));
+    }
+
     let centers = await prisma.center.findMany({
       orderBy: { createdAt: "asc" },
     });

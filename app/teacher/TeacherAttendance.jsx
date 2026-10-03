@@ -202,10 +202,10 @@ export default function TeacherAttendance({ endpoint = "/api/teacher/attendance/
   }
 
   return (
-    <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2, border: "1px solid rgba(15, 23, 42, 0.1)", boxShadow: "0 12px 32px rgba(15, 23, 42, 0.06)" }}>
+    <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2, minWidth: 0, bgcolor: '#ffffff', border: "1px solid rgba(10, 51, 107, 0.14)", boxShadow: "0 12px 32px rgba(15, 23, 42, 0.06)" }}>
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5} sx={{ mb: 3 }}>
-        <Box>
-          <Typography component="h2" variant="h5" fontWeight={700}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography component="h2" variant="h5" fontWeight={700} sx={{ color: '#0a336b', fontSize: { xs: 20, sm: 24 } }}>
             My Attendance
           </Typography>
           <Typography color="text.secondary" variant="body2" sx={{ mt: 0.5 }}>
@@ -222,8 +222,8 @@ export default function TeacherAttendance({ endpoint = "/api/teacher/attendance/
       {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
       {notice ? <Alert severity="success" sx={{ mb: 2 }}>{notice}</Alert> : null}
 
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
-        <Box sx={{ p: 2, border: "1px solid rgba(15, 23, 42, 0.1)", borderRadius: 1.5, minWidth: 0 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2 }}>
+        <Box sx={{ p: 2, border: "1px solid rgba(10, 51, 107, 0.14)", bgcolor: '#eef4fb', borderRadius: 1.5, minWidth: 0 }}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
             <Login fontSize="small" color="primary" />
             <Typography fontWeight={700}>Check-in</Typography>
@@ -239,7 +239,7 @@ export default function TeacherAttendance({ endpoint = "/api/teacher/attendance/
           </Stack>
         </Box>
 
-        <Box sx={{ p: 2, border: "1px solid rgba(15, 23, 42, 0.1)", borderRadius: 1.5, minWidth: 0 }}>
+        <Box sx={{ p: 2, border: "1px solid rgba(10, 51, 107, 0.14)", bgcolor: '#eef4fb', borderRadius: 1.5, minWidth: 0 }}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
             <Logout fontSize="small" color="primary" />
             <Typography fontWeight={700}>Check-out</Typography>
@@ -262,7 +262,7 @@ export default function TeacherAttendance({ endpoint = "/api/teacher/attendance/
           startIcon={actionLoading === "IN" ? <Loader variant='inline' size={18} color='inherit' /> : <Login />}
           onClick={() => handleMark("IN")}
           disabled={Boolean(actionLoading) || checkedIn}
-          sx={{ minWidth: 150 }}
+          sx={{ minWidth: { xs: 0, sm: 150 }, width: { xs: '100%', sm: 'auto' }, minHeight: 44 }}
         >
           {actionLoading === "IN" ? "Reading location..." : "Mark In"}
         </Button>
@@ -271,7 +271,7 @@ export default function TeacherAttendance({ endpoint = "/api/teacher/attendance/
           startIcon={actionLoading === "OUT" ? <Loader variant='inline' size={18} /> : <Logout />}
           onClick={() => handleMark("OUT")}
           disabled={Boolean(actionLoading) || !checkedIn || checkedOut}
-          sx={{ minWidth: 150 }}
+          sx={{ minWidth: { xs: 0, sm: 150 }, width: { xs: '100%', sm: 'auto' }, minHeight: 44 }}
         >
           {actionLoading === "OUT" ? "Reading location..." : "Mark Out"}
         </Button>

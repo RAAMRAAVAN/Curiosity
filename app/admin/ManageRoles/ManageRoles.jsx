@@ -21,6 +21,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -31,6 +32,7 @@ import { useEffect, useMemo, useState } from 'react';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import Tooltip from '@mui/material/Tooltip';
+import usePagedData from '../usePagedData';
 
 const emptyForm = {
   name: '',
@@ -44,9 +46,10 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
-  const [roles, setRoles] = useState([]);
+  const paged = usePagedData({ endpoint: '/api/admin/roles' });
+  const roles = paged.rows;
   const [permissionCatalog, setPermissionCatalog] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const loading = paged.loading;
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
@@ -74,34 +77,29 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
     return roles.find((item) => String(item.name || '').trim().toLowerCase() === 'teachers');
   }, [roles]);
 
-  const loadRoles = async () => {
+  const loadRoles = async ({ reloadList = true } = {}) => {
+    if (reloadList) paged.reload();
     try {
-      setLoading(true);
-      const [rolesResponse, permissionsResponse] = await Promise.all([
-        fetch('/api/admin/roles', { credentials: 'include' }),
-        fetch('/api/admin/permissions', { credentials: 'include' }),
-      ]);
-      const [rolesData, permissionsData] = await Promise.all([rolesResponse.json(), permissionsResponse.json()]);
-      if (!rolesResponse.ok || !rolesData.success) {
-        throw new Error(rolesData.message || 'Unable to load roles');
-      }
+      const permissionsResponse = await fetch('/api/admin/permissions', { credentials: 'include' });
+      const permissionsData = await permissionsResponse.json();
       if (!permissionsResponse.ok || !permissionsData.success) {
         throw new Error(permissionsData.message || 'Unable to load permissions');
       }
 
-      setRoles(Array.isArray(rolesData.data) ? rolesData.data : []);
       setPermissionCatalog(Array.isArray(permissionsData.data) ? permissionsData.data : []);
     } catch (error) {
       console.error(error);
       setMessage(error.message || 'Unable to load roles.');
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadRoles();
+    loadRoles({ reloadList: false });
   }, []);
+
+  useEffect(() => {
+    if (paged.error) setMessage(paged.error);
+  }, [paged.error]);
 
   const permissionCountMap = useMemo(() => {
     const map = new Map();
@@ -247,7 +245,7 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
   };
 
   return (
-    <Box sx={{ width: '100%', p: { xs: 0, sm: 2, md: 3 } }}>
+    <Box sx={{ width: '100%', minWidth: 0, p: { xs: 0, sm: 2, md: 3 } }}>
       {localMessage ? (
         <Alert severity={localMessage.severity} sx={{ mb: 2 }} onClose={() => setLocalMessage(null)}>
           {localMessage.message}
@@ -255,14 +253,14 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
       ) : null}
 
       <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3, borderRadius: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 2, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-          <Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 2, flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap', gap: 2 }}>
+          <Box sx={{ minWidth: 0 }}>
             <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 14, sm: 16 } }}>Manage Roles</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: 11, sm: 13 } }}>
               Create custom management roles and configure exact permissions.
             </Typography>
           </Box>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap sx={{ width: { xs: '100%', sm: 'auto' }, flexWrap: 'wrap' }}>
             {teachersPresetRole ? (
               <Button variant="outlined" onClick={openTeachersPreset} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>Teachers Preset</Button>
             ) : null}
@@ -272,7 +270,9 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
           </Stack>
         </Box>
 
-        <TableContainer sx={{ overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
+        <TextField size="small" label="Search roles" value={paged.search} onChange={(event) => paged.setSearch(event.target.value)} sx={{ mb: 2, width: { xs: '100%', sm: 320 }, maxWidth: '100%' }} />
+
+        <TableContainer sx={{ maxWidth: '100%', overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
           <Table sx={{ minWidth: { xs: 500, sm: 600 } }}>
             <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff' } }}>
               <TableRow>
@@ -292,24 +292,24 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
                 </TableRow>
               ) : roles.map((role) => (
                 <TableRow key={role.id} sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}>
-                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{role.name}</TableCell>
-                  {!isMobile && <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{role.description || '-'}</TableCell>}
+                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, overflowWrap: 'anywhere', minWidth: 120 }}>{role.name}</TableCell>
+                  {!isMobile && <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, overflowWrap: 'anywhere', minWidth: 160 }}>{role.description || '-'}</TableCell>}
                   <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{permissionCountMap.get(role.id) || 0}</TableCell>
                   <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>
                     <Chip label={role.status === false ? 'Disabled' : 'Active'} color={role.status === false ? 'default' : 'success'} size="small" />
                   </TableCell>
                   <TableCell>
-                    <Stack direction="row" spacing={0.5}>
+                    <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'nowrap' }}>
                       {canEditRoles ? (
                         <Tooltip title="Edit role" arrow>
-                          <IconButton size="small" onClick={() => startEdit(role)} sx={{ backgroundColor: '#e0f2fe', color: '#0a336b', '&:hover': { backgroundColor: '#bae6fd' } }}>
+                          <IconButton size="small" aria-label={`Edit ${role.name}`} onClick={() => startEdit(role)} sx={{ backgroundColor: '#e0f2fe', color: '#0a336b', '&:hover': { backgroundColor: '#bae6fd' } }}>
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       ) : null}
                       {canDeleteRoles ? (
                         <Tooltip title="Delete role" arrow>
-                          <IconButton size="small" onClick={() => deleteRole(role)} sx={{ backgroundColor: '#fee2e2', color: '#b91c1c', '&:hover': { backgroundColor: '#fecaca' } }}>
+                          <IconButton size="small" aria-label={`Delete ${role.name}`} onClick={() => deleteRole(role)} sx={{ backgroundColor: '#fee2e2', color: '#b91c1c', '&:hover': { backgroundColor: '#fecaca' } }}>
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -326,6 +326,7 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
             </TableBody>
           </Table>
         </TableContainer>
+        <TablePagination {...paged.paginationProps} />
       </Paper>
 
       <Dialog
@@ -333,6 +334,7 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
         onClose={() => setOpen(false)}
         maxWidth={isMobile ? false : "md"}
         fullWidth
+        scroll="paper"
         sx={isMobile ? {
           '& .MuiDialog-paper': {
             margin: 0,
@@ -389,6 +391,7 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
                             />
                           }
                           label={permission.label}
+                          sx={{ overflowWrap: 'anywhere' }}
                         />
                       ))}
                     </Stack>
@@ -400,7 +403,7 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)} color="inherit">Cancel</Button>
-          <Button variant="contained" onClick={saveRole} disabled={saving} sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>{editingRole ? 'Save Changes' : 'Create Role'}</Button>
+          <Button variant="contained" onClick={saveRole} disabled={saving} sx={{ minHeight: 40, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>{editingRole ? 'Save Changes' : 'Create Role'}</Button>
         </DialogActions>
       </Dialog>
     </Box>

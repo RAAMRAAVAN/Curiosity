@@ -2,6 +2,7 @@ import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { getAssessmentVisibleClassValues } from '@/lib/assessmentStudentScope';
+import { buildPaginationMeta, containsFilter, parsePagination } from '@/lib/pagination';
 
 const getAccessibleCenterIds = (actor, scopedCenterId) => {
   if (actor?.isAdmin) return null;
@@ -85,27 +86,51 @@ export async function GET(req) {
 
     const accessibleCenterIds = getAccessibleCenterIds(auth.actor, scopedCenterId);
 
-    const assessments = await prisma.assessment.findMany({
-      where: {
-        status: true,
-        ...(teacherId ? { classId: { in: teacherClassIds } } : {}),
-        ...(teacherId ? { subject: { teacherSubjects: { some: { teacherId, status: true } } } } : {}),
-      },
-      include: {
-        class: { select: { id: true, className: true, centerId: true } },
-        subject: { select: { id: true, subjectName: true, classId: true } },
-        allowedClasses: { where: { active: true }, select: { classId: true, class: { select: { id: true, className: true, centerId: true } } } },
-        questions: {
-          where: { status: true },
-          orderBy: { displayOrder: 'asc' },
-          include: { options: { where: { status: true }, orderBy: { displayOrder: 'asc' } } },
+    const pagination = parsePagination(req);
+    const baseWhere = {
+      status: true,
+      ...(teacherId ? { classId: { in: teacherClassIds } } : {}),
+      ...(teacherId ? { subject: { teacherSubjects: { some: { teacherId, status: true } } } } : {}),
+    };
+    const where = pagination?.search
+      ? {
+          AND: [
+            baseWhere,
+            {
+              OR: [
+                { title: containsFilter(pagination.search) },
+                { description: containsFilter(pagination.search) },
+                { class: { className: containsFilter(pagination.search) } },
+                { subject: { subjectName: containsFilter(pagination.search) } },
+              ],
+            },
+          ],
+        }
+      : baseWhere;
+
+    const [total, assessments] = await Promise.all([
+      pagination ? prisma.assessment.count({ where }) : Promise.resolve(0),
+      prisma.assessment.findMany({
+        where,
+        include: {
+          class: { select: { id: true, className: true, centerId: true } },
+          subject: { select: { id: true, subjectName: true, classId: true } },
+          allowedClasses: { where: { active: true }, select: { classId: true, class: { select: { id: true, className: true, centerId: true } } } },
+          questions: {
+            where: { status: true },
+            orderBy: { displayOrder: 'asc' },
+            include: { options: { where: { status: true }, orderBy: { displayOrder: 'asc' } } },
+          },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+        ...(pagination ? { skip: pagination.skip, take: pagination.take } : {}),
+      }),
+    ]);
 
     const result = await Promise.all(assessments.map((assessment) => addStats(assessment, accessibleCenterIds, teacherId ? teacherClassIds : null)));
-    return ApiResponse.success(result);
+    return pagination
+      ? ApiResponse.paginated(result, buildPaginationMeta(total, pagination))
+      : ApiResponse.success(result);
   } catch (error) {
     console.error('Load all assessments error:', error);
     return ApiResponse.error('Unable to load assessments', 500, error);

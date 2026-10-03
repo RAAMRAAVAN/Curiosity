@@ -7,6 +7,7 @@ import { Menu } from '@mui/icons-material';
 import AdminDrawyer from './AdminDrawyer';
 import { AdminAuthProvider, useAdminAuth } from './AdminAuthContext';
 import Loader, { LoaderActivityProvider } from '@/app/(components)/Loader';
+import PortalTheme from '@/app/(components)/PortalTheme';
 
 const routeValues = {
   users: '/admin/users',
@@ -27,6 +28,13 @@ const routeValues = {
   'assessments-3-16': '/admin/assessments-3-16',
   results: '/admin/assessment-results',
   'results-3-16': '/admin/assessment-results-3-16',
+  'asset-categories': '/admin/asset-management/categories',
+  'asset-items': '/admin/asset-management/items',
+  'asset-list': '/admin/asset-management/assets',
+  'asset-transfer': '/admin/asset-management/transfers',
+  'asset-receive': '/admin/asset-management/receive',
+  'asset-tracking': '/admin/asset-management/tracking',
+  'asset-reports': '/admin/asset-management/reports',
 };
 
 const monthlyAttendanceViews = [
@@ -106,7 +114,7 @@ function AdminLayoutContent({ children }) {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', width: '100vw', overflowX: 'hidden', bgcolor: '#f5f8ff' }}>
+    <Box sx={{ minHeight: '100vh', width: '100%', maxWidth: '100%', overflowX: 'clip', bgcolor: '#f5f8ff' }}>
       {!drawerOpen?<><Box
         sx={{
           display: 'flex',
@@ -123,7 +131,7 @@ function AdminLayoutContent({ children }) {
         }}
       >
         <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: 16, sm: 18, md: 20 }, flex: 1 }} color="#fff">
-          {admin.customRole?.name || admin.customRoleName || admin.role || 'Admin'}'s Paneel
+          {admin.customRole?.name || admin.customRoleName || admin.role || 'Admin'}'s Panel
         </Typography>
 
         {(isMobile || !drawerOpen) && (
@@ -176,6 +184,8 @@ function AdminLayoutContent({ children }) {
           px: { xs: ['attendance', 'results-3-16', 'users'].includes(activeView) || monthlyAttendanceViews.includes(activeView) ? 0 : 2, sm: monthlyAttendanceViews.includes(activeView) ? 0 : 3, md: 0 },
           pr: { xs: ['attendance', 'results-3-16', 'users'].includes(activeView) || monthlyAttendanceViews.includes(activeView) ? 0 : 2, sm: monthlyAttendanceViews.includes(activeView) ? 0 : 3, md: 0 },
           boxSizing: 'border-box',
+          minWidth: 0,
+          maxWidth: '100%',
           height: monthlyAttendanceViews.includes(activeView) && !isMobile
             ? (drawerOpen ? '100dvh' : 'calc(100dvh - 73px)')
             : undefined,
@@ -212,10 +222,12 @@ function AdminLayoutContent({ children }) {
 
 export default function AdminLayout({ children }) {
   return (
+    <PortalTheme>
     <AdminAuthProvider>
       <LoaderActivityProvider>
         <AdminLayoutContent>{children}</AdminLayoutContent>
       </LoaderActivityProvider>
     </AdminAuthProvider>
+    </PortalTheme>
   );
 }

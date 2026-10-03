@@ -37,7 +37,7 @@ export default function AttendanceAudiencePage() {
     }
 
     return (
-      <Box sx={{ maxWidth: 1400, mx: 'auto', width: '100%' }}>
+      <Box sx={{ maxWidth: 1400, mx: 'auto', width: '100%', minWidth: 0 }}>
         <Paper sx={{ p: { xs: 0, sm: 0 }, borderRadius: { xs: 0, sm: 0 } }}>
           <AttendanceManager admin={admin} role={admin?.role} permissions={admin?.permissions || []} />
         </Paper>

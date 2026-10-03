@@ -2,6 +2,7 @@
 
 import Loader from '@/app/(components)/Loader';
 import { useEffect, useState } from "react";
+import usePagedData from '../usePagedData';
 import {
   Alert,
   Box,
@@ -20,6 +21,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -34,8 +36,8 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
-  const [centers, setCenters] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const paged = usePagedData({ endpoint: '/api/admin/centers' });
+  const { rows: centers, loading } = paged;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCenter, setEditingCenter] = useState(null);
   const [form, setForm] = useState({ name: "", slug: "", status: true });
@@ -59,28 +61,15 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
   const canDeleteCenters = hasPermission('centers.delete');
 
   const loadCenters = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/admin/centers", { credentials: "include" });
-      const data = await response.json();
-      if (data.success) {
-        setCenters(data.data || []);
-      } else {
-        const message = data.message || "Unable to load centers.";
-        setAlert({ severity: "error", message });
-        setMessage(message);
-      }
-    } catch (error) {
-      console.error(error);
-      setMessage("Unable to load centers.");
-    } finally {
-      setLoading(false);
-    }
+    paged.reload();
   };
 
   useEffect(() => {
-    loadCenters();
-  }, []);
+    if (paged.error) {
+      setAlert({ severity: "error", message: paged.error });
+      setMessage(paged.error);
+    }
+  }, [paged.error]);
 
   const openCreateDialog = () => {
     if (!canCreateCenters) {
@@ -178,9 +167,9 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
   };
 
   return (
-    <Box sx={{ width: '100%', p: { xs: 0, sm: 2, md: 3 } }}>
+    <Box sx={{ width: '100%', minWidth: 0, p: { xs: 0, sm: 2, md: 3 }, pb: { xs: 12, sm: 12 } }}>
       <Box padding={1} sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 3, flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
           <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: 18, sm: 20, md: 24 } }}>Manage Centers</Typography>
           <Typography color="text.secondary" sx={{ fontSize: { xs: 12, sm: 14 } }}>Create, view, and edit centers.</Typography>
         </Box>
@@ -197,7 +186,9 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
         </Alert>
       ) : null}
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
+      <TextField size="small" label="Search centers" value={paged.search} onChange={(event) => paged.setSearch(event.target.value)} sx={{ mb: 2, width: { xs: '100%', sm: 320 }, maxWidth: '100%' }} />
+
+      <TableContainer component={Paper} sx={{ maxWidth: '100%', borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
         <Table sx={{ minWidth: { xs: 500, sm: 600 } }}>
           <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff' } }}>
             <TableRow>
@@ -223,7 +214,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
             ) : (
               centers.map((center) => (
                 <TableRow key={center.id} hover sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}>
-                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{center.name}</TableCell>
+                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, overflowWrap: 'anywhere', minWidth: 120 }}>{center.name}</TableCell>
                   {!isMobile && <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{center.slug}</TableCell>}
                   <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>
                     <Chip label={center.status ? "Active" : "Inactive"} color={center.status ? "success" : "default"} size="small" />
@@ -232,14 +223,14 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
                     <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                       {canEditCenters ? (
                         <Tooltip title="Edit center" arrow>
-                          <IconButton onClick={() => openEditDialog(center)} size="small" sx={{ backgroundColor: '#e0f2fe', color: '#0a336b', '&:hover': { backgroundColor: '#bae6fd' } }}>
+                          <IconButton aria-label={`Edit ${center.name || 'center'}`} onClick={() => openEditDialog(center)} size="small" sx={{ backgroundColor: '#e0f2fe', color: '#0a336b', '&:hover': { backgroundColor: '#bae6fd' } }}>
                             <Edit fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       ) : null}
                       {canDeleteCenters ? (
                         <Tooltip title="Delete center" arrow>
-                          <IconButton onClick={() => handleDelete(center.id)} size="small" sx={{ backgroundColor: '#fee2e2', color: '#b91c1c', '&:hover': { backgroundColor: '#fecaca' } }}>
+                          <IconButton aria-label={`Delete ${center.name || 'center'}`} onClick={() => handleDelete(center.id)} size="small" sx={{ backgroundColor: '#fee2e2', color: '#b91c1c', '&:hover': { backgroundColor: '#fecaca' } }}>
                             <Delete fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -252,6 +243,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
           </TableBody>
         </Table>
       </TableContainer>
+      <TablePagination {...paged.paginationProps} />
 
       {canCreateCenters ? (
         <Box
@@ -289,6 +281,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
         onClose={() => setDialogOpen(false)}
         maxWidth={isMobile ? false : "sm"}
         fullWidth
+        scroll="paper"
         sx={isMobile ? {
           '& .MuiDialog-paper': {
             margin: 0,

@@ -2,6 +2,7 @@ import { ApiResponse } from "@/utils/apiResponse";
 import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { getTeacherAssignedClassIds } from '@/lib/teacherClassAccess';
+import { buildPaginationMeta, containsFilter, parsePagination } from '@/lib/pagination';
 
 export async function GET(req) {
   const auth = await requireAdminPermission(req, 'classes.view');
@@ -12,6 +13,25 @@ export async function GET(req) {
   try {
     if (!prisma["class"]) {
       return ApiResponse.error("Prisma model 'Class' not available. Run `npx prisma generate` and apply migrations.", 500);
+    }
+    const pagination = parsePagination(req);
+    if (pagination) {
+      const conditions = [];
+      if (!auth.actor.isAdmin) {
+        const centerIds = Array.isArray(auth.actor.assignedCenterIds) ? auth.actor.assignedCenterIds : [];
+        conditions.push({ OR: [{ centerId: null }, { centerId: { in: centerIds } }] });
+      }
+      if (auth.actor.isTeacher) {
+        const assignedClassIds = await getTeacherAssignedClassIds(prisma, auth.actor.userId);
+        if (assignedClassIds) conditions.push({ id: { in: assignedClassIds } });
+      }
+      if (pagination.search) conditions.push({ className: containsFilter(pagination.search) });
+      const where = conditions.length ? { AND: conditions } : {};
+      const [total, rows] = await Promise.all([
+        prisma["class"].count({ where }),
+        prisma["class"].findMany({ where, orderBy: { createdAt: "asc" }, skip: pagination.skip, take: pagination.take }),
+      ]);
+      return ApiResponse.paginated(rows, buildPaginationMeta(total, pagination));
     }
     let classes = await prisma["class"].findMany({ orderBy: { createdAt: "asc" } });
     if (!auth.actor.isAdmin) {

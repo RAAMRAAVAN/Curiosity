@@ -385,8 +385,8 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
 
   if (assessmentType === '3-16') {
     return (
-      <Box sx={{ mt: 2 }}>
-        <TableContainer component={Paper} variant="outlined">
+      <Box sx={{ mt: 2, minWidth: 0, maxWidth: '100%' }}>
+        <TableContainer component={Paper} variant="outlined" sx={{ maxWidth: '100%', overflowX: 'auto' }}>
           <Table>
             <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700 } }}>
               <TableRow>
@@ -443,9 +443,9 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
           </Table>
         </TableContainer>
 
-        <Dialog open={pendingDialogOpen} onClose={() => setPendingDialogOpen(false)} maxWidth="sm" fullWidth>
+        <Dialog open={pendingDialogOpen} onClose={() => setPendingDialogOpen(false)} maxWidth="sm" fullWidth scroll="paper">
           <DialogTitle>Pending Students</DialogTitle>
-          <DialogContent dividers sx={{ overflowY: 'auto' }}>
+          <DialogContent dividers sx={{ overflowY: 'auto', overflowWrap: 'anywhere' }}>
             <TextField label="Search by Name" value={pendingSearch} onChange={(event) => setPendingSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
             {pendingLoading ? (
               <Loader variant='section' sx={{ minHeight: 'auto' }} />
@@ -471,9 +471,9 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
           </DialogActions>
         </Dialog>
 
-        <Dialog open={absentDialogOpen} onClose={() => setAbsentDialogOpen(false)} maxWidth="sm" fullWidth>
+        <Dialog open={absentDialogOpen} onClose={() => setAbsentDialogOpen(false)} maxWidth="sm" fullWidth scroll="paper">
           <DialogTitle>Absent Students</DialogTitle>
-          <DialogContent dividers sx={{ overflowY: 'auto' }}>
+          <DialogContent dividers sx={{ overflowY: 'auto', overflowWrap: 'anywhere' }}>
             <TextField label="Search by Name" value={absentSearch} onChange={(event) => setAbsentSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
             {absentLoading ? (
               <Loader variant='section' sx={{ minHeight: 'auto' }} />
@@ -499,9 +499,9 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
           </DialogActions>
         </Dialog>
 
-        <Dialog open={appearedDialogOpen} onClose={() => setAppearedDialogOpen(false)} maxWidth="sm" fullWidth>
+        <Dialog open={appearedDialogOpen} onClose={() => setAppearedDialogOpen(false)} maxWidth="sm" fullWidth scroll="paper">
           <DialogTitle>Appeared Students</DialogTitle>
-          <DialogContent dividers sx={{ overflowY: 'auto' }}>
+          <DialogContent dividers sx={{ overflowY: 'auto', overflowWrap: 'anywhere' }}>
             <TextField label="Search by Name" value={appearedSearch} onChange={(event) => setAppearedSearch(event.target.value)} fullWidth size="small" sx={{ mb: 2 }} />
             {appearedLoading ? (
               <Loader variant='section' sx={{ minHeight: 'auto' }} />
@@ -533,6 +533,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
           maxWidth="lg"
           fullWidth
           fullScreen={isMobile}
+          scroll="paper"
           PaperProps={{
             sx: {
               height: { xs: '100dvh', sm: 'auto' },
@@ -540,13 +541,13 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
             },
           }}
         >
-          <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight:'bold'}}>
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, fontWeight:'bold', overflowWrap: 'anywhere' }}>
             {resultDialogTitle}
-            <IconButton aria-label="Close results" onClick={() => setResultDialogOpen(false)} edge="end">
+            <IconButton aria-label="Close results" onClick={() => setResultDialogOpen(false)} edge="end" sx={{ color: '#fff', flexShrink: 0 }}>
               <Close />
             </IconButton>
           </DialogTitle>
-          <DialogContent dividers sx={{ overflowY: 'auto', flex: 1 }}>
+          <DialogContent dividers sx={{ overflowY: 'auto', flex: 1, overflowWrap: 'anywhere' }}>
             {resultDialogLoading ? (
               <Loader variant='section' sx={{ minHeight: 'auto' }} />
             ) : resultDialogRows.length === 0 ? (
@@ -560,15 +561,15 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
                     label="Filter By Center"
                     value={resultDialogCenter}
                     onChange={(event) => setResultDialogCenter(event.target.value)}
-                    sx={{ minWidth: 240, mb: 3 }}
+                    sx={{ minWidth: { sm: 240 }, width: { xs: '100%', sm: 'auto' }, mb: 3 }}
                   >
                     {resultDialogCenterOptions.map((center) => (
                       <MenuItem key={center} value={center}>{center === ALL_CENTERS ? 'All Centers' : center}</MenuItem>
                     ))}
                   </TextField>
                 ) : null}
-                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
-                  <Card sx={{ flex: 1, bgcolor: '#f3f4f6', borderRadius: 3 }} variant="outlined">
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: 2, mb: 3 }}>
+                  <Card sx={{ flex: 1, bgcolor: '#f8fbff', borderRadius: 3 }} variant="outlined">
                     <CardContent>
                       <Typography variant="subtitle2" color="text.secondary">Attempts</Typography>
                       <Typography variant="h5" fontWeight={700}>{resultDialogStats.attempts}</Typography>
@@ -592,9 +593,9 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
                       <Typography variant="h5" fontWeight={700}>{resultDialogStats.absent}</Typography>
                     </CardContent>
                   </Card>
-                </Stack>
+                </Box>
 
-                <TableContainer component={Paper} variant="outlined">
+                <TableContainer component={Paper} variant="outlined" sx={{ maxWidth: '100%', overflowX: 'auto' }}>
                   <Table size="small">
                     <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700 } }}>
                       <TableRow>
@@ -625,8 +626,8 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
               </>
             )}
           </DialogContent>
-          <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
-            <Button variant="contained" color="primary" onClick={export316ResultRowsToExcel} disabled={filteredResultDialogRows.length === 0} sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
+          <DialogActions sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+            <Button variant="contained" color="primary" onClick={export316ResultRowsToExcel} disabled={filteredResultDialogRows.length === 0} sx={{ width: { xs: '100%', sm: 'auto' }, minHeight: 44 }}>
               Download Excel
             </Button>
           </DialogActions>
@@ -944,7 +945,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
   };
 
   return (
-    <Box sx={{ mt: 4 }}>
+    <Box sx={{ mt: 4, minWidth: 0, maxWidth: '100%' }}>
       {/* <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
         Assessment Results Dashboard
       </Typography> */}
@@ -984,7 +985,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
           <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
             Assessment Summary
           </Typography>
-          <TableContainer component={Paper} variant="outlined">
+          <TableContainer component={Paper} variant="outlined" sx={{ maxWidth: '100%', overflowX: 'auto' }}>
             <Table>
               <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700 } }}>
                 <TableRow>
@@ -1049,7 +1050,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
           <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
             Student Submissions
           </Typography>
-          <TableContainer component={Paper} variant="outlined">
+          <TableContainer component={Paper} variant="outlined" sx={{ maxWidth: '100%', overflowX: 'auto' }}>
             <Table>
               <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700 } }}>
                 <TableRow>
@@ -1077,6 +1078,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
               variant="outlined"
               onClick={() => handleOpenPendingDialog(assessmentId)}
               disabled={pendingLoading || pendingCount === 0}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Pending Students ({pendingCountsLoading ? 'Loading...' : pendingCount})
             </Button>
@@ -1085,6 +1087,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
               color="error"
               onClick={() => handleOpenAbsentDialog(assessmentId)}
               disabled={absentLoading || !(absentCounts[assessmentId] > 0)}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Absent Students ({absentLoading ? 'Loading...' : (absentCounts[assessmentId] ?? 0)})
             </Button>
@@ -1096,6 +1099,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
         open={pendingDialogOpen} 
         onClose={() => setPendingDialogOpen(false)} 
         fullWidth
+        scroll="paper"
         maxWidth={isMobile ? false : "sm"}
         sx={isMobile ? {
           '& .MuiDialog-paper': {
@@ -1108,7 +1112,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
         } : {}}
       >
         <DialogTitle>Pending Students</DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ overflowWrap: 'anywhere' }}>
           <TextField
             label="Search by Name"
             value={pendingSearch}
@@ -1141,7 +1145,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
             </List>
           )}
         </DialogContent>
-        <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+        <DialogActions sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
           <Button variant="contained" color="success" onClick={() => downloadPendingStudentsExcel()} disabled={pendingLoading || pendingStudents.length === 0}>
             Export Excel
           </Button>
@@ -1153,6 +1157,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
         open={absentDialogOpen} 
         onClose={() => setAbsentDialogOpen(false)} 
         fullWidth
+        scroll="paper"
         maxWidth={isMobile ? false : "sm"}
         sx={isMobile ? {
           '& .MuiDialog-paper': {
@@ -1165,7 +1170,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
         } : {}}
       >
         <DialogTitle>Absent Students</DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ overflowWrap: 'anywhere' }}>
           <TextField
             label="Search by Name"
             value={absentSearch}
@@ -1212,7 +1217,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
             </List>
           )}
         </DialogContent>
-        <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+        <DialogActions sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
           <Button variant="contained" color="success" onClick={() => downloadAbsentStudentsExcel()} disabled={absentLoading || absentStudents.length === 0}>
             Export Excel
           </Button>
@@ -1224,19 +1229,22 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
         open={detailDialogOpen} 
         onClose={() => setDetailDialogOpen(false)} 
         fullWidth
+        fullScreen={isMobile}
+        scroll="paper"
         maxWidth={isMobile ? false : "lg"}
         sx={isMobile ? {
           '& .MuiDialog-paper': {
             margin: 0,
             width: '100%',
             maxWidth: '100%',
-            height: '80vh',
-            maxHeight: '80vh',
+            height: '100%',
+            maxHeight: '100%',
+            borderRadius: 0,
           },
         } : {}}
       >
-        <DialogTitle>{detailAssessmentTitle}</DialogTitle>
-        <DialogContent>
+        <DialogTitle sx={{ overflowWrap: 'anywhere' }}>{detailAssessmentTitle}</DialogTitle>
+        <DialogContent sx={{ overflowWrap: 'anywhere' }}>
           <Box
             sx={{
               mt: 1,
@@ -1255,7 +1263,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
                 label="Filter By Center"
                 value={selectedCenter}
                 onChange={(event) => setSelectedCenter(event.target.value)}
-                sx={{ minWidth: 280 }}
+                sx={{ minWidth: { sm: 280 }, width: { xs: '100%', sm: 'auto' } }}
                 InputLabelProps={{ shrink: true }}
               >
                 {centerOptions.map((centerName) => (
@@ -1268,14 +1276,14 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
               <Box />
             )}
 
-            <Button variant="contained" size="small" onClick={downloadDetailResults}>
+            <Button variant="contained" size="small" onClick={downloadDetailResults} sx={{ width: { xs: '100%', sm: 'auto' } }}>
               Download Excel
             </Button>
           </Box>
 
-          <Box sx={{ mb: 3, display: { xs: 'none', lg: 'block' } }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <Card sx={{ flex: 1, bgcolor: '#f5f7ff', borderRadius: 3 }} variant="outlined">
+          <Box sx={{ mb: 3 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: 2 }}>
+              <Card sx={{ flex: 1, bgcolor: '#f8fbff', borderRadius: 3 }} variant="outlined">
                 <CardContent>
                   <Typography variant="subtitle2" color="text.secondary">Attempts</Typography>
                   <Typography variant="h5" fontWeight={700}>{detailStats.attempts}</Typography>
@@ -1299,12 +1307,12 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
                   <Typography variant="h5" fontWeight={700}>{detailAbsentStudents.reduce((sum, group) => sum + ((group.students || []).length), 0)}</Typography>
                 </CardContent>
               </Card>
-            </Stack>
+            </Box>
           </Box>
-          <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
+          <TableContainer component={Paper} variant="outlined" sx={{ mt: 2, maxWidth: '100%', overflowX: 'auto' }}>
             <Table>
               <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700 } }}>
-                <TableRow sx={{ backgroundColor: '#f3f4f6' }}>
+                <TableRow>
                   {assessmentType === '3-16' ? (
                     <>
                       <TableCell sx={{ fontWeight: 700 }}>S.No</TableCell>
@@ -1373,7 +1381,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
             </Table>
           </TableContainer>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
           <Button onClick={() => setDetailDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>

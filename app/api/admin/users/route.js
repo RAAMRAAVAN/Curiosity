@@ -4,6 +4,7 @@ import { prisma } from "@/server/prisma";
 import { validateSignup } from "@/features/auth/auth.validation";
 import { authRepository } from "@/features/auth/auth.repository";
 import { getAllCustomRoles, getUserAccessAssignment, requireAdminPermission, setUserAccessAssignment } from '@/lib/adminRbac';
+import { buildPaginationMeta, containsFilter, parsePagination } from '@/lib/pagination';
 
 const roleMap = {
   student: "STUDENT",
@@ -85,6 +86,43 @@ export async function GET(req) {
   const auth = await requireAdminPermission(req, 'users.view');
   if (!auth.ok) {
     return ApiResponse.error(auth.message, auth.status);
+  }
+
+  const pagination = parsePagination(req);
+  if (pagination) {
+    const term = containsFilter(pagination.search);
+    let scopedUserIds = null;
+    if (!auth.actor.isAdmin) {
+      const scoped = await prisma.userAccessAssignment.findMany({
+        where: { centers: { some: { centerId: { in: auth.actor.assignedCenterIds.length ? auth.actor.assignedCenterIds : ['__NO_CENTER__'] } } } },
+        select: { userId: true },
+      });
+      scopedUserIds = scoped.map((item) => item.userId);
+    }
+    const where = {
+      role: "MANAGEMENT",
+      ...(scopedUserIds ? { id: { in: scopedUserIds } } : {}),
+      ...(pagination.search ? { OR: [{ name: term }, { email: term }] } : {}),
+    };
+    const [total, pageUsers] = await Promise.all([
+      prisma.user.count({ where }),
+      prisma.user.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        include: { teacher: true, student: true, admin: true, management: true, parent: true },
+        skip: pagination.skip,
+        take: pagination.take,
+      }),
+    ]);
+    const [pageRoles, pageAssignments] = await Promise.all([
+      getAllCustomRoles(),
+      Promise.all(pageUsers.map((user) => getUserAccessAssignment(user.id))),
+    ]);
+    const pageRoleById = new Map(pageRoles.map((item) => [item.id, item]));
+    return ApiResponse.paginated(
+      pageUsers.map((user, index) => mapUser(user, pageAssignments[index], pageRoleById.get(pageAssignments[index]?.roleId) || null)),
+      buildPaginationMeta(total, pagination),
+    );
   }
 
   const users = await prisma.user.findMany({

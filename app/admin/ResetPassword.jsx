@@ -84,7 +84,7 @@ const ResetPassword = () => {
   };
 
   return (
-    <Box sx={{ width: { xs: 'calc(100% + 32px)', sm: '100%' }, maxWidth: { xs: 'none', sm: 720 }, ml: { xs: -2, sm: 'auto' }, mr: { xs: 0, sm: 'auto' }, p: { xs: 0, sm: 2, md: 3 } }}>
+    <Box sx={{ width: '100%', minWidth: 0, maxWidth: 720, mx: 'auto', p: { xs: 0, sm: 2, md: 3 } }}>
       <Paper
         component="form"
         onSubmit={handleSubmit}
@@ -97,7 +97,7 @@ const ResetPassword = () => {
       >
         <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
           <LockReset color="primary" />
-          <Typography variant="h5" fontWeight={700}>
+          <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: 18, sm: 24 }, minWidth: 0, overflowWrap: 'anywhere' }}>
             Reset Password
           </Typography>
         </Stack>
@@ -139,7 +139,7 @@ const ResetPassword = () => {
             required
             autoComplete="new-password"
           />
-          <Button type="submit" variant="contained" disabled={saving} sx={{ alignSelf: { xs: 'stretch', sm: 'flex-end' }, minWidth: 160, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
+          <Button type="submit" variant="contained" disabled={saving} sx={{ alignSelf: { xs: 'stretch', sm: 'flex-end' }, minWidth: { xs: 0, sm: 160 }, minHeight: 40, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
             {saving ? 'Updating...' : 'Update Password'}
           </Button>
         </Stack>

@@ -17,7 +17,7 @@ export default function ViewAssessmentsPage() {
   }
 
   return (
-    <Box sx={{ maxWidth: 1400, mx: 'auto', width: '100%' }}>
+    <Box sx={{ maxWidth: 1400, mx: 'auto', width: '100%', minWidth: 0 }}>
       <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: '0 20px 48px rgba(15, 23, 42, 0.08)' }}>
         <AdminAssessmentsPage />
       </Paper>

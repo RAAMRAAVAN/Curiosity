@@ -16,6 +16,7 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Tooltip,
@@ -56,6 +57,13 @@ export default function StaffMonthlyAttendancePage({ audience }) {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [rows, setRows] = useState([]);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [requested, setRequested] = useState(false);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  const [total, setTotal] = useState(0);
+  const [reloadToken, setReloadToken] = useState(0);
+  const latestRequest = useRef(0);
   const [reportLoaded, setReportLoaded] = useState(false);
   const [loadingRows, setLoadingRows] = useState(false);
   const [error, setError] = useState('');
@@ -101,38 +109,60 @@ export default function StaffMonthlyAttendancePage({ audience }) {
     });
   }, [selectedMonth, year]);
 
-  const filteredRows = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    if (!query) return rows;
-    return rows.filter((row) => String(row.name || '').toLocaleLowerCase().includes(query));
-  }, [rows, search]);
+  const filteredRows = rows;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => { setPage(0); }, [debouncedSearch, pageSize]);
+
+  const requestReport = () => {
+    setSearch('');
+    setDebouncedSearch('');
+    setPage(0);
+    setRows([]);
+    setReportLoaded(false);
+    setRequested(true);
+    setReloadToken((value) => value + 1);
+  };
 
   const fetchReport = async () => {
     if (isTeacherReport && !selectedCenterId) return;
     setLoadingRows(true);
     setError('');
-    setRows([]);
-    setReportLoaded(false);
-    setSearch('');
+    const requestId = latestRequest.current + 1;
+    latestRequest.current = requestId;
 
     try {
       const params = new URLSearchParams({
         audience,
         month: String(selectedMonth),
         year: String(year),
+        page: String(page + 1),
+        pageSize: String(pageSize),
       });
+      if (debouncedSearch) params.set('search', debouncedSearch);
       if (isTeacherReport) params.set('centerId', selectedCenterId);
       const response = await fetch(`/api/admin/attendance/monthly/staff?${params}`, { credentials: 'include' });
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.message || 'Unable to load monthly attendance report.');
+      if (latestRequest.current !== requestId) return;
       setRows(data.data?.rows || []);
+      setTotal(data.pagination?.total ?? (data.data?.rows || []).length);
       setReportLoaded(true);
     } catch (fetchError) {
+      if (latestRequest.current !== requestId) return;
       setError(fetchError.message || 'Unable to load monthly attendance report.');
     } finally {
-      setLoadingRows(false);
+      if (latestRequest.current === requestId) setLoadingRows(false);
     }
   };
+
+  useEffect(() => {
+    if (requested) fetchReport();
+  }, [requested, page, pageSize, debouncedSearch, reloadToken]);
 
   const exportReport = () => {
     const params = new URLSearchParams({
@@ -178,8 +208,8 @@ export default function StaffMonthlyAttendancePage({ audience }) {
     <Box sx={{ width: '100%', height: isCompactScreen ? 'auto' : '100%', minWidth: 0, minHeight: 0, p: 0, overflow: isCompactScreen ? 'visible' : 'hidden' }}>
       <Paper sx={{ height: isCompactScreen ? 'auto' : '100%', minWidth: 0, minHeight: isCompactScreen ? 'calc(100dvh - 73px)' : 0, display: 'flex', flexDirection: 'column', overflow: isCompactScreen ? 'visible' : 'hidden', p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: '0 20px 48px rgba(15, 23, 42, 0.08)' }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent='space-between' alignItems={{ md: 'center' }} sx={{ mb: 3 }}>
-          <Box>
-            <Typography variant='h5' fontWeight={700} sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' }, lineHeight: { xs: 1.2, sm: 1.334 } }}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant='h5' fontWeight={700} sx={{ color: '#0a336b', fontSize: { xs: '1.25rem', sm: '1.5rem' }, lineHeight: { xs: 1.2, sm: 1.334 } }}>
               {reportTitle}
             </Typography>
             <Typography color='text.secondary'>Review and download monthly {singularLabel.toLowerCase()} attendance.</Typography>
@@ -194,7 +224,7 @@ export default function StaffMonthlyAttendancePage({ audience }) {
               Download Excel
             </Button>
             {!isCompactScreen ? (
-              <Button variant='contained' onClick={fetchReport} disabled={(isTeacherReport && !selectedCenterId) || loadingRows}>
+              <Button variant='contained' onClick={requestReport} disabled={(isTeacherReport && !selectedCenterId) || loadingRows}>
                 View report
               </Button>
             ) : null}
@@ -234,17 +264,17 @@ export default function StaffMonthlyAttendancePage({ audience }) {
         </Stack>
 
         {isCompactScreen ? (
-          <Button variant='contained' onClick={fetchReport} disabled={(isTeacherReport && !selectedCenterId) || loadingRows} sx={{ width: '100%', mb: 2 }}>
+          <Button variant='contained' onClick={requestReport} disabled={(isTeacherReport && !selectedCenterId) || loadingRows} sx={{ width: '100%', mb: 2 }}>
             View report
           </Button>
         ) : null}
 
         {error ? <Alert severity='error' sx={{ mb: 2 }}>{error}</Alert> : null}
-        {loadingRows ? (
+        {loadingRows && !reportLoaded ? (
           <Loader variant='section' label='Loading monthly attendance' />
         ) : null}
 
-        {!loadingRows && reportLoaded ? (
+        {reportLoaded ? (
           <Box
             ref={reportRef}
             sx={{
@@ -281,7 +311,7 @@ export default function StaffMonthlyAttendancePage({ audience }) {
                   placeholder={`Type a ${singularLabel.toLowerCase()} name`}
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  sx={{ position: 'sticky', left: 0, zIndex: 5, width: { xs: '100%', sm: 360 }, mb: 1.5, backgroundColor: 'background.paper' }}
+                  sx={{ position: 'sticky', left: 0, zIndex: 5, width: { xs: '100%', sm: 360 }, maxWidth: '100%', mb: 1.5, backgroundColor: 'background.paper' }}
                 />
                 <Table
                   size='small'
@@ -310,7 +340,7 @@ export default function StaffMonthlyAttendancePage({ audience }) {
                         sx={{
                           height: 80,
                           '&:nth-of-type(even) > td': { backgroundColor: '#f8fafc' },
-                          '&:hover > td': { backgroundColor: '#edf5fb' },
+                          '&:hover > td': { backgroundColor: '#f8fbff' },
                         }}
                       >
                         <TableCell sx={{ position: 'sticky', left: 0, zIndex: 1, width: 220, minWidth: 220, maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', backgroundColor: 'background.paper', fontWeight: 500 }}>
@@ -330,12 +360,22 @@ export default function StaffMonthlyAttendancePage({ audience }) {
                     {!filteredRows.length ? (
                       <TableRow>
                         <TableCell align='center' colSpan={monthDates.length + 3} sx={{ py: 3, color: 'text.secondary' }}>
-                          {rows.length ? `No ${singularLabel.toLowerCase()} matches that name.` : `No active ${staffLabel.toLowerCase()} found for this centre.`}
+                          {debouncedSearch ? `No ${singularLabel.toLowerCase()} matches that name.` : `No active ${staffLabel.toLowerCase()} found for this centre.`}
                         </TableCell>
                       </TableRow>
                     ) : null}
                   </TableBody>
                 </Table>
+                <TablePagination
+                  component='div'
+                  count={total}
+                  page={page}
+                  onPageChange={(_event, next) => setPage(next)}
+                  rowsPerPage={pageSize}
+                  onRowsPerPageChange={(event) => setPageSize(Number(event.target.value))}
+                  rowsPerPageOptions={[25, 50, 100, 200]}
+                  sx={{ position: 'sticky', left: 0, maxWidth: '100%' }}
+                />
               </>
             )}
           </Box>
@@ -426,7 +466,7 @@ function StaffAttendanceDayCell({ details }) {
       placement='top'
       onOpen={loadPlaceNames}
       title={(
-        <Stack spacing={1} sx={{ py: 0.5, maxWidth: 320 }}>
+        <Stack spacing={1} sx={{ py: 0.5, maxWidth: 'min(320px, calc(100vw - 48px))', overflowWrap: 'anywhere' }}>
           <Box>
             <Typography variant='caption' fontWeight={700} display='block'>In time: {formatTime(details.checkInAt)}</Typography>
             <Typography variant='caption' display='block'>In location: {checkInLocation}</Typography>

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 
 export class ApiResponse {
   static success(data = null, message = "Success", status = 200) {
@@ -22,4 +22,17 @@ export class ApiResponse {
       { status }
     );
   }
+
+  static paginated(data = [], pagination = {}, message = "Success") {
+    return NextResponse.json(
+      {
+        success: true,
+        message,
+        data,
+        pagination,
+      },
+      { status: 200 }
+    );
+  }
 }
+

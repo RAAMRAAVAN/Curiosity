@@ -17,9 +17,9 @@ export default function AssessmentResults316RoutePage() {
   }
 
   return (
-    <Box sx={{ maxWidth: 1400, mx: 'auto', width: '100%' }}>
+    <Box sx={{ maxWidth: 1400, mx: 'auto', width: '100%', minWidth: 0 }}>
       <Paper sx={{ p: { xs: 1, sm: 3 }, borderRadius: { xs: 0, sm: 3 }, boxShadow: { xs: 'none', sm: '0 20px 48px rgba(15, 23, 42, 0.08)' } }}>
-        <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>Assessment Results - B</Typography>
+        <Typography variant="h5" fontWeight={700} sx={{ mb: 2, fontSize: { xs: '1.25rem', sm: '1.5rem' }, overflowWrap: 'anywhere' }}>Assessment Results - B</Typography>
         <Typography color="text.secondary" sx={{ mb: 3 }}>Review checklist submissions for the standalone 3–16 assessment flow.</Typography>
         <AssessmentResultsDashboard assessmentId="" assessmentType="3-16" />
       </Paper>

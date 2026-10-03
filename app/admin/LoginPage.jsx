@@ -146,11 +146,11 @@ const LoginPage = ({
     <Box
       component="main"
       sx={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         borderTop: "4px solid #8b3fe8",
         bgcolor: "#fff",
         display: "grid",
-        gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1.65fr) minmax(360px, 0.85fr)" },
+        gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1.65fr) minmax(320px, 0.85fr)" },
         px: { xs: 2, sm: 4, md: 5 },
         py: { xs: 4, sm: 6, md: 7 },
         gap: { xs: 5, md: 6 },
@@ -181,9 +181,9 @@ const LoginPage = ({
             sx={{
               color: "#202020",
               fontFamily: "Georgia, 'Times New Roman', serif",
-              fontSize: { xs: 28, sm: 42, md: "clamp(40px, 4.8vw, 76px)" },
+              fontSize: { xs: 28, sm: 36, md: "clamp(40px, 4.8vw, 76px)" },
               lineHeight: 1.05,
-              whiteSpace: { xs: "normal", sm: "nowrap" },
+              whiteSpace: { xs: "normal", md: "nowrap" },
             }}
           >
             Project Uttam Xikhya

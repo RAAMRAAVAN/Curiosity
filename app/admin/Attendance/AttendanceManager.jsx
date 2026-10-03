@@ -22,6 +22,7 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -62,6 +63,11 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
   const [markingHoliday, setMarkingHoliday] = useState(false);
   const [message, setMessage] = useState(null);
   const [studentSearch, setStudentSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  const [total, setTotal] = useState(0);
+  const latestRequest = useRef(0);
   const skipDateReload = useRef(false);
   const canMark = hasPermission(permissions, "attendance.mark", role);
   const canEdit = hasPermission(permissions, "attendance.edit", role);
@@ -74,11 +80,14 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
   const SELECT_ALL = "__select_all__";
   const DESELECT_ALL = "__deselect_all__";
 
-  const filteredStudents = useMemo(() => {
-    const search = studentSearch.trim().toLowerCase();
-    if (!search) return students;
-    return students.filter((student) => String(student.name || "").toLowerCase().includes(search));
-  }, [students, studentSearch]);
+  const filteredStudents = students;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(studentSearch.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [studentSearch]);
+
+  useEffect(() => { setPage(0); }, [centerQuery, classQuery, date, debouncedSearch, pageSize]);
 
   const loadCenters = async () => {
     const response = await fetch("/api/admin/centers", { credentials: "include" });
@@ -90,13 +99,17 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
     if (!nextCenterIds.length) return;
     const isInitialLoad = !nextDate;
     if (!isInitialLoad) setLoading(true);
+    const requestId = latestRequest.current + 1;
+    latestRequest.current = requestId;
     try {
-      const params = new URLSearchParams({ centerId: nextCenterIds.join(",") });
+      const params = new URLSearchParams({ centerId: nextCenterIds.join(","), page: String(page + 1), pageSize: String(pageSize) });
+      if (debouncedSearch) params.set("search", debouncedSearch);
       if (nextDate) params.set("date", nextDate);
       if (nextClassIds.length) params.set("classId", nextClassIds.join(","));
       const response = await fetch(`/api/admin/attendance?${params}`, { credentials: "include" });
       const data = await response.json();
       if (!data.success) throw new Error(data.message || "Unable to load attendance.");
+      if (latestRequest.current !== requestId) return;
       setClasses(data.data.classes || []);
       setToday(data.data.today || todayValue());
       if (isInitialLoad) {
@@ -104,11 +117,12 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
         setDate(data.data.date || data.data.today || todayValue());
       }
       setStudents(data.data.students || []);
+      setTotal(data.pagination?.total ?? (data.data.students || []).length);
       setHasLoadedAttendance(true);
     } catch (error) {
-      setMessage({ severity: "error", text: error.message });
+      if (latestRequest.current === requestId) setMessage({ severity: "error", text: error.message });
     } finally {
-      setLoading(false);
+      if (latestRequest.current === requestId) setLoading(false);
     }
   };
 
@@ -132,7 +146,7 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
       }
       loadAttendance(centerIds, classIds, date);
     }
-  }, [centerIds, classIds, date]);
+  }, [centerIds, classIds, date, page, pageSize, debouncedSearch]);
 
   const updateAttendance = async (studentId, status, studentClassId) => {
     if (!canChange) return;
@@ -190,7 +204,7 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
   };
 
   const markHoliday = async () => {
-    if (!canMarkSelectedHoliday || !centerIds.length || !classIds.length || !students.length || markingHoliday) return;
+    if (!canMarkSelectedHoliday || !centerIds.length || !classIds.length || !total || markingHoliday) return;
     setMarkingHoliday(true);
     try {
       const response = await fetch("/api/admin/attendance/mark-holiday", {
@@ -216,7 +230,7 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
       <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }} justifyContent="space-between">
           <Box>
-            <Typography variant="h5" fontWeight={700}>Attendance</Typography>
+            <Typography variant="h5" fontWeight={700} sx={{ color: '#0a336b', fontSize: { xs: 20, sm: 24 } }}>Attendance</Typography>
             <Typography color="text.secondary">Mark and review daily student attendance.</Typography>
           </Box>
 
@@ -227,7 +241,7 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
             <Button variant="contained" onClick={exportAttendance} disabled={!centerIds.length || !classIds.length || loading || exporting} sx={{ display: { xs: "none", sm: "inline-flex" }, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' }, marginRight: 1 }}>
               {exporting ? "Exporting..." : "Export Excel"}
             </Button>
-            {canMarkHoliday ? <Button variant="outlined" color="warning" onClick={() => setHolidayDialogOpen(true)} disabled={!centerIds.length || !classIds.length || !students.length || loading || !canMarkSelectedHoliday} sx={{ display: { xs: "none", sm: "inline-flex" } }}>
+            {canMarkHoliday ? <Button variant="outlined" color="warning" onClick={() => setHolidayDialogOpen(true)} disabled={!centerIds.length || !classIds.length || !total || loading || !canMarkSelectedHoliday} sx={{ display: { xs: "none", sm: "inline-flex" } }}>
               Mark holiday
             </Button> : null}
           </Box>
@@ -266,7 +280,8 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
                     {...props}
                     sx={{
                       ...props.sx,
-                      minWidth: { xs: 'calc(100vw - 32px)', sm: 440 },
+                      minWidth: { xs: 0, sm: 440 },
+                      maxWidth: 'calc(100vw - 32px)',
                       border: '1px solid rgba(8, 43, 87, 0.18)',
                       borderRadius: 2.5,
                       boxShadow: '0 14px 32px rgba(15, 23, 42, 0.22), 0 3px 8px rgba(8, 43, 87, 0.12)',
@@ -366,6 +381,7 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
                     sx: {
                       maxHeight: 'min(320px, calc(100dvh - 140px))',
                       minWidth: { xs: 220, sm: 260 },
+                      maxWidth: 'calc(100vw - 32px)',
                     },
                   },
                 }}
@@ -402,8 +418,8 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
 
       {message ? <Alert severity={message.severity} sx={{ mb: 2 }} onClose={() => setMessage(null)}>{message.text}</Alert> : null}
 
-      <Paper sx={{ border: '1px solid rgba(59, 130, 246, 0.18)', borderRadius: 3, mx: { xs: 1, sm: 2 }, mb: { xs: 5, sm: 0 }, overflowX: "auto", boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
-        {!hasLoadedAttendance && loading ? <Loader variant='section' label='Loading attendance...' sx={{ py: 4, minHeight: 'auto' }} /> : !hasLoadedAttendance ? null : !classIds.length ? <Typography sx={{ p: 3 }} color="text.secondary">Select one or more classes to view students.</Typography> : loading ? <Loader variant='section' sx={{ py: 4, minHeight: 'auto' }} /> : students.length === 0 ? <Typography sx={{ p: 3 }} color="text.secondary">No students found for this class.</Typography> : filteredStudents.length === 0 ? <Typography sx={{ p: 3 }} color="text.secondary">No students match your search.</Typography> : (
+      <Paper sx={{ border: '1px solid rgba(59, 130, 246, 0.18)', borderRadius: 3, mx: { xs: 1, sm: 2 }, mb: { xs: 5, sm: 0 }, overflowX: "auto", maxWidth: '100%', boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+        {!hasLoadedAttendance && loading ? <Loader variant='section' label='Loading attendance...' sx={{ py: 4, minHeight: 'auto' }} /> : !hasLoadedAttendance ? null : !classIds.length ? <Typography sx={{ p: 3 }} color="text.secondary">Select one or more classes to view students.</Typography> : loading ? <Loader variant='section' sx={{ py: 4, minHeight: 'auto' }} /> : students.length === 0 ? <Typography sx={{ p: 3 }} color="text.secondary">{debouncedSearch ? "No students match your search." : "No students found for this class."}</Typography> : (
           <Table
             size="small"
             sx={{
@@ -425,7 +441,7 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
               </TableRow>
             </TableHead>
             <TableBody>{filteredStudents.map((student) => (
-              <TableRow key={student.id} hover>
+              <TableRow key={student.id} hover sx={{ '&.MuiTableRow-hover:hover': { bgcolor: '#f8fbff' } }}>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>{student.id}</TableCell>
                 <TableCell sx={{ whiteSpace: "nowrap", textAlign: "right" }}>{student.className}</TableCell>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>{student.name}</TableCell>
@@ -438,8 +454,20 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
             ))}</TableBody>
           </Table>
         )}
+        {hasLoadedAttendance && classIds.length ? (
+          <TablePagination
+            component="div"
+            count={total}
+            page={page}
+            onPageChange={(_event, next) => setPage(next)}
+            rowsPerPage={pageSize}
+            onRowsPerPageChange={(event) => setPageSize(Number(event.target.value))}
+            rowsPerPageOptions={[25, 50, 100, 200]}
+            sx={{ position: 'sticky', left: 0, maxWidth: '100%' }}
+          />
+        ) : null}
       </Paper>
-      <Dialog open={holidayDialogOpen} onClose={() => !markingHoliday && setHolidayDialogOpen(false)}>
+      <Dialog open={holidayDialogOpen} onClose={() => !markingHoliday && setHolidayDialogOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Mark holiday</DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 2 }}>This will mark all visible students for the selected centre, class, and date.</Typography>

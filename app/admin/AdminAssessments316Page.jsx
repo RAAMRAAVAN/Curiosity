@@ -26,6 +26,7 @@ import {
   RadioGroup,
   Select,
   Stack,
+  TablePagination,
   TextField,
   Typography,
   useMediaQuery,
@@ -33,14 +34,16 @@ import {
 } from '@mui/material';
 import { AddCircleOutline, DeleteOutline, EditOutlined } from '@mui/icons-material';
 import Loader from '@/app/(components)/Loader';
+import usePagedData from './usePagedData';
 
 const emptyForm = { title: '', description: '', classIds: [], subjectIds: [], checklist: [{ itemText: 'Field 1', options: [''] }] };
 
 const AdminAssessments316Page = ({ role, permissions = [] }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [assessments, setAssessments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const paged = usePagedData({ endpoint: '/api/admin/assessments-3-16', initialPageSize: 10 });
+  const assessments = paged.rows;
+  const loading = paged.loading;
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -117,24 +120,19 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
   };
 
   const fetchAssessments = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/admin/assessments-3-16', { credentials: 'include' });
-      const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load assessments.');
-
-      const nextAssessments = Array.isArray(result.data) ? result.data : [];
-      setAssessments(nextAssessments);
-
-      if (nextAssessments.length > 0) {
-        void Promise.allSettled(nextAssessments.map((assessment) => fetchAssessmentStatusSummary(assessment)));
-      }
-    } catch (error) {
-      setFeedback({ severity: 'error', message: error.message || 'Unable to load assessments.' });
-    } finally {
-      setLoading(false);
-    }
+    paged.reload();
   };
+
+  useEffect(() => {
+    if (paged.error) setFeedback({ severity: 'error', message: paged.error });
+  }, [paged.error]);
+
+  // Status counts are only loaded for the assessments on the current page.
+  useEffect(() => {
+    if (assessments.length > 0) {
+      void Promise.allSettled(assessments.map((assessment) => fetchAssessmentStatusSummary(assessment)));
+    }
+  }, [assessments]);
 
   const loadClassAndSubjectOptions = async () => {
     try {
@@ -161,7 +159,6 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
   };
 
   useEffect(() => {
-    fetchAssessments();
     loadClassAndSubjectOptions();
   }, []);
 
@@ -505,14 +502,14 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
   const filteredAbsentStudents = filterGroupsByName(absentStudents, absentSearch);
 
   return (
-    <Box sx={{ width: { xs: '100%', sm: '100%' }, ml: { xs: 0, sm: 0 }, p: { xs: 1, sm: 2, md: 3 } }}>
-      <Box  sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
-        <Box>
-          <Typography variant="h6" fontWeight={600}>View Assessment - B</Typography>
-          <Typography color="text.secondary">Manage age-range assessment records.</Typography>
+    <Box sx={{ width: '100%', maxWidth: 1400, mx: 'auto', minWidth: 0, p: { xs: 1, sm: 2, md: 3 } }}>
+      <Box  sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h6" fontWeight={600} sx={{ overflowWrap: 'anywhere' }}>View Assessment - B</Typography>
+          <Typography color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>Manage age-range assessment records.</Typography>
         </Box>
         {canCreate ? (
-          <Button variant="contained" startIcon={<AddCircleOutline />} onClick={openCreate} sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }} fullWidth={isMobile} >
+          <Button variant="contained" startIcon={<AddCircleOutline />} onClick={openCreate} sx={{ minHeight: 44, flexShrink: 0, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }} fullWidth={isMobile} >
             Add Assessment
           </Button>
         ) : null}
@@ -520,10 +517,12 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
 
       {feedback ? <Alert severity={feedback.severity} sx={{ mb: 2 }} onClose={() => setFeedback(null)}>{feedback.message}</Alert> : null}
 
+      <TextField size="small" label="Search assessments" value={paged.search} onChange={(event) => paged.setSearch(event.target.value)} sx={{ mb: 2, width: { xs: '100%', sm: 360 }, maxWidth: '100%' }} />
+
       {loading ? (
         <Loader variant='section' />
       ) : assessments.length === 0 ? (
-        <Typography color="text.secondary">No assessments have been created yet.</Typography>
+        <Typography color="text.secondary">{paged.search ? 'No assessments match your search.' : 'No assessments have been created yet.'}</Typography>
       ) : (
         <Stack spacing={2}>
           {assessments.map((assessment) => (
@@ -546,24 +545,24 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
               }}
             >
               <CardContent sx={{ position: 'relative', display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', gap: 2, alignItems: { xs: 'stretch', sm: 'flex-start' }, color: '#ffffff' }}>
-                <Box sx={{ minWidth: 0, pr: { xs: 8, sm: 0 } }}>
-                  <Typography fontWeight={700}>{assessment.title}</Typography>
-                  <Typography sx={{ whiteSpace: 'pre-line', color: 'rgba(255, 255, 255, 0.78)' }}>
+                <Box sx={{ minWidth: 0, pr: { xs: 12, sm: 0 }, flex: 1 }}>
+                  <Typography fontWeight={700} sx={{ overflowWrap: 'anywhere' }}>{assessment.title}</Typography>
+                  <Typography sx={{ whiteSpace: 'pre-line', color: 'rgba(255, 255, 255, 0.78)', overflowWrap: 'anywhere' }}>
                     {assessment.description || 'No description'}
                   </Typography>
-                  <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'rgba(255, 255, 255, 0.72)' }}>
+                  <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'rgba(255, 255, 255, 0.72)', overflowWrap: 'anywhere' }}>
                     Classes: {(assessment.allowedClasses || []).map((item) => item.class?.className).filter(Boolean).join(', ') || 'None'}
                   </Typography>
-                  <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255, 255, 255, 0.72)' }}>
+                  <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255, 255, 255, 0.72)', overflowWrap: 'anywhere' }}>
                     Subjects: {(assessment.subjects || []).map((item) => item.subject?.subjectName).filter(Boolean).join(', ') || 'None'}
                   </Typography>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 1.5, alignItems: { xs: 'flex-start', sm: 'center', display: 'flex', width: '100%'} }}>
-                    <Chip label={`Pending: ${summaryCounts[assessment.id]?.pending ?? 0}`} color="warning" variant="filled" onClick={() => handleOpenPendingDialog(assessment)} sx={{ cursor: 'pointer', display: 'flex', width: '100%', color: '#ffffff' }} />
-                    <Chip label={`Appeared: ${summaryCounts[assessment.id]?.appeared ?? 0}`} color="success" variant="filled" onClick={() => handleOpenAppearedDialog(assessment)} sx={{ cursor: 'pointer', display: 'flex', width: '100%', color: '#ffffff' }} />
-                    <Chip label={`Absent: ${summaryCounts[assessment.id]?.absent ?? 0}`} color="error" variant="filled" onClick={() => handleOpenAbsentDialog(assessment)} sx={{ cursor: 'pointer', display: 'flex', width: '100%', color: '#ffffff' }} />
-                  </Stack>
+                  <Box sx={{ mt: 1.5, display: 'flex', flexWrap: 'wrap', gap: 1, width: '100%' }}>
+                    <Chip label={`Pending: ${summaryCounts[assessment.id]?.pending ?? 0}`} color="warning" variant="filled" onClick={() => handleOpenPendingDialog(assessment)} sx={{ cursor: 'pointer', width: { xs: '100%', sm: 'auto' }, maxWidth: '100%', color: '#ffffff' }} />
+                    <Chip label={`Appeared: ${summaryCounts[assessment.id]?.appeared ?? 0}`} color="success" variant="filled" onClick={() => handleOpenAppearedDialog(assessment)} sx={{ cursor: 'pointer', width: { xs: '100%', sm: 'auto' }, maxWidth: '100%', color: '#ffffff' }} />
+                    <Chip label={`Absent: ${summaryCounts[assessment.id]?.absent ?? 0}`} color="error" variant="filled" onClick={() => handleOpenAbsentDialog(assessment)} sx={{ cursor: 'pointer', width: { xs: '100%', sm: 'auto' }, maxWidth: '100%', color: '#ffffff' }} />
+                  </Box>
                 </Box>
-                <Stack direction="row" spacing={0.5} sx={{ position: { xs: 'absolute', sm: 'static' }, top: { xs: 8, sm: 'auto' }, right: { xs: 8, sm: 'auto' } }}>
+                <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0, position: { xs: 'absolute', sm: 'static' }, top: { xs: 8, sm: 'auto' }, right: { xs: 8, sm: 'auto' } }}>
                   {canEdit ? <IconButton aria-label="Edit assessment" onClick={() => openEdit(assessment)}><EditOutlined sx={{ color: '#ffffff' }} /></IconButton> : null}
                   {canDelete ? <IconButton aria-label="Delete assessment" color="error" onClick={() => openDeleteConfirmation(assessment)}><DeleteOutline sx={{ color: '#ffffff' }} /></IconButton> : null}
                 </Stack>
@@ -572,12 +571,14 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
           ))}
         </Stack>
       )}
+      <TablePagination {...paged.paginationProps} rowsPerPageOptions={[10, 25, 50]} sx={{ maxWidth: '100%' }} />
 
       <Dialog
         open={pendingDialogOpen}
         onClose={() => setPendingDialogOpen(false)}
-        // maxWidth="sm"
+        maxWidth="sm"
         fullWidth
+        scroll="paper"
         fullScreen={isMobile}
         PaperProps={{ sx: { display: 'flex', flexDirection: 'column',  } }}
       >
@@ -595,10 +596,10 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, px: 1.25, py: 0.75, bgcolor: 'rgba(10, 51, 107, 0.08)', color: '#0a336b', borderLeft: '3px solid #0a336b', borderRadius: '0 4px 4px 0' }}>Class {group.className}</Typography>
                   {group.students.map((student) => (
                     <ListItem key={student.id} disablePadding sx={{ mb: 0.75, border: '1px solid #d7e0eb', borderRadius: 1, bgcolor: '#ffffff', overflow: 'hidden' }} secondaryAction={
-                      <Checkbox edge="end" checked={selectedStudentsForAbsent.has(student.id)} onChange={() => toggleStudentForAbsent(student.id)} />
+                      <Checkbox edge="end" inputProps={{ 'aria-label': `Select ${student.name || 'student'} to mark absent` }} checked={selectedStudentsForAbsent.has(student.id)} onChange={() => toggleStudentForAbsent(student.id)} />
                     }>
-                      <ListItemButton onClick={() => openStudentAssessmentSubmission(student)} sx={{ px: 1.5, py: 1.25, '&:hover': { bgcolor: '#f7faff' } }}>
-                        <ListItemText primary={student.name} secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || 'N/A'}`} />
+                      <ListItemButton onClick={() => openStudentAssessmentSubmission(student)} sx={{ px: 1.5, py: 1.25, minHeight: 44, '&:hover': { bgcolor: '#f8fbff' } }}>
+                        <ListItemText primary={student.name} secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || 'N/A'}`} sx={{ minWidth: 0, overflowWrap: 'anywhere' }} />
                       </ListItemButton>
                     </ListItem>
                   ))}
@@ -607,7 +608,7 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
             </List>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
           <Button onClick={() => { setSelectedStudentsForAbsent(new Set()); setPendingDialogOpen(false); }}>Close</Button>
           {selectedStudentsForAbsent.size > 0 ? (
             <Button variant="contained" color="error" onClick={() => { const selectedStudents = pendingStudents.flatMap((group) => group.students).filter((student) => selectedStudentsForAbsent.has(student.id)); handleMarkAbsent(selectedStudents); }} disabled={markingAbsentLoading}>
@@ -617,8 +618,8 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(pendingSubmissionStudent) && !!selectedAssessment} onClose={() => { setPendingSubmissionStudent(null); setPendingSubmissionSelections({}); }} maxWidth="md" fullWidth fullScreen={isMobile} PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}>
-        <DialogTitle>Submit assessment for {pendingSubmissionStudent?.name || 'student'}</DialogTitle>
+      <Dialog open={Boolean(pendingSubmissionStudent) && !!selectedAssessment} onClose={() => { setPendingSubmissionStudent(null); setPendingSubmissionSelections({}); }} maxWidth="md" fullWidth fullScreen={isMobile} scroll="paper" PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}>
+        <DialogTitle sx={{ bgcolor: '#0a336b', color: '#fff', fontWeight: 700, overflowWrap: 'anywhere' }}>Submit assessment for {pendingSubmissionStudent?.name || 'student'}</DialogTitle>
         <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto', maxHeight: { xs: 'none', sm: '75vh' } }}>
           {!selectedAssessment?.checklist?.length ? (
             <Typography color="text.secondary">No evaluation checklist is available for this assessment.</Typography>
@@ -627,14 +628,14 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
               {selectedAssessment.checklist.map((field, index) => (
                 <Card key={field.id} variant="outlined">
                   <CardContent>
-                    <Typography fontWeight={700} sx={{ mb: 1 }}>{index + 1}. {field.itemText || field.label || 'Field'}</Typography>
+                    <Typography fontWeight={700} sx={{ mb: 1, overflowWrap: 'anywhere' }}>{index + 1}. {field.itemText || field.label || 'Field'}</Typography>
                     <FormControl component="fieldset" fullWidth>
                       <RadioGroup
                         value={pendingSubmissionSelections[field.id] || ''}
                         onChange={(event) => setPendingSubmissionSelections((current) => ({ ...current, [field.id]: event.target.value }))}
                       >
                         {(field.options || []).map((option) => (
-                          <FormControlLabel key={option.id} value={option.id} control={<Radio />} label={option.optionText || option.label || 'Option'} />
+                          <FormControlLabel key={option.id} value={option.id} control={<Radio />} label={option.optionText || option.label || 'Option'} sx={{ minHeight: 44, alignItems: 'center', mr: 0, '& .MuiFormControlLabel-label': { overflowWrap: 'anywhere', minWidth: 0 } }} />
                         ))}
                       </RadioGroup>
                     </FormControl>
@@ -644,7 +645,7 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
             </Stack>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
           <Button onClick={() => { setPendingSubmissionStudent(null); setPendingSubmissionSelections({}); }}>Close</Button>
           <Button variant="contained" onClick={handleStudentAssessmentSubmit} disabled={pendingSubmissionLoading || !selectedAssessment?.checklist?.length}>
             {pendingSubmissionLoading ? 'Submitting...' : 'Submit Assessment'}
@@ -657,6 +658,7 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         onClose={() => setAppearedDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        scroll="paper"
         fullScreen={isMobile}
         PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}
       >
@@ -674,8 +676,8 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, px: 1.25, py: 0.75, bgcolor: 'rgba(10, 51, 107, 0.08)', color: '#0a336b', borderLeft: '3px solid #0a336b', borderRadius: '0 4px 4px 0' }}>Class {group.className}</Typography>
                   {group.students.map((student) => (
                     <ListItem key={student.id} disablePadding sx={{ mb: 0.75, border: '1px solid #d7e0eb', borderRadius: 1, bgcolor: '#ffffff', overflow: 'hidden' }}>
-                      <ListItemButton onClick={() => openAppearedStudentAssessmentEdit(student)} sx={{ px: 1.5, py: 1.25, '&:hover': { bgcolor: '#f7faff' } }}>
-                        <ListItemText primary={student.name} secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || 'N/A'}`} />
+                      <ListItemButton onClick={() => openAppearedStudentAssessmentEdit(student)} sx={{ px: 1.5, py: 1.25, minHeight: 44, '&:hover': { bgcolor: '#f8fbff' } }}>
+                        <ListItemText primary={student.name} secondary={`Enrollment ID: ${student.id || 'N/A'} • Center: ${student.student?.center?.centerName || 'N/A'}`} sx={{ minWidth: 0, overflowWrap: 'anywhere' }} />
                       </ListItemButton>
                     </ListItem>
                   ))}
@@ -684,13 +686,13 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
             </List>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
           <Button onClick={() => setAppearedDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(appearedSubmissionStudent) && !!selectedAssessment} onClose={closeAppearedEditDialog} maxWidth="md" fullWidth fullScreen={isMobile} PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}>
-        <DialogTitle>Edit assessment for {appearedSubmissionStudent?.name || 'student'}</DialogTitle>
+      <Dialog open={Boolean(appearedSubmissionStudent) && !!selectedAssessment} onClose={closeAppearedEditDialog} maxWidth="md" fullWidth fullScreen={isMobile} scroll="paper" PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}>
+        <DialogTitle sx={{ bgcolor: '#0a336b', color: '#fff', fontWeight: 700, overflowWrap: 'anywhere' }}>Edit assessment for {appearedSubmissionStudent?.name || 'student'}</DialogTitle>
         <DialogContent dividers sx={{ flex: 1, minHeight: 0, overflowY: 'auto', maxHeight: { xs: 'none', sm: '75vh' } }}>
           {!selectedAssessment?.checklist?.length ? (
             <Typography color="text.secondary">No evaluation checklist is available for this assessment.</Typography>
@@ -699,14 +701,14 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
               {selectedAssessment.checklist.map((field, index) => (
                 <Card key={field.id} variant="outlined">
                   <CardContent>
-                    <Typography fontWeight={700} sx={{ mb: 1 }}>{index + 1}. {field.itemText || field.label || 'Field'}</Typography>
+                    <Typography fontWeight={700} sx={{ mb: 1, overflowWrap: 'anywhere' }}>{index + 1}. {field.itemText || field.label || 'Field'}</Typography>
                     <FormControl component="fieldset" fullWidth>
                       <RadioGroup
                         value={appearedSubmissionSelections[field.id] || ''}
                         onChange={(event) => setAppearedSubmissionSelections((current) => ({ ...current, [field.id]: event.target.value }))}
                       >
                         {(field.options || []).map((option) => (
-                          <FormControlLabel key={option.id} value={option.id} control={<Radio />} label={option.optionText || option.label || 'Option'} />
+                          <FormControlLabel key={option.id} value={option.id} control={<Radio />} label={option.optionText || option.label || 'Option'} sx={{ minHeight: 44, alignItems: 'center', mr: 0, '& .MuiFormControlLabel-label': { overflowWrap: 'anywhere', minWidth: 0 } }} />
                         ))}
                       </RadioGroup>
                     </FormControl>
@@ -716,7 +718,7 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
             </Stack>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
           <Button onClick={closeAppearedEditDialog}>Close</Button>
           <Button variant="contained" onClick={handleAppearedStudentAssessmentSubmit} disabled={appearedSubmissionLoading || !selectedAssessment?.checklist?.length}>
             {appearedSubmissionLoading ? 'Saving...' : 'Save Changes'}
@@ -729,6 +731,7 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         onClose={() => setAbsentDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        scroll="paper"
         fullScreen={isMobile}
         PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}
       >
@@ -746,10 +749,10 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, px: 1.25, py: 0.75, bgcolor: 'rgba(10, 51, 107, 0.08)', color: '#0a336b', borderLeft: '3px solid #0a336b', borderRadius: '0 4px 4px 0' }}>Class {group.className}</Typography>
                   {group.students.map((student) => (
                     <ListItem key={student.id} disablePadding sx={{ mb: 0.75, border: '1px solid #d7e0eb', borderRadius: 1, bgcolor: '#ffffff', overflow: 'hidden' }} secondaryAction={
-                      <Checkbox edge="end" checked={selectedStudentsForAbsent.has(student.id)} onChange={() => toggleStudentForAbsent(student.id)} />
+                      <Checkbox edge="end" inputProps={{ 'aria-label': `Select ${student.name || 'student'} to revoke absent` }} checked={selectedStudentsForAbsent.has(student.id)} onChange={() => toggleStudentForAbsent(student.id)} />
                     }>
-                      <ListItemButton sx={{ px: 1.5, py: 1.25, '&:hover': { bgcolor: '#f7faff' } }}>
-                        <ListItemText primary={student.name} secondary={student.reason ? `Reason: ${student.reason}` : 'Absent'} />
+                      <ListItemButton sx={{ px: 1.5, py: 1.25, minHeight: 44, '&:hover': { bgcolor: '#f8fbff' } }}>
+                        <ListItemText primary={student.name} secondary={student.reason ? `Reason: ${student.reason}` : 'Absent'} sx={{ minWidth: 0, overflowWrap: 'anywhere' }} />
                       </ListItemButton>
                     </ListItem>
                   ))}
@@ -758,7 +761,7 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
             </List>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
           <Button onClick={() => { setSelectedStudentsForAbsent(new Set()); setAbsentDialogOpen(false); }}>Close</Button>
           {selectedStudentsForAbsent.size > 0 ? (
             <Button variant="contained" color="primary" onClick={() => { const selectedStudents = absentStudents.flatMap((group) => group.students).filter((student) => selectedStudentsForAbsent.has(student.id)); handleRevokeAbsent(selectedStudents); }} disabled={markingAbsentLoading}>
@@ -774,18 +777,19 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         fullWidth
         maxWidth="xs"
         fullScreen={isMobile}
+        scroll="paper"
         PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}
       >
-        <DialogTitle>Delete assessment?</DialogTitle>
-        <DialogContent dividers>
-          <Typography>
+        <DialogTitle sx={{ bgcolor: '#0a336b', color: '#fff', fontWeight: 700 }}>Delete assessment?</DialogTitle>
+        <DialogContent dividers sx={{ overflowY: 'auto' }}>
+          <Typography sx={{ overflowWrap: 'anywhere' }}>
             Are you sure you want to delete <strong>{deleteAssessment?.title || 'this assessment'}</strong>?
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             This action cannot be undone.
           </Typography>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
           <Button onClick={closeDeleteConfirmation}>Cancel</Button>
           <Button color="error" variant="contained" onClick={confirmDelete}>
             Delete
@@ -793,8 +797,8 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth fullScreen={isMobile} PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}>
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm" scroll="paper" fullScreen={isMobile} PaperProps={{ sx: { display: 'flex', flexDirection: 'column' } }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: '#0a336b', color: '#fff' }}>
           <Typography component="span" sx={{ flex: 1, fontWeight: 700 }}>
             {editingAssessment ? 'Edit Assessment' : 'Create Assessment'}
           </Typography>
@@ -856,16 +860,16 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
                 ))}
               </Select>
             </FormControl>
-            <Box sx={{ border: '1px solid #e5e7eb', borderRadius: 2, p: 2 }}>
+            <Box sx={{ border: '1px solid #d7e0eb', bgcolor: '#f8fbff', borderRadius: 2, p: { xs: 1.5, sm: 2 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 2 }}>
                 <Typography fontWeight={700}>Evaluation Checklist</Typography>
               </Box>
               <Stack spacing={1.5}>
                 {form.checklist.map((item, index) => (
-                  <Box key={`checklist-${index}`} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Stack spacing={1} sx={{ flex: 1 }}>
+                  <Box key={`checklist-${index}`} sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                    <Stack spacing={1} sx={{ flex: 1, minWidth: 0 }}>
                       {item.options.map((option, optionIndex) => (
-                        <Box key={`checklist-${index}-option-${optionIndex}`} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box key={`checklist-${index}-option-${optionIndex}`} sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
                           <TextField
                             size="small"
                             label={`Option ${optionIndex + 1}`}
@@ -913,7 +917,7 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
             </Box>
           </Stack>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
           <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save'}

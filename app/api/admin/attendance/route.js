@@ -2,6 +2,7 @@ import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from "@/lib/adminRbac";
 import { ApiResponse } from "@/utils/apiResponse";
 import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
+import { buildPaginationMeta, containsFilter, parsePagination } from "@/lib/pagination";
 
 function dateValue(value) {
   const raw = String(value || "").trim();
@@ -111,18 +112,25 @@ export async function GET(req) {
     const selectedClasses = classes.filter((item) => selectedClassIds.includes(item.id));
     if (!isAllClasses && selectedClasses.length !== requestedClassIds.length) return ApiResponse.error("Class is not available for this center.", 403);
 
-    const users = await prisma.user.findMany({
-      where: {
-        role: "STUDENT",
-        status: true,
-        student: {
-          centerId: { in: scope.centerIds },
-          studyingClass: isAllClasses
-            ? (assignedClassIds ? { in: assignedClassIds } : undefined)
-            : { in: selectedClassIds },
-        },
+    const pagination = parsePagination(req);
+    const searchTerm = pagination?.search ? containsFilter(pagination.search) : null;
+    const userWhere = {
+      role: "STUDENT",
+      status: true,
+      student: {
+        centerId: { in: scope.centerIds },
+        studyingClass: isAllClasses
+          ? (assignedClassIds ? { in: assignedClassIds } : undefined)
+          : { in: selectedClassIds },
       },
+      ...(searchTerm ? { OR: [{ name: searchTerm }, { id: searchTerm }] } : {}),
+    };
+    const [totalStudents, users] = await Promise.all([
+      pagination ? prisma.user.count({ where: userWhere }) : Promise.resolve(0),
+      prisma.user.findMany({
+      where: userWhere,
       orderBy: { id: "asc" },
+      ...(pagination ? { skip: pagination.skip, take: pagination.take } : {}),
       select: {
         id: true,
         name: true,
@@ -137,9 +145,10 @@ export async function GET(req) {
           },
         },
       },
-    });
+      }),
+    ]);
 
-    return ApiResponse.success({
+    const payload = {
       center: scope.center,
       classes,
       selectedClass: isAllClasses
@@ -161,7 +170,10 @@ export async function GET(req) {
         markedBy: user.studentAttendances[0]?.markedBy || null,
         markedByName: user.studentAttendances[0]?.marker?.name || null,
       })),
-    });
+    };
+    return pagination
+      ? ApiResponse.paginated(payload, buildPaginationMeta(totalStudents, pagination))
+      : ApiResponse.success(payload);
   } catch (error) {
     console.error(error);
     return ApiResponse.error("Unable to load attendance", 500);

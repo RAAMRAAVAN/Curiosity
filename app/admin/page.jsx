@@ -136,6 +136,13 @@ export default function AdminPage(props) {
             { key: 'roles', allowed: hasPermission(combinedPermissions, 'roles.view', data.data?.role) },
             { key: 'results', allowed: hasPermission(combinedPermissions, 'results.view', data.data?.role) },
             { key: 'results-3-16', allowed: hasPermission(combinedPermissions, 'results.view', data.data?.role) },
+            { key: 'asset-categories', allowed: hasPermission(combinedPermissions, 'asset_categories.view', data.data?.role) },
+            { key: 'asset-items', allowed: hasPermission(combinedPermissions, 'asset_items.view', data.data?.role) },
+            { key: 'asset-list', allowed: hasPermission(combinedPermissions, 'asset_list.view', data.data?.role) },
+            { key: 'asset-transfer', allowed: hasPermission(combinedPermissions, 'asset_transfer.view', data.data?.role) },
+            { key: 'asset-receive', allowed: hasPermission(combinedPermissions, 'asset_receive.view', data.data?.role) },
+            { key: 'asset-tracking', allowed: hasPermission(combinedPermissions, 'asset_tracking.view', data.data?.role) },
+            { key: 'asset-reports', allowed: hasPermission(combinedPermissions, 'asset_reports.view', data.data?.role) },
             { key: 'reset-password', allowed: true },
           ];
           const anyPermission = availableViews.some((item) => item.allowed);
@@ -152,6 +159,10 @@ export default function AdminPage(props) {
               defaultView =
                 availableViews.find((item) => item.key === 'results' && item.allowed)?.key ||
                 availableViews.find((item) => item.key === 'results-3-16' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'asset-list' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'asset-items' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'asset-categories' && item.allowed)?.key ||
+                availableViews.find((item) => ['asset-transfer', 'asset-receive', 'asset-tracking', 'asset-reports'].includes(item.key) && item.allowed)?.key ||
                 availableViews.find((item) => item.key === 'teachers' && item.allowed)?.key ||
                 availableViews.find((item) => item.key === 'classes' && item.allowed)?.key ||
                 availableViews.find((item) => item.key === 'assessments' && item.allowed)?.key ||
@@ -171,6 +182,10 @@ export default function AdminPage(props) {
                 availableViews.find((item) => item.key === 'assessments-3-16' && item.allowed)?.key ||
                 availableViews.find((item) => item.key === 'results' && item.allowed)?.key ||
                 availableViews.find((item) => item.key === 'results-3-16' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'asset-list' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'asset-items' && item.allowed)?.key ||
+                availableViews.find((item) => item.key === 'asset-categories' && item.allowed)?.key ||
+                availableViews.find((item) => ['asset-transfer', 'asset-receive', 'asset-tracking', 'asset-reports'].includes(item.key) && item.allowed)?.key ||
                 availableViews.find((item) => item.key === 'roles' && item.allowed)?.key ||
                 availableViews.find((item) => item.key === 'centers' && item.allowed)?.key ||
                 availableViews.find((item) => item.key === 'students' && item.allowed)?.key ||
@@ -265,7 +280,7 @@ export default function AdminPage(props) {
   }
 
   return (
-    <Box sx={{ minHeight: "100vh", width: "100vw", overflowX: "hidden", bgcolor: "#f5f8ff" }}>
+    <Box sx={{ minHeight: "100vh", width: "100%", maxWidth: "100%", overflowX: "clip", bgcolor: "#f5f8ff" }}>
       {/* Responsive Header with Menu Button */}
       <Box
         sx={{
@@ -325,7 +340,9 @@ export default function AdminPage(props) {
           px: { xs: ['users', 'centers', 'students', 'roles', 'assessments-3-16'].includes(adminView) ? 0 : 2, sm: 3, md: 0 },
           pr: { xs: ['users', 'centers', 'students', 'roles', 'assessments-3-16'].includes(adminView) ? 0 : 2, sm: 3, md: 4 },
           bgcolor: ['users', 'centers', 'students', 'roles'].includes(adminView) ? '#fff' : 'transparent',
-          width: { xs: ['users', 'centers', 'students', 'roles'].includes(adminView) ? '100vw' : 'auto', md: 'auto' },
+          width: { xs: '100%', md: 'auto' },
+          minWidth: 0,
+          maxWidth: '100%',
           boxSizing: 'border-box',
           minHeight: 'calc(100vh - 64px)',
         }}

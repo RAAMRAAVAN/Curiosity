@@ -20,6 +20,7 @@ import {
     TableCell,
     TableContainer,
     TableHead,
+    TablePagination,
     TableRow,
     TextField,
     Tooltip,
@@ -30,6 +31,7 @@ import {
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Loader from '@/app/(components)/Loader';
+import usePagedData from '../usePagedData';
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -50,7 +52,8 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
-    const [classes, setClasses] = useState([]);
+    const paged = usePagedData({ endpoint: '/api/admin/classes' });
+    const classes = paged.rows;
     const [openClassModal, setOpenClassModal] = useState(false);
     const [classForm, setClassForm] = useState(emptyClassForm);
     const [editingClassId, setEditingClassId] = useState(null);
@@ -93,13 +96,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
     };
 
     const refreshClasses = async () => {
-        try {
-            const res = await fetch("/api/admin/classes", { credentials: "include" });
-            const d = await res.json();
-            if (d.success) setClasses(d.data);
-        } catch (e) {
-            console.error(e);
-        }
+        paged.reload();
     };
 
     useEffect(() => {
@@ -116,7 +113,6 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
             }
         }
 
-        refreshClasses();
         loadCurrentUser();
     }, []);
 
@@ -293,9 +289,9 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
     };
 
     return (
-        <Box sx={{ width: { xs: 'calc(100% + 32px)', sm: '100%' }, ml: { xs: -2, sm: 0 } }}>
+        <Box sx={{ width: '100%', minWidth: 0, pb: { xs: 12, sm: 10 } }}>
             <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 4, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 2, flexDirection: { xs: "column", sm: "row" }, gap: { xs: 2, sm: 1 } }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 2, flexDirection: { xs: "column", sm: "row" }, flexWrap: 'wrap', gap: { xs: 2, sm: 1 } }}>
                     <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 14, sm: 16 } }}>Classes</Typography>
                     {isAdminRole || canCreateClasses ? (
                         <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", width: { xs: '100%', sm: 'auto' } }}>
@@ -328,7 +324,9 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                     ) : null}
                 </Box>
 
-                <TableContainer sx={{ borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' }, background: 'linear-gradient(180deg, #edf7ff 0%, #eef6ff 35%, #f4ecff 100%)', border: '1px solid rgba(59, 130, 246, 0.18)' }}>
+                <TextField size="small" label="Search classes" value={paged.search} onChange={(event) => paged.setSearch(event.target.value)} sx={{ mb: 2, width: { xs: '100%', sm: 320 }, maxWidth: '100%' }} />
+
+                <TableContainer sx={{ maxWidth: '100%', borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' }, background: 'linear-gradient(180deg, #edf7ff 0%, #eef6ff 35%, #f4ecff 100%)', border: '1px solid rgba(59, 130, 246, 0.18)' }}>
                     <Table sx={{ minWidth: { xs: 560, sm: 700 }, backgroundColor: '#f5f9ff', whiteSpace: 'nowrap' }}>
                         <TableHead sx={{ background: '#0a336b' }}>
                             <TableRow>
@@ -374,6 +372,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                                                     <Tooltip title="Edit class" arrow>
                                                         <IconButton
                                                             size="small"
+                                                            aria-label={`Edit class ${c.className}`}
                                                             onClick={() => openEditClass(c)}
                                                             sx={{
                                                                 backgroundColor: '#e0f2fe',
@@ -389,6 +388,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                                                     <Tooltip title="Delete class" arrow>
                                                         <IconButton
                                                             size="small"
+                                                            aria-label={`Delete class ${c.className}`}
                                                             onClick={() => handleDeleteClass(c.id)}
                                                             disabled={loading || deletingClassId === c.id}
                                                             sx={{
@@ -404,6 +404,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                                                 <Tooltip title="Open class" arrow>
                                                     <IconButton
                                                         size="small"
+                                                        aria-label={`Open class ${c.className}`}
                                                         onClick={() => handleClassAction(c)}
                                                         sx={{
                                                             backgroundColor: '#dbeafe',
@@ -429,6 +430,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                         </TableBody>
                     </Table>
                 </TableContainer>
+                <TablePagination {...paged.paginationProps} />
             </Paper>
 
             <Dialog
@@ -438,6 +440,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                 }}
                 maxWidth="xs"
                 fullWidth
+                scroll="paper"
                 PaperProps={{
                     sx: {
                         borderRadius: 3,
@@ -446,7 +449,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                     },
                 }}
             >
-                <DialogTitle sx={{ fontWeight: 700, color: '#7f1d1d' }}>
+                <DialogTitle sx={{ fontWeight: 700, color: '#ffffff', bgcolor: '#b91c1c' }}>
                     Delete class?
                 </DialogTitle>
                 <DialogContent>
@@ -513,9 +516,12 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                     setFormMessage(null);
                 }}
                 fullWidth
+                scroll="paper"
                 maxWidth={isMobile ? 'xs' : 'sm'}
                 sx={{
                     '& .MuiDialog-paper': {
+                        margin: { xs: 1, sm: 4 },
+                        width: { xs: 'calc(100% - 16px)', sm: 'calc(100% - 64px)' },
                         borderRadius: isMobile ? 0 : 3,
                         border: '1px solid rgba(8, 43, 87, 0.16)',
                         boxShadow: '0 24px 70px rgba(2, 24, 54, 0.28)',
@@ -594,6 +600,8 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                         size={isMobile ? "small" : "medium"}
                         disabled={loading}
                         sx={{
+                            minHeight: 40,
+                            width: { xs: '100%', sm: 'auto' },
                             backgroundColor: '#0a336b',
                             color: '#ffffff',
                             '&:hover': { backgroundColor: '#082b57' },

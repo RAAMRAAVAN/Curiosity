@@ -2,6 +2,7 @@ import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { ApiResponse } from '@/utils/apiResponse';
 import { canTeacherAccessAssessment316, getAssessment316TeacherAssignments } from '@/lib/assessment316Access';
+import { buildPaginationMeta, containsFilter, paginateArray, parsePagination } from '@/lib/pagination';
 
 const canAccessCenter = (actor, centerId, accessibleCenterIds) => {
   if (!centerId || actor?.isAdmin) return true;
@@ -66,13 +67,34 @@ export async function GET(req) {
     }
 
     const teacherAssignments = await getAssessment316TeacherAssignments(prisma, auth.actor);
+    const include = {
+      allowedClasses: { include: { class: { select: { id: true, className: true } } } },
+      subjects: { include: { subject: { select: { id: true, subjectName: true, classId: true } } } },
+      checklist: { where: { status: true }, orderBy: { displayOrder: 'asc' }, include: { options: { where: { status: true }, orderBy: { displayOrder: 'asc' } } } },
+    };
+
+    const pagination = parsePagination(req);
+    if (pagination) {
+      const where = {
+        status: true,
+        ...(pagination.search ? { OR: [{ title: containsFilter(pagination.search) }, { description: containsFilter(pagination.search) }] } : {}),
+      };
+      if (teacherAssignments) {
+        // Teacher visibility depends on class/subject mappings, so filter before slicing.
+        const all = await prisma.assessment316.findMany({ where, include, orderBy: { createdAt: 'desc' } });
+        const { rows, meta } = paginateArray(all.filter((record) => canTeacherAccessAssessment316(record, teacherAssignments)), pagination);
+        return ApiResponse.paginated(rows, meta);
+      }
+      const [total, rows] = await Promise.all([
+        prisma.assessment316.count({ where }),
+        prisma.assessment316.findMany({ where, include, orderBy: { createdAt: 'desc' }, skip: pagination.skip, take: pagination.take }),
+      ]);
+      return ApiResponse.paginated(rows, buildPaginationMeta(total, pagination));
+    }
+
     const records = await prisma.assessment316.findMany({
       where: { status: true },
-      include: {
-        allowedClasses: { include: { class: { select: { id: true, className: true } } } },
-        subjects: { include: { subject: { select: { id: true, subjectName: true, classId: true } } } },
-        checklist: { where: { status: true }, orderBy: { displayOrder: 'asc' }, include: { options: { where: { status: true }, orderBy: { displayOrder: 'asc' } } } },
-      },
+      include,
       orderBy: { createdAt: 'desc' },
     });
     return ApiResponse.success(records.filter((record) => canTeacherAccessAssessment316(record, teacherAssignments)));

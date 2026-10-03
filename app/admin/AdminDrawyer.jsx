@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Badge,
   Box,
   Divider,
   Drawer,
@@ -35,6 +36,9 @@ import {
   FactCheck,
   AssignmentTurnedIn,
   Summarize,
+  Inventory2,
+  Category,
+  ListAlt,
 } from "@mui/icons-material";
 
 const drawerWidth = 320;
@@ -108,7 +112,24 @@ const AdminDrawer = ({
     'assessments-3-16': '/admin/assessments-3-16',
     results: '/admin/assessment-results',
     'results-3-16': '/admin/assessment-results-3-16',
+    'asset-categories': '/admin/asset-management/categories',
+    'asset-items': '/admin/asset-management/items',
+    'asset-list': '/admin/asset-management/assets',
+    'asset-transfer': '/admin/asset-management/transfers',
+    'asset-receive': '/admin/asset-management/receive',
+    'asset-tracking': '/admin/asset-management/tracking',
+    'asset-reports': '/admin/asset-management/reports',
   };
+
+  const assetManagementSubmenuItems = [
+    { title: 'Item Category Master', value: 'asset-categories', icon: <Category />, permission: 'asset_categories.view' },
+    { title: 'Item Master', value: 'asset-items', icon: <Inventory2 />, permission: 'asset_items.view' },
+    { title: 'Asset List', value: 'asset-list', icon: <ListAlt />, permission: 'asset_list.view' },
+    { title: 'Asset Transfer', value: 'asset-transfer', icon: <ListAlt />, permission: 'asset_transfer.view' },
+    { title: 'Asset Receive', value: 'asset-receive', icon: <ListAlt />, permission: 'asset_receive.view' },
+    { title: 'Asset Tracking', value: 'asset-tracking', icon: <ListAlt />, permission: 'asset_tracking.view' },
+    { title: 'Stock Summary', value: 'asset-reports', icon: <ListAlt />, permission: 'asset_reports.view' },
+  ];
 
   const assessmentSubmenuItems = [
     {
@@ -218,14 +239,17 @@ const AdminDrawer = ({
   ];
 
   const visibleAssessmentItems = assessmentSubmenuItems.filter((item) => hasPermission(item.permission));
+  const visibleAssetManagementItems = assetManagementSubmenuItems.filter((item) => hasPermission(item.permission));
   const visibleAttendanceItems = attendanceSubmenuItems.filter((item) => hasPermission(item.permission));
   const visibleMenuItems = menuItems.filter((item) => {
     if (!item.permission) return true;
     return hasPermission(item.permission);
   });
   const shouldShowAssessmentModule = visibleAssessmentItems.length > 0;
+  const shouldShowAssetManagementModule = visibleAssetManagementItems.length > 0;
   const shouldShowAttendanceModule = visibleAttendanceItems.length > 0;
   const isAssessmentViewActive = visibleAssessmentItems.some((item) => item.value === adminView);
+  const isAssetManagementViewActive = visibleAssetManagementItems.some((item) => item.value === adminView);
   const isAttendanceViewActive = visibleAttendanceItems.some((item) => item.value === adminView);
   const isAssessmentRouteActive = typeof pathname === 'string' && (
     pathname === '/admin/view_assessments' ||
@@ -234,6 +258,8 @@ const AdminDrawer = ({
     pathname === '/admin/assessment-results-3-16'
   );
   const [assessmentModuleOpen, setAssessmentModuleOpen] = useState(Boolean(isAssessmentViewActive || isAssessmentRouteActive));
+  const isAssetManagementRouteActive = typeof pathname === 'string' && pathname.startsWith('/admin/asset-management');
+  const [assetManagementModuleOpen, setAssetManagementModuleOpen] = useState(Boolean(isAssetManagementViewActive || isAssetManagementRouteActive));
   const isAttendanceRouteActive = typeof pathname === 'string' && pathname.startsWith('/admin/attendance');
   const [attendanceModuleOpen, setAttendanceModuleOpen] = useState(Boolean(isAttendanceViewActive || isAttendanceRouteActive));
 
@@ -242,6 +268,37 @@ const AdminDrawer = ({
       setAssessmentModuleOpen(true);
     }
   }, [adminView, pathname, isAssessmentViewActive, isAssessmentRouteActive]);
+
+  const canSeePendingReceipts = hasPermission('asset_receive.view');
+  const [pendingReceipts, setPendingReceipts] = useState(0);
+
+  useEffect(() => {
+    if (!canSeePendingReceipts) return undefined;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const response = await fetch('/api/admin/asset-transfers/pending-count', { credentials: 'include' });
+        const result = await response.json();
+        if (!cancelled && response.ok && result.success) setPendingReceipts(result.data?.count || 0);
+      } catch {
+        // The badge is informational; ignore transient failures.
+      }
+    };
+    load();
+    const timer = setInterval(load, 60000);
+    window.addEventListener('asset-transfers-changed', load);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      window.removeEventListener('asset-transfers-changed', load);
+    };
+  }, [canSeePendingReceipts, pathname]);
+
+  useEffect(() => {
+    if (isAssetManagementViewActive || isAssetManagementRouteActive) {
+      setAssetManagementModuleOpen(true);
+    }
+  }, [adminView, pathname, isAssetManagementViewActive, isAssetManagementRouteActive]);
 
   useEffect(() => {
     if (isAttendanceViewActive || isAttendanceRouteActive) {
@@ -311,7 +368,14 @@ const AdminDrawer = ({
         flexShrink: 0,
         "& .MuiDrawer-paper": {
           width: isMobile ? mobileDrawerWidth : drawerWidth,
+          maxWidth: isMobile ? 360 : undefined,
+          maxHeight: '100dvh',
+          overflowY: 'auto',
+          overflowX: 'hidden',
           boxSizing: "border-box",
+          '& .MuiListItemButton-root': { minHeight: 44 },
+          '& .MuiListItemText-root': { minWidth: 0, overflowWrap: 'anywhere' },
+          '& .MuiBadge-root': { flexShrink: 0 },
           marginTop: { xs: 0, md: 0 },
           backgroundColor: "#082b57",
           backgroundImage: "conic-gradient(from 30deg at 25% 25%, rgba(22,78,126,0.2) 0deg 60deg, rgba(2,23,49,0.24) 60deg 120deg, transparent 120deg 180deg, rgba(12,56,101,0.18) 180deg 240deg, transparent 240deg 360deg), conic-gradient(from 210deg at 75% 75%, rgba(35,98,145,0.13) 0deg 60deg, transparent 60deg 180deg, rgba(1,19,44,0.28) 180deg 240deg, transparent 240deg 360deg), linear-gradient(135deg, rgba(17,68,113,0.15) 0% 24%, transparent 24% 48%, rgba(2,27,58,0.26) 48% 72%, transparent 72%), linear-gradient(180deg, #041832 0%, #062a4a 52%, #083d63 100%)",
@@ -340,11 +404,11 @@ const AdminDrawer = ({
         py={2}
         sx={{ color: "#ffffff" }}
       >
-        <Typography fontWeight={700} fontSize={16} sx={{ color: "#ffffff" }}>
+        <Typography fontWeight={700} fontSize={16} sx={{ color: "#ffffff", minWidth: 0, overflowWrap: 'anywhere', pr: 1 }}>
           {panelRole}'s Panel
         </Typography>
 
-        <IconButton onClick={closeDrawer} sx={{ color: "#ffffff" }}>
+        <IconButton onClick={closeDrawer} aria-label="Close navigation menu" sx={{ color: "#ffffff", width: 44, height: 44, flexShrink: 0 }}>
           <Menu />
         </IconButton>
       </Box>
@@ -466,6 +530,55 @@ const AdminDrawer = ({
           </>
         ) : null}
 
+        {shouldShowAssetManagementModule ? (
+          <>
+            <ListItem disablePadding>
+              <ListItemButton
+                onClick={() => setAssetManagementModuleOpen((prev) => !prev)}
+                sx={{
+                  mx: 1,
+                  my: 0.25,
+                  borderRadius: 2,
+                  color: '#ffffff',
+                  bgcolor: isAssetManagementViewActive ? 'rgba(255,255,255,0.08)' : 'transparent',
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 42, color: '#ffffff' }}><Inventory2 /></ListItemIcon>
+                <ListItemText primary="Asset Management" primaryTypographyProps={{ fontSize: 14, fontWeight: 400, color: '#ffffff' }} />
+                {pendingReceipts > 0 && !assetManagementModuleOpen ? <Badge badgeContent={pendingReceipts} color="error" sx={{ mr: 2 }} /> : null}
+                {assetManagementModuleOpen ? <ExpandLess sx={{ color: '#ffffff' }} /> : <ExpandMore sx={{ color: '#ffffff' }} />}
+              </ListItemButton>
+            </ListItem>
+            {assetManagementModuleOpen ? (
+              <Box sx={{ pl: 3, pr: 1, pb: 0.5 }}>
+                {visibleAssetManagementItems.map((item) => (
+                  <ListItem key={item.value} disablePadding>
+                    <ListItemButton
+                      selected={adminView === item.value}
+                      onClick={() => handleMenuNavigation(item.value)}
+                      sx={{
+                        mx: 0,
+                        my: 0.25,
+                        borderRadius: 2,
+                        pl: 2,
+                        color: '#ffffff',
+                        '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.12)', color: '#ffffff' },
+                        '&.Mui-selected:hover': { bgcolor: 'rgba(255,255,255,0.18)' },
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 24, color: '#ffffff' }}>
+                        <Box component="span" sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#ffffff', display: 'inline-block' }} />
+                      </ListItemIcon>
+                      <ListItemText primary={item.title} primaryTypographyProps={{ fontSize: 13, fontWeight: adminView === item.value ? 600 : 400, color: '#ffffff' }} />
+                      {item.value === 'asset-receive' && pendingReceipts > 0 ? <Badge badgeContent={pendingReceipts} color="error" sx={{ mr: 1.5 }} /> : null}
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </Box>
+            ) : null}
+          </>
+        ) : null}
+
         {shouldShowAttendanceModule ? (
           <>
             <ListItem disablePadding>
@@ -538,7 +651,7 @@ const AdminDrawer = ({
         ) : null}
       </List>
 
-      <Box sx={{ mt: "auto", p: 2 }}>
+      <Box sx={{ mt: "auto", p: 2, minWidth: 0 }}>
         <Box
           sx={{
             mx: 1,
@@ -550,7 +663,7 @@ const AdminDrawer = ({
             border: "1px solid rgba(255,255,255,0.12)",
           }}
         >
-          <Typography variant="subtitle2" fontWeight={700} sx={{ lineHeight: 1.3, color: "#ffffff" }}>
+          <Typography variant="subtitle2" fontWeight={700} sx={{ lineHeight: 1.3, color: "#ffffff", overflowWrap: 'anywhere' }}>
             {userName || "User"}
           </Typography>
           <Typography variant="caption" sx={{ display: "block", mt: 0.25, color: "rgba(255,255,255,0.8)" }}>

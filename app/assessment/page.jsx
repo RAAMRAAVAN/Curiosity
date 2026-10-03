@@ -202,8 +202,8 @@ const AssessmentContent = () => {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
-        bgcolor: '#f1f3f4',
+        minHeight: '100dvh',
+        bgcolor: '#f5f8ff',
         py: { xs: 1.5, md: 3 },
         px: { xs: 1.5, sm: 2.5, md: 3 },
       }}
@@ -228,7 +228,7 @@ const AssessmentContent = () => {
           <Box
             sx={{
               height: { xs: 6, md: 10 },
-              bgcolor: '#673ab7',
+              bgcolor: '#0a336b',
             }}
           />
 
@@ -237,14 +237,14 @@ const AssessmentContent = () => {
               variant="h5"
               fontWeight={700}
               gutterBottom
-              sx={{ fontSize: { xs: '1.4rem', sm: '1.6rem', md: '1.8rem' } }}
+              sx={{ fontSize: { xs: '1.4rem', sm: '1.6rem', md: '1.8rem' }, overflowWrap: 'anywhere' }}
             >
               {assessment.title}
             </Typography>
 
             <Typography
               color="text.secondary"
-              sx={{ fontSize: { xs: 13, sm: 14.5, md: 15 } }}
+              sx={{ fontSize: { xs: 13, sm: 14.5, md: 15 }, overflowWrap: 'anywhere', whiteSpace: 'pre-line' }}
             >
               {assessment.description || 'Answer all questions carefully.'}
             </Typography>
@@ -261,7 +261,7 @@ const AssessmentContent = () => {
                   elevation={0}
                   sx={{
                     borderRadius: 3,
-                    borderLeft: '5px solid #673ab7',
+                    borderLeft: '5px solid #0a336b',
                     boxShadow: '0 1px 8px rgba(0,0,0,.08)',
                     transition: '.2s',
                     '&:hover': {
@@ -273,7 +273,7 @@ const AssessmentContent = () => {
                     <Typography
                       fontWeight={700}
                       fontSize={{ xs: 15, sm: 16.5, md: 17 }}
-                      sx={{ mb: question.questionDesc ? 1 : 2, whiteSpace: 'pre-line' }}
+                      sx={{ mb: question.questionDesc ? 1 : 2, whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}
                     >
                       {questionIndex + 1}. {question.questionText}
                     </Typography>
@@ -281,7 +281,7 @@ const AssessmentContent = () => {
                     {question.questionDesc ? (
                       <Typography
                         color="text.secondary"
-                        sx={{ mb: 2, whiteSpace: 'pre-line' }}
+                        sx={{ mb: 2, whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}
                       >
                         {question.questionDesc}
                       </Typography>
@@ -301,27 +301,31 @@ const AssessmentContent = () => {
                             borderRadius: 2.5,
                             border:
                               answers[questionIndex]?.selectedOptionIndex === optionIndex
-                                ? '2px solid #673ab7'
-                                : '1px solid #E5E7EB',
+                                ? '2px solid #0a336b'
+                                : '1px solid #d7e0eb',
                             bgcolor:
                               answers[questionIndex]?.selectedOptionIndex === optionIndex
-                                ? '#F3E8FF'
+                                ? '#eef4fb'
                                 : '#fff',
                             transition: '.2s',
                             '&:hover': {
-                              bgcolor: '#f8f5ff',
+                              bgcolor: '#f8fbff',
                             },
                           }}
                         >
                           <FormControlLabel
                             value={optionIndex}
-                            control={<Radio color="secondary" />}
+                            control={<Radio color="primary" />}
                             label={option.optionText}
                             sx={{
                               width: '100%',
                               m: 0,
                               px: 1.5,
                               py: 1,
+                              minHeight: 44,
+                              boxSizing: 'border-box',
+                              alignItems: 'center',
+                              '& .MuiFormControlLabel-label': { minWidth: 0, overflowWrap: 'anywhere' },
                             }}
                           />
                         </Box>
@@ -373,12 +377,13 @@ const AssessmentContent = () => {
                   >
                     <Button
                       variant="outlined"
-                      color="secondary"
+                      color="primary"
                       size="medium"
                       onClick={handleCancelAssessment}
                       sx={{
                         borderRadius: 3,
                         textTransform: 'none',
+                        minHeight: 44,
                         px: { xs: 2, sm: 2.5 },
                         width: { xs: '100%', sm: 'auto' },
                       }}
@@ -388,13 +393,14 @@ const AssessmentContent = () => {
 
                     <Button
                       variant="contained"
-                      color="secondary"
+                      color="primary"
                       size="medium"
                       onClick={handleSubmit}
                       disabled={submitting}
                       sx={{
                         borderRadius: 3,
                         textTransform: 'none',
+                        minHeight: 44,
                         px: { xs: 2, sm: 3 },
                         width: { xs: '100%', sm: 'auto' },
                         boxShadow: 'none',
@@ -506,9 +512,9 @@ const AssessmentContent = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
                   <Button
                     variant="contained"
-                    color="secondary"
+                    color="primary"
                     onClick={handleCancelAssessment}
-                    sx={{ borderRadius: 3, textTransform: 'none', px: 4 }}
+                    sx={{ borderRadius: 3, textTransform: 'none', px: 4, minHeight: 44 }}
                   >
                     End Assessment
                   </Button>

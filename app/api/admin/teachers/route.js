@@ -4,6 +4,7 @@ import { prisma } from "@/server/prisma";
 import { ApiResponse } from "@/utils/apiResponse";
 import { formatDate } from "@/lib/date";
 import { requireAdminPermission } from '@/lib/adminRbac';
+import { buildPaginationMeta, containsFilter, parsePagination } from '@/lib/pagination';
 
 function formatTeacherResponse(teacher, classIds = [], classNames = []) {
     return {
@@ -44,6 +45,55 @@ export async function GET(req) {
         scopedCenterId = teacherProfile?.centerId || null;
     }
 
+    const include = {
+        user: {
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+            },
+        },
+        center: true,
+    };
+
+    const pagination = parsePagination(req);
+    if (pagination) {
+        const centerId = pagination.params.get('centerId');
+        const term = containsFilter(pagination.search);
+        const where = {
+            ...(teacherRole
+                ? { centerId: scopedCenterId || "__NO_CENTER__" }
+                : auth.actor.isAdmin ? {} : { centerId: { in: auth.actor.assignedCenterIds.length ? auth.actor.assignedCenterIds : ["__NO_CENTER__"] } }),
+            ...(centerId && (auth.actor.isAdmin || teacherRole || auth.actor.canAccessCenter(centerId)) ? { centerId } : {}),
+            ...(pagination.search ? { OR: [{ user: { name: term } }, { user: { email: term } }, { phone: term }] } : {}),
+        };
+        const [total, pageTeachers] = await Promise.all([
+            prisma.teacher.count({ where }),
+            prisma.teacher.findMany({ where, orderBy: { createdAt: "desc" }, include, skip: pagination.skip, take: pagination.take }),
+        ]);
+        const pageUserIds = pageTeachers.map((teacher) => teacher.userId).filter(Boolean);
+        const pageAccesses = pageUserIds.length
+            ? await prisma.userClassAccess.findMany({
+                where: { userId: { in: pageUserIds }, status: true },
+                include: { class: { select: { id: true, className: true } } },
+            })
+            : [];
+        const accessByUser = new Map();
+        for (const access of pageAccesses) {
+            const existing = accessByUser.get(access.userId) || [];
+            existing.push(access.class);
+            accessByUser.set(access.userId, existing);
+        }
+        return ApiResponse.paginated(
+            pageTeachers.map((teacher) => {
+                const classes = accessByUser.get(teacher.userId) || [];
+                return formatTeacherResponse(teacher, classes.map((item) => item.id), classes.map((item) => item.className));
+            }),
+            buildPaginationMeta(total, pagination),
+        );
+    }
+
     let teachers = await prisma.teacher.findMany({
         where: teacherRole
             ? { centerId: scopedCenterId || "__NO_CENTER__" }
@@ -51,17 +101,7 @@ export async function GET(req) {
         orderBy: {
             createdAt: "desc",
         },
-        include: {
-            user: {
-                select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    role: true,
-                },
-            },
-            center: true,
-        },
+        include,
     });
 
     if (!teacherRole && !auth.actor.isAdmin) {
