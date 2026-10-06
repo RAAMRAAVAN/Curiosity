@@ -4,6 +4,11 @@ import { requireAdminPermission } from '@/lib/adminRbac';
 import { getTeacherAssignedClassIds } from '@/lib/teacherClassAccess';
 import { buildPaginationMeta, containsFilter, parsePagination } from '@/lib/pagination';
 
+const classNameCollator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+const sortClassesByName = (classes) => classes.sort((left, right) => (
+  classNameCollator.compare(String(left.className || ''), String(right.className || ''))
+));
+
 export async function GET(req) {
   const auth = await requireAdminPermission(req, 'classes.view');
   if (!auth.ok) {
@@ -27,13 +32,14 @@ export async function GET(req) {
       }
       if (pagination.search) conditions.push({ className: containsFilter(pagination.search) });
       const where = conditions.length ? { AND: conditions } : {};
-      const [total, rows] = await Promise.all([
+      const [total, allRows] = await Promise.all([
         prisma["class"].count({ where }),
-        prisma["class"].findMany({ where, orderBy: { createdAt: "asc" }, skip: pagination.skip, take: pagination.take }),
+        prisma["class"].findMany({ where }),
       ]);
+      const rows = sortClassesByName(allRows).slice(pagination.skip, pagination.skip + pagination.take);
       return ApiResponse.paginated(rows, buildPaginationMeta(total, pagination));
     }
-    let classes = await prisma["class"].findMany({ orderBy: { createdAt: "asc" } });
+    let classes = await prisma["class"].findMany();
     if (!auth.actor.isAdmin) {
       const accessibleCenterIds = new Set(
         (Array.isArray(auth.actor.assignedCenterIds) ? auth.actor.assignedCenterIds : []).map((id) => String(id).trim()).filter(Boolean)
@@ -49,7 +55,7 @@ export async function GET(req) {
         classes = classes.filter((item) => assignedClassIds.includes(item.id));
       }
     }
-    return ApiResponse.success(classes);
+    return ApiResponse.success(sortClassesByName(classes));
   } catch (err) {
     console.error(err);
     return ApiResponse.error("Unable to load classes", 500, err);

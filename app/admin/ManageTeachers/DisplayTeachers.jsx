@@ -70,7 +70,7 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
                     sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}
                 >
 
-                    <TableCell sx={{ overflowWrap: 'anywhere', minWidth: 120 }}>{teacher.name}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 120 }}>{teacher.name}</TableCell>
 
                     <TableCell>{teacher.centerName || "—"}</TableCell>
 
@@ -128,7 +128,7 @@ const DisplayTeachers = ({ teachers, setPageLoading, FetchTeachers, onEditTeache
 
                     </TableCell>
 
-                    <TableCell sx={{ overflowWrap: 'anywhere', minWidth: 160 }}>{teacher.email}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 160 }}>{teacher.email}</TableCell>
 
 
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>

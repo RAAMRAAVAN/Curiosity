@@ -43,6 +43,34 @@ const monthlyAttendanceViews = [
   'teacher-monthly-attendance',
 ];
 
+const activeViewTitles = {
+  users: 'Manage Users',
+  classes: 'Manage Classes',
+  teachers: 'Manage Teachers',
+  centers: 'Manage Centers',
+  students: 'Manage Students',
+  roles: 'Manage Roles',
+  'reset-password': 'Reset Password',
+  assessments: 'Assessment Module',
+  'assessments-3-16': 'Assessment Module',
+  results: 'Assessment Module',
+  'results-3-16': 'Assessment Module',
+  attendance: 'Attendance',
+  'student-attendance': 'Attendance',
+  'student-monthly-attendance': 'Attendance',
+  'management-monthly-attendance': 'Attendance',
+  'teacher-monthly-attendance': 'Attendance',
+  'teacher-attendance': 'Attendance',
+  'management-attendance': 'Attendance',
+  'asset-categories': 'Asset Management',
+  'asset-items': 'Asset Management',
+  'asset-list': 'Asset Management',
+  'asset-transfer': 'Asset Management',
+  'asset-receive': 'Asset Management',
+  'asset-tracking': 'Asset Management',
+  'asset-reports': 'Asset Management',
+};
+
 const normalizeRoutePath = (path) => (path || '').replace(/\/+$/, '') || '/';
 
 function NavigationReadyWatcher({ pathname, targetPath, pending, isNavigating, onReady }) {
@@ -131,7 +159,7 @@ function AdminLayoutContent({ children }) {
         }}
       >
         <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: 16, sm: 18, md: 20 }, flex: 1 }} color="#fff">
-          {admin.customRole?.name || admin.customRoleName || admin.role || 'Admin'}'s Panel
+          {activeViewTitles[activeView] || 'Admin Panel'}
         </Typography>
 
         {(isMobile || !drawerOpen) && (
@@ -181,8 +209,8 @@ function AdminLayoutContent({ children }) {
           transition: 'margin-left 0.3s ease-in-out',
           pt: 0,
           pb: { xs: 1, sm: 2, md: 3 },
-          px: { xs: ['attendance', 'results-3-16', 'users'].includes(activeView) || monthlyAttendanceViews.includes(activeView) ? 0 : 2, sm: monthlyAttendanceViews.includes(activeView) ? 0 : 3, md: 0 },
-          pr: { xs: ['attendance', 'results-3-16', 'users'].includes(activeView) || monthlyAttendanceViews.includes(activeView) ? 0 : 2, sm: monthlyAttendanceViews.includes(activeView) ? 0 : 3, md: 0 },
+          px: { xs: ['attendance', 'results-3-16', 'users', 'classes', 'teachers', 'centers', 'students'].includes(activeView) || monthlyAttendanceViews.includes(activeView) ? 0 : 2, sm: monthlyAttendanceViews.includes(activeView) ? 0 : 3, md: 0 },
+          pr: { xs: ['attendance', 'results-3-16', 'users', 'classes', 'teachers', 'centers', 'students'].includes(activeView) || monthlyAttendanceViews.includes(activeView) ? 0 : 2, sm: monthlyAttendanceViews.includes(activeView) ? 0 : 3, md: 0 },
           boxSizing: 'border-box',
           minWidth: 0,
           maxWidth: '100%',

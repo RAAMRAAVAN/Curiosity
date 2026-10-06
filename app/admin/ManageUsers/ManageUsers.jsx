@@ -1,7 +1,8 @@
 'use client'
 
-import { Alert, Autocomplete, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, Fab, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField, Tooltip, Typography, useMediaQuery, useTheme } from "@mui/material"
+import { Alert, Autocomplete, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, Fab, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography, useMediaQuery, useTheme } from "@mui/material"
 import { useEffect, useMemo, useRef, useState } from "react";
+import AdminTablePagination from '../AdminTablePagination';
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -314,7 +315,7 @@ const ManageUsersPage = ({ users = [], paged, setUsers, messgae, refreshUsers, s
     return (<Box sx={{ width: '100%', minWidth: 0, pb: { xs: 12, sm: 10 } }}>
       <Paper sx={{ p: { xs: 0, sm: 0 }, px: { xs: 1, sm: 2 }, mb: 4, borderRadius: { xs: 0, sm: 3 }, boxShadow: { xs: 'none', sm: "0 20px 48px rgba(15, 23, 42, 0.08)" } }}>
             <Box padding={1} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1, mb: 2 }}>
-                <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 14, sm: 16 }, minWidth: 0, overflowWrap: 'anywhere' }}>
+                <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 0, sm: 16 }, minWidth: 0, overflowWrap: 'anywhere' }}>
                     Management Users
                 </Typography>
                 {canCreateUsers ? (
@@ -323,7 +324,7 @@ const ManageUsersPage = ({ users = [], paged, setUsers, messgae, refreshUsers, s
                     onClick={startNewUser}
                     size={isMobile ? "small" : "medium"}
                     sx={{
-                      display: { xs: 'none', sm: 'inline-flex' },
+                      display: { xs: 'none',sm: 'inline-flex' },
                       backgroundColor: '#0a336b',
                       color: '#ffffff',
                       '&:hover': { backgroundColor: '#082b57' },
@@ -355,9 +356,9 @@ const ManageUsersPage = ({ users = [], paged, setUsers, messgae, refreshUsers, s
               />
             </Box>
 
-            <TableContainer sx={{ maxWidth: '100%', borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' }, background: 'linear-gradient(180deg, #edf7ff 0%, #eef6ff 35%, #f4ecff 100%)', border: '1px solid rgba(59, 130, 246, 0.18)' }}>
-                <Table sx={{ minWidth: { xs: 600, sm: 720 }, backgroundColor: '#f5f9ff', whiteSpace: 'nowrap' }}>
-                    <TableHead sx={{ background: '#0a336b' }}>
+            <TableContainer sx={{ maxWidth: '100%', overflow: "auto", maxHeight: { xs: 'calc(100dvh - 300px)', md: 'calc(100dvh - 280px)' }, background: 'linear-gradient(180deg, #edf7ff 0%, #eef6ff 35%, #f4ecff 100%)', border: '1px solid rgba(59, 130, 246, 0.18)' }}>
+              <Table stickyHeader sx={{ minWidth: { xs: 600, sm: 720 }, backgroundColor: '#f5f9ff', whiteSpace: 'nowrap' }}>
+                <TableHead sx={{ '& .MuiTableCell-head': { position: 'sticky', top: 0, zIndex: 2, color: '#ffffff', backgroundColor: '#0a336b' } }}>
                         <TableRow>
                             <TableCell sx={{ fontWeight: 700, color: '#ffffff', fontSize: { xs: 12, sm: 14 } }}>Name</TableCell>
                             {!isMobile && <TableCell sx={{ fontWeight: 700, color: '#ffffff', fontSize: { xs: 12, sm: 14 } }}>Role</TableCell>}
@@ -439,7 +440,7 @@ const ManageUsersPage = ({ users = [], paged, setUsers, messgae, refreshUsers, s
                     </TableBody>
                 </Table>
             </TableContainer>
-            {paged ? <TablePagination {...paged.paginationProps} /> : null}
+            {paged ? <AdminTablePagination {...paged.paginationProps} /> : null}
         </Paper>
 
         <Dialog
@@ -492,35 +493,30 @@ const ManageUsersPage = ({ users = [], paged, setUsers, messgae, refreshUsers, s
         {canCreateUsers ? (
           <Box
             sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
+              display: { xs: 'block', sm: 'none' },
               position: 'fixed',
-              right: 16,
-              bottom: 12,
+              left: 0,
+              right: 0,
+              bottom: 0,
               zIndex: (theme) => theme.zIndex.fab,
+              pb: 'env(safe-area-inset-bottom)',
             }}
           >
-            <Tooltip title="Create new user" arrow>
-              <Fab
-                aria-label="Create new user"
-                onClick={startNewUser}
-                disabled={loading}
-                sx={{
-                  backgroundColor: '#0a336b',
-                  color: '#ffffff',
-                  '&:hover': { backgroundColor: '#082b57' },
-                }}
-              >
-                <AddIcon />
-              </Fab>
-            </Tooltip>
-            <Typography
-              variant="caption"
-              sx={{ mt: 0.5, fontWeight: 700, color: '#64748B' }}
+            <Button
+              variant="contained"
+              onClick={startNewUser}
+              disabled={loading}
+              sx={{
+                width: '100%',
+                minHeight: 56,
+                borderRadius: 0,
+                backgroundColor: '#0a336b',
+                color: '#ffffff',
+                '&:hover': { backgroundColor: '#082b57' },
+              }}
             >
               Create New User
-            </Typography>
+            </Button>
           </Box>
         ) : null}
 

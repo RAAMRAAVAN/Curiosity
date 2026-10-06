@@ -1,6 +1,7 @@
 "use client";
 
 import Loader from '@/app/(components)/Loader';
+import AdminTablePagination from '../AdminTablePagination';
 import { useEffect, useState } from "react";
 import usePagedData from '../usePagedData';
 import {
@@ -12,7 +13,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Fab,
   IconButton,
   Paper,
   Stack,
@@ -21,7 +21,6 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -167,11 +166,11 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
   };
 
   return (
-    <Box sx={{ width: '100%', minWidth: 0, p: { xs: 0, sm: 2, md: 3 }, pb: { xs: 12, sm: 12 } }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0, minHeight: 'calc(100dvh - 64px)', p: { xs: 1, sm: 2, md: 3 }, pb: { xs: 'calc(64px + env(safe-area-inset-bottom))', sm: 0 } }}>
       <Box padding={1} sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 3, flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: 18, sm: 20, md: 24 } }}>Manage Centers</Typography>
-          <Typography color="text.secondary" sx={{ fontSize: { xs: 12, sm: 14 } }}>Create, view, and edit centers.</Typography>
+          <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: 0, sm: 20, md: 24 } }}>Manage Centers</Typography>
+          <Typography color="text.secondary" sx={{ fontSize: { xs: 0, sm: 14 } }}>Create, view, and edit centers.</Typography>
         </Box>
         {canCreateCenters ? (
           <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' }, display: { xs: 'none', sm: 'inline-flex' }, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
@@ -188,7 +187,8 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
 
       <TextField size="small" label="Search centers" value={paged.search} onChange={(event) => paged.setSearch(event.target.value)} sx={{ mb: 2, width: { xs: '100%', sm: 320 }, maxWidth: '100%' }} />
 
-      <TableContainer component={Paper} sx={{ maxWidth: '100%', borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0 }}>
+      <TableContainer component={Paper} sx={{ flex: '1 1 auto', minHeight: 0, maxWidth: '100%', border: '1px solid rgba(59, 130, 246, 0.24)', borderRadius: { xs: 0, sm: 3 }, overflow: "auto", maxHeight: 'calc(100dvh - 300px)' }}>
         <Table sx={{ minWidth: { xs: 500, sm: 600 } }}>
           <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff' } }}>
             <TableRow>
@@ -243,36 +243,38 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
           </TableBody>
         </Table>
       </TableContainer>
-      <TablePagination {...paged.paginationProps} />
+      <Box sx={{ mt: 'auto' }}>
+        <AdminTablePagination {...paged.paginationProps} />
+      </Box>
+      </Box>
 
       {canCreateCenters ? (
         <Box
           sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
+            display: { xs: 'block', sm: 'none' },
             position: 'fixed',
-            right: 16,
-            bottom: 12,
+            left: 0,
+            right: 0,
+            bottom: 0,
             zIndex: (theme) => theme.zIndex.fab,
+            pb: 'env(safe-area-inset-bottom)',
           }}
         >
-          <Tooltip title="Create new center" arrow>
-            <Fab
-              aria-label="Create new center"
-              onClick={openCreateDialog}
-              disabled={loading}
-              sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}
-            >
-              <Add />
-            </Fab>
-          </Tooltip>
-          <Typography
-            variant="caption"
-            sx={{ mt: 0.5, fontWeight: 700, color: '#64748B' }}
+          <Button
+            variant="contained"
+            onClick={openCreateDialog}
+            disabled={loading}
+            sx={{
+              width: '100%',
+              minHeight: 56,
+              borderRadius: 0,
+              backgroundColor: '#0a336b',
+              color: '#ffffff',
+              '&:hover': { backgroundColor: '#082b57' },
+            }}
           >
-            Create New Center
-          </Typography>
+            Create Center
+          </Button>
         </Box>
       ) : null}
 

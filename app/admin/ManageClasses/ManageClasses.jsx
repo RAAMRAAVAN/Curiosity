@@ -8,10 +8,14 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
-    Fab,
+    Divider,
+    Drawer,
     FormControl,
     IconButton,
     InputLabel,
+    ListItemIcon,
+    ListItemText,
+    Menu,
     MenuItem,
     Paper,
     Select,
@@ -20,7 +24,6 @@ import {
     TableCell,
     TableContainer,
     TableHead,
-    TablePagination,
     TableRow,
     TextField,
     Tooltip,
@@ -31,11 +34,12 @@ import {
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Loader from '@/app/(components)/Loader';
+import AdminTablePagination from '../AdminTablePagination';
 import usePagedData from '../usePagedData';
-import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import { setDefaultClass } from "@/redux/features/classSlice";
 import { useDispatch } from "react-redux";
@@ -62,6 +66,7 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
     const [classToDelete, setClassToDelete] = useState(null);
     const [deletingClassId, setDeletingClassId] = useState(null);
     const [formMessage, setFormMessage] = useState(null);
+    const [actionMenu, setActionMenu] = useState(null);
 
     const hasPermission = (permission) => {
         if (String(authUser?.role || '').toUpperCase() === 'ADMIN') return true;
@@ -288,11 +293,46 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
         router.push(`/admin/ManageClasses/ManageSubjects/${c.id}/home`);
     };
 
+    const handleRowAction = (action) => {
+        const selectedClass = actionMenu?.classItem;
+        setActionMenu(null);
+        if (!selectedClass) return;
+
+        if (action === 'edit') openEditClass(selectedClass);
+        if (action === 'delete') handleDeleteClass(selectedClass.id);
+        if (action === 'open') handleClassAction(selectedClass);
+    };
+
+    const renderRowActionItems = () => (
+        <>
+            {canEditClasses ? (
+                <MenuItem onClick={() => handleRowAction('edit')} sx={{ minHeight: isMobile ? 56 : 42, gap: 1, borderRadius: 1.5, color: '#16436f' }}>
+                    <ListItemIcon sx={{ minWidth: 28, color: 'inherit' }}><EditIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="Edit class" />
+                </MenuItem>
+            ) : null}
+            {canDeleteClasses ? (
+                <MenuItem
+                    onClick={() => handleRowAction('delete')}
+                    disabled={loading || deletingClassId === actionMenu?.classItem?.id}
+                    sx={{ minHeight: isMobile ? 56 : 42, gap: 1, borderRadius: 1.5, color: '#b91c1c' }}
+                >
+                    <ListItemIcon sx={{ minWidth: 28, color: 'inherit' }}><DeleteIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="Delete class" />
+                </MenuItem>
+            ) : null}
+            <MenuItem onClick={() => handleRowAction('open')} sx={{ minHeight: isMobile ? 56 : 42, gap: 1, borderRadius: 1.5, color: '#16436f' }}>
+                <ListItemIcon sx={{ minWidth: 28, color: 'inherit' }}><VisibilityOutlinedIcon fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Open class" />
+            </MenuItem>
+        </>
+    );
+
     return (
         <Box sx={{ width: '100%', minWidth: 0, pb: { xs: 12, sm: 10 } }}>
-            <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 4, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+            <Paper sx={{ p: { xs: 1, sm: 3 }, mb: 4, borderRadius: { xs: 0, sm: 3 }, boxShadow: { xs: 'none', sm: "0 20px 48px rgba(15, 23, 42, 0.08)" } }}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 2, flexDirection: { xs: "column", sm: "row" }, flexWrap: 'wrap', gap: { xs: 2, sm: 1 } }}>
-                    <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 14, sm: 16 } }}>Classes</Typography>
+                    <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 0, sm: 16 } }}>Classes</Typography>
                     {isAdminRole || canCreateClasses ? (
                         <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", width: { xs: '100%', sm: 'auto' } }}>
                             {isAdminRole ? (
@@ -326,9 +366,9 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
 
                 <TextField size="small" label="Search classes" value={paged.search} onChange={(event) => paged.setSearch(event.target.value)} sx={{ mb: 2, width: { xs: '100%', sm: 320 }, maxWidth: '100%' }} />
 
-                <TableContainer sx={{ maxWidth: '100%', borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' }, background: 'linear-gradient(180deg, #edf7ff 0%, #eef6ff 35%, #f4ecff 100%)', border: '1px solid rgba(59, 130, 246, 0.18)' }}>
-                    <Table sx={{ minWidth: { xs: 560, sm: 700 }, backgroundColor: '#f5f9ff', whiteSpace: 'nowrap' }}>
-                        <TableHead sx={{ background: '#0a336b' }}>
+                <TableContainer sx={{ maxWidth: '100%', overflow: "auto", maxHeight: { xs: 'calc(100dvh - 300px)', md: 'calc(100dvh - 280px)' }, background: 'linear-gradient(180deg, #edf7ff 0%, #eef6ff 35%, #f4ecff 100%)', border: '1px solid rgba(59, 130, 246, 0.18)' }}>
+                    <Table stickyHeader sx={{ width: '100%', minWidth: { xs: 0, sm: 700 }, tableLayout: 'fixed', backgroundColor: '#f5f9ff', whiteSpace: 'nowrap' }}>
+                        <TableHead sx={{ '& .MuiTableCell-head': { position: 'sticky', top: 0, zIndex: 2, color: '#ffffff', backgroundColor: '#0a336b' } }}>
                             <TableRow>
                                 <TableCell sx={{ fontWeight: 700, color: '#ffffff', fontSize: { xs: 12, sm: 14 } }}>Class Name</TableCell>
                                 {!isMobile && (
@@ -337,87 +377,62 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                                 {!isTablet && (
                                     <TableCell sx={{ fontWeight: 700, color: '#ffffff', fontSize: { xs: 12, sm: 14 } }}>Default View</TableCell>
                                 )}
-                                <TableCell sx={{ fontWeight: 700, color: '#ffffff', fontSize: { xs: 12, sm: 14 } }}>Actions</TableCell>
+                                <TableCell align="right" sx={{ width: { xs: 76, sm: 96 }, minWidth: { xs: 76, sm: 96 }, px: { xs: 1, sm: 1.5 }, pr: { xs: 1.5, sm: 3 }, fontWeight: 700, color: '#ffffff', fontSize: { xs: 12, sm: 14 } }}>Actions</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {classes.map((c, index) => {
                                 const rowTint = index % 2 === 0 ? '#f8fbff' : '#eef6ff';
+                                const rowActionsOpen = actionMenu?.classItem?.id === c.id;
 
                                 return (
                                     <TableRow key={c.id} sx={{ backgroundColor: rowTint, '&:hover': { backgroundColor: '#eaf3ff' } }}>
-                                        <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, backgroundColor: rowTint, fontWeight: 600 }}>
-                                            Class {c.className}
-                                        </TableCell>
-                                        {!isMobile && (
-                                            <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, backgroundColor: rowTint }}>
-                                                {c.icon ? (
-                                                    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-                                                        <Box sx={{ width: 20, height: 20, display: 'grid', placeItems: 'center', borderRadius: '50%', backgroundColor: '#dbeafe', fontSize: 12 }}>
-                                                            {String(c.icon).slice(0, 1).toUpperCase()}
+                                            <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, backgroundColor: rowTint, fontWeight: 600 }}>
+                                                Class {c.className}
+                                            </TableCell>
+                                            {!isMobile && (
+                                                <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, backgroundColor: rowTint }}>
+                                                    {c.icon ? (
+                                                        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                                                            <Box sx={{ width: 20, height: 20, display: 'grid', placeItems: 'center', borderRadius: '50%', backgroundColor: '#dbeafe', fontSize: 12 }}>
+                                                                {String(c.icon).slice(0, 1).toUpperCase()}
+                                                            </Box>
+                                                            {c.icon}
                                                         </Box>
-                                                        {c.icon}
-                                                    </Box>
-                                                ) : '-'}
-                                            </TableCell>
-                                        )}
-                                        {!isTablet && (
-                                            <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, backgroundColor: rowTint }}>
-                                                {navigationPreference === 'assessments' ? 'Assessments' : 'Class Content'}
-                                            </TableCell>
-                                        )}
-                                        <TableCell sx={{ backgroundColor: rowTint }}>
-                                            <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'nowrap', alignItems: 'center' }}>
-                                                {canEditClasses ? (
-                                                    <Tooltip title="Edit class" arrow>
-                                                        <IconButton
-                                                            size="small"
-                                                            aria-label={`Edit class ${c.className}`}
-                                                            onClick={() => openEditClass(c)}
-                                                            sx={{
-                                                                backgroundColor: '#e0f2fe',
-                                                                color: '#0a336b',
-                                                                '&:hover': { backgroundColor: '#bae6fd' },
-                                                            }}
-                                                        >
-                                                            <EditIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                ) : null}
-                                                {canDeleteClasses ? (
-                                                    <Tooltip title="Delete class" arrow>
-                                                        <IconButton
-                                                            size="small"
-                                                            aria-label={`Delete class ${c.className}`}
-                                                            onClick={() => handleDeleteClass(c.id)}
-                                                            disabled={loading || deletingClassId === c.id}
-                                                            sx={{
-                                                                backgroundColor: '#fee2e2',
-                                                                color: '#b91c1c',
-                                                                '&:hover': { backgroundColor: '#fecaca' },
-                                                            }}
-                                                        >
-                                                            {deletingClassId === c.id ? <Loader variant='inline' size={18} color='inherit' /> : <DeleteIcon fontSize="small" />}
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                ) : null}
-                                                <Tooltip title="Open class" arrow>
+                                                    ) : '-'}
+                                                </TableCell>
+                                            )}
+                                            {!isTablet && (
+                                                <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, backgroundColor: rowTint }}>
+                                                    {navigationPreference === 'assessments' ? 'Assessments' : 'Class Content'}
+                                                </TableCell>
+                                            )}
+                                            <TableCell align="right" sx={{ width: { xs: 76, sm: 96 }, minWidth: { xs: 76, sm: 96 }, px: { xs: 1, sm: 1.5 }, pr: { xs: 1.5, sm: 3 }, backgroundColor: rowTint }}>
+                                                <Tooltip title={`Actions for Class ${c.className}`} arrow>
                                                     <IconButton
                                                         size="small"
-                                                        aria-label={`Open class ${c.className}`}
-                                                        onClick={() => handleClassAction(c)}
+                                                        aria-label={`Actions for Class ${c.className}`}
+                                                        aria-haspopup={isMobile ? 'dialog' : 'menu'}
+                                                        aria-expanded={rowActionsOpen}
+                                                        aria-controls={rowActionsOpen && !isMobile ? `class-actions-menu-${c.id}` : undefined}
+                                                        onClick={(event) => setActionMenu((current) => (
+                                                            current?.classItem?.id === c.id
+                                                                ? null
+                                                                : { anchorEl: event.currentTarget, classItem: c }
+                                                        ))}
                                                         sx={{
-                                                            backgroundColor: '#dbeafe',
-                                                            color: '#0a336b',
-                                                            '&:hover': { backgroundColor: '#bfdbfe' },
+                                                            width: 36,
+                                                            height: 36,
+                                                            color: '#16436f',
+                                                            backgroundColor: rowActionsOpen ? '#dceeff' : 'transparent',
+                                                            '&:hover': { backgroundColor: '#e5f1fc' },
                                                         }}
                                                     >
-                                                        <VisibilityOutlinedIcon fontSize="small" />
+                                                        <EditOutlinedIcon fontSize="small" />
                                                     </IconButton>
                                                 </Tooltip>
-                                            </Box>
-                                        </TableCell>
-                                    </TableRow>
+                                            </TableCell>
+                                        </TableRow>
                                 );
                             })}
                             {classes.length === 0 ? (
@@ -430,7 +445,64 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
                         </TableBody>
                     </Table>
                 </TableContainer>
-                <TablePagination {...paged.paginationProps} />
+                {isMobile ? (
+                    <Drawer
+                        anchor="bottom"
+                        open={Boolean(actionMenu?.anchorEl)}
+                        onClose={() => setActionMenu(null)}
+                        sx={{
+                            '& .MuiDrawer-paper': {
+                                maxHeight: '70dvh',
+                                borderTopLeftRadius: 20,
+                                borderTopRightRadius: 20,
+                                boxShadow: '0 -12px 36px rgba(8, 43, 87, 0.18)',
+                            },
+                        }}
+                    >
+                        <Box sx={{ px: 2, pt: 1.5, pb: 'calc(16px + env(safe-area-inset-bottom))' }}>
+                            <Box sx={{ width: 36, height: 4, mx: 'auto', mb: 1.5, borderRadius: 2, backgroundColor: '#cbd5e1' }} />
+                            <Typography variant="subtitle1" fontWeight={700} sx={{ px: 1, pb: 1, color: '#102f4f' }}>
+                                Class {actionMenu?.classItem?.className}
+                            </Typography>
+                            <Divider sx={{ mb: 1 }} />
+                            {renderRowActionItems()}
+                        </Box>
+                    </Drawer>
+                ) : (
+                    <Menu
+                        id={actionMenu?.classItem ? `class-actions-menu-${actionMenu.classItem.id}` : undefined}
+                        anchorEl={actionMenu?.anchorEl}
+                        open={Boolean(actionMenu?.anchorEl)}
+                        onClose={() => setActionMenu(null)}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                        slotProps={{
+                            paper: {
+                                sx: {
+                                    minWidth: 184,
+                                    mt: 0.75,
+                                    p: 0.5,
+                                    overflow: 'hidden',
+                                    border: '1px solid #bfd1e3',
+                                    borderLeft: '4px solid #0a336b',
+                                    borderRadius: 2,
+                                    boxShadow: '0 18px 42px rgba(8, 43, 87, 0.24)',
+                                    '& .MuiMenuItem-root': {
+                                        minHeight: 42,
+                                        mx: 0.25,
+                                        px: 1.25,
+                                        borderRadius: 1.25,
+                                        transition: 'background-color 140ms ease',
+                                        '&:hover': { backgroundColor: '#edf5fc' },
+                                    },
+                                },
+                            },
+                        }}
+                    >
+                        {renderRowActionItems()}
+                    </Menu>
+                )}
+                <AdminTablePagination {...paged.paginationProps} />
             </Paper>
 
             <Dialog
@@ -479,32 +551,30 @@ const ManageClasses = ({ loading, setLoading, setMessage, setAdminView }) => {
             {canCreateClasses ? (
                 <Box
                     sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
+                        display: { xs: 'block', sm: 'none' },
                         position: 'fixed',
-                        right: 16,
-                        bottom: 12,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
                         zIndex: (theme) => theme.zIndex.fab,
+                        pb: 'env(safe-area-inset-bottom)',
                     }}
                 >
-                    <Tooltip title="Create new class" arrow>
-                        <Fab
-                            aria-label="Create new class"
-                            onClick={startNewClass}
-                            disabled={loading}
-                            sx={{
-                                backgroundColor: '#0a336b',
-                                color: '#ffffff',
-                                '&:hover': { backgroundColor: '#082b57' },
-                            }}
-                        >
-                            <AddIcon />
-                        </Fab>
-                    </Tooltip>
-                    <Typography variant="caption" sx={{ mt: 0.5, fontWeight: 700, color: '#64748B' }}>
-                        Create New Class
-                    </Typography>
+                    <Button
+                        variant="contained"
+                        onClick={startNewClass}
+                        disabled={loading}
+                        sx={{
+                            width: '100%',
+                            minHeight: 56,
+                            borderRadius: 0,
+                            backgroundColor: '#0a336b',
+                            color: '#ffffff',
+                            '&:hover': { backgroundColor: '#082b57' },
+                        }}
+                    >
+                        Create Class
+                    </Button>
                 </Box>
             ) : null}
 

@@ -2,6 +2,7 @@
 
 import Loader from '@/app/(components)/Loader';
 import usePagedData from '../usePagedData';
+import AdminTablePagination from '../AdminTablePagination';
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -12,7 +13,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Fab,
   IconButton,
   MenuItem,
   Paper,
@@ -22,7 +22,6 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TablePagination,
   TableRow,
   TextField,
   Tooltip,
@@ -39,21 +38,12 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-
   const [centers, setCenters] = useState([]);
-  const [classes, setClasses] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
   const [editingStudent, setEditingStudent] = useState(null);
   const [authUser, setAuthUser] = useState(null);
   const [exporting, setExporting] = useState(false);
-  const [templateLoading, setTemplateLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [importMessage, setImportMessage] = useState(null);
-  const fileInputRef = useRef(null);
-  const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
   const [selectedClassFilter, setSelectedClassFilter] = useState(ALL_CLASSES);
   const [form, setForm] = useState({
     name: "",
@@ -70,6 +60,14 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
     guardianName: "",
     status: true,
   });
+  const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
+  const [templateLoading, setTemplateLoading] = useState(false);
+  const [importMessage, setImportMessage] = useState(null);
+  const fileInputRef = useRef(null);
+  const [selectedCenter, setSelectedCenter] = useState(ALL_CENTERS);
 
   const hasPermission = (permission) => {
     if (String(role || '').toUpperCase() === 'ADMIN') return true;
@@ -525,10 +523,10 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   }, [dialogOpen, classes, form.studyingClass]);
 
   return (
-    <Box sx={{ width: '100%', minWidth: 0, p: { xs: 0, sm: 2, md: 3 }, pb: { xs: 12, sm: 12 } }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0, minHeight: 'calc(100dvh - 64px)', p: { xs: 0, sm: 2, md: 3 }, pb: { xs: 'calc(64px + env(safe-area-inset-bottom))', sm: 0 } }}>
       <Box padding={1} sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, mb: 3, flexDirection: { xs: "column", md: "row" }, flexWrap: 'wrap', gap: 2 }}>
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: 16, sm: 18, md: 20 } }}>Manage Students</Typography>
+          <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: 0, sm: 18, md: 20 } }}>Manage Students</Typography>
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 2, sm: 0 }} useFlexGap sx={{ width: { xs: '100%', md: 'auto' }, minWidth: 0, flexWrap: 'wrap', gap: { sm: 1 } }}>
           <TextField
@@ -571,7 +569,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
               </MenuItem>
             ))}
           </TextField>
-          <Button variant="outlined" onClick={handleDownloadStudents} disabled={exporting || loading} size="small" sx={{ width: { xs: '100%', sm: 'auto' }, minHeight: { xs: 40, sm: 'auto' }, fontSize: 12, py: 0.5, px: 1.5 }}>
+          <Button variant="outlined" onClick={handleDownloadStudents} disabled={exporting || loading} size="small" sx={{ display: { xs: 'none', sm: 'inline-flex' }, width: { xs: '100%', sm: 'auto' }, minHeight: { xs: 40, sm: 'auto' }, fontSize: 12, py: 0.5, px: 1.5 }}>
             {exporting ? "Exporting..." : "Export Students"}
           </Button>
           {canCreateStudents ? (
@@ -588,9 +586,10 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
         </Alert>
       ) : null}
 
-      <TableContainer component={Paper} sx={{ maxWidth: '100%', borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
-        <Table sx={{ minWidth: { xs: 600, sm: 720 } }}>
-          <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff' } }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0 }}>
+      <TableContainer component={Paper} sx={{ flex: '1 1 auto', minHeight: 0, maxWidth: '100%', border: '1px solid rgba(59, 130, 246, 0.24)', borderRadius: { xs: 0, sm: 3 }, overflow: "auto", maxHeight: 'calc(100dvh - 300px)' }}>
+        <Table stickyHeader sx={{ minWidth: { xs: 600, sm: 720 } }}>
+          <TableHead sx={{ '& .MuiTableCell-head': { color: '#ffffff', backgroundColor: '#0a336b', zIndex: 2 } }}>
             <TableRow>
               <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 }, whiteSpace: 'nowrap' }}>Enrollment ID</TableCell>
               <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Name</TableCell>
@@ -654,36 +653,38 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
           </TableBody>
         </Table>
       </TableContainer>
-      <TablePagination {...paged.paginationProps} rowsPerPageOptions={[25, 50, 100]} />
+      <Box sx={{ mt: 'auto' }}>
+        <AdminTablePagination {...paged.paginationProps} rowsPerPageOptions={[25, 50, 100]} />
+      </Box>
+      </Box>
 
       {canCreateStudents ? (
         <Box
           sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
+            display: { xs: 'block', sm: 'none' },
             position: 'fixed',
-            right: 16,
-            bottom: 12,
+            left: 0,
+            right: 0,
+            bottom: 0,
             zIndex: (theme) => theme.zIndex.fab,
+            pb: 'env(safe-area-inset-bottom)',
           }}
         >
-          <Tooltip title="Create new student" arrow>
-            <Fab
-              aria-label="Create new student"
-              onClick={openCreateDialog}
-              disabled={loading}
-              sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}
-            >
-              <Add />
-            </Fab>
-          </Tooltip>
-          <Typography
-            variant="caption"
-            sx={{ mt: 0.5, fontWeight: 700, color: '#64748B' }}
+          <Button
+            variant="contained"
+            onClick={openCreateDialog}
+            disabled={loading}
+            sx={{
+              width: '100%',
+              minHeight: 56,
+              borderRadius: 0,
+              backgroundColor: '#0a336b',
+              color: '#ffffff',
+              '&:hover': { backgroundColor: '#082b57' },
+            }}
           >
-            Add New Student
-          </Typography>
+            Add Student
+          </Button>
         </Box>
       ) : null}
 

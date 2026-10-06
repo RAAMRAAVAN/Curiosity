@@ -9,7 +9,6 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
-    Fab,
     IconButton,
     MenuItem,
     Stack,
@@ -18,7 +17,6 @@ import {
     TableCell,
     TableContainer,
     TableHead,
-    TablePagination,
     TableRow,
     TextField,
     Tooltip,
@@ -28,11 +26,11 @@ import {
 } from "@mui/material";
 
 import { useEffect, useMemo, useState } from "react";
-import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import DisplayTeachers from "./DisplayTeachers";
 import TeacherSubjectDialog from "./TeacherSubjectDialog";
 import Loader from '@/app/(components)/Loader';
+import AdminTablePagination from '../AdminTablePagination';
 import { useAdminAuth } from '../AdminAuthContext';
 import usePagedData from '../usePagedData';
 
@@ -338,10 +336,10 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
     }, [canUseCenterFilter, centerFilterOptions, selectedCenter]);
 
     return (
-        <Box sx={{ width: '100%', minWidth: 0, p: { xs: 0, sm: 2, md: 3 }, pb: { xs: 12, sm: 12 } }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0, p: { xs: 2, sm: 3 }, borderRadius: 3, backgroundColor: 'white', boxShadow: 3, marginBottom: 5 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0, minHeight: 'calc(100dvh - 64px)', p: { xs: 0, sm: 2, md: 3 }, pb: { xs: 'calc(64px + env(safe-area-inset-bottom))', sm: 0 } }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0, width: '100%', minWidth: 0, p: { xs: 1, sm: 3 }, borderRadius: { xs: 0, sm: 3 }, backgroundColor: 'white', boxShadow: { xs: 'none', sm: 3 } }}>
                 <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', md: 'row' }, flexWrap: 'wrap', gap: 2 }}>
-                    <Typography fontWeight='bold' sx={{ fontSize: { xs: 14, sm: 16 } }}>Teachers</Typography>
+                    <Typography fontWeight='bold' sx={{ fontSize: { xs: 0, sm: 16 } }}>Teachers</Typography>
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap sx={{ width: { xs: '100%', md: 'auto' }, minWidth: 0, flexWrap: 'wrap' }}>
                         {canUseCenterFilter ? (
                             <TextField
@@ -358,7 +356,7 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                                 ))}
                             </TextField>
                         ) : null}
-                        <Button variant='outlined' onClick={handleDownloadTeachers} disabled={exporting || pageLoading} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' }, minHeight: { xs: 40, sm: 'auto' } }}>
+                        <Button variant='outlined' onClick={handleDownloadTeachers} disabled={exporting || pageLoading} size={isMobile ? "small" : "medium"} sx={{ display: { xs: 'none', sm: 'inline-flex' }, width: { xs: '100%', sm: 'auto' }, minHeight: { xs: 40, sm: 'auto' } }}>
                             {exporting ? "Exporting..." : "Download Excel"}
                         </Button>
                         {canCreateTeachers ? (
@@ -386,9 +384,9 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                         )}
                     />
                 </Box>
-                <Box sx={{ marginTop: 2, overflow: 'auto', maxWidth: '100%' }}>
-                    <TableContainer sx={{ maxWidth: '100%', borderRadius: 3, overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
-                        <Table sx={{ minWidth: { xs: 600, sm: 720 } }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0, mt: 2, maxWidth: '100%' }}>
+                    <TableContainer sx={{ flex: '1 1 auto', minHeight: 0, maxWidth: '100%', border: '1px solid rgba(59, 130, 246, 0.24)', borderRadius: { xs: 0, sm: 3 }, overflow: "auto", maxHeight: 'calc(100dvh - 300px)' }}>
+                        <Table sx={{ minWidth: { xs: 600, sm: 720 }, whiteSpace: 'nowrap' }}>
                             <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff' } }}>
                                 <TableRow>
                                     <TableCell sx={{ fontWeight: 700, color: "#0f172a", fontSize: { xs: 12, sm: 14 } }}>Name</TableCell>
@@ -418,38 +416,39 @@ const ManageTeachersPage = ({ users, role, permissions = [] }) => {
                             </TableBody>
                         </Table>
                     </TableContainer>
-                    <TablePagination {...paged.paginationProps} />
+                    <Box sx={{ mt: 'auto' }}>
+                        <AdminTablePagination {...paged.paginationProps} />
+                    </Box>
                 </Box>
             </Box>
 
             {canCreateTeachers ? (
                 <Box
                     sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
+                        display: { xs: 'block', sm: 'none' },
                         position: 'fixed',
-                        right: 16,
-                        bottom: 12,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
                         zIndex: (theme) => theme.zIndex.fab,
+                        pb: 'env(safe-area-inset-bottom)',
                     }}
                 >
-                    <Tooltip title="Add new teacher" arrow>
-                        <Fab
-                            aria-label="Add new teacher"
-                            onClick={openCreateDialog}
-                            disabled={pageLoading}
-                            sx={{ backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}
-                        >
-                            <AddIcon />
-                        </Fab>
-                    </Tooltip>
-                    <Typography
-                        variant="caption"
-                        sx={{ mt: 0.5, fontWeight: 700, color: '#64748B' }}
+                    <Button
+                        variant="contained"
+                        onClick={openCreateDialog}
+                        disabled={pageLoading}
+                        sx={{
+                            width: '100%',
+                            minHeight: 56,
+                            borderRadius: 0,
+                            backgroundColor: '#0a336b',
+                            color: '#ffffff',
+                            '&:hover': { backgroundColor: '#082b57' },
+                        }}
                     >
                         Add Teacher
-                    </Typography>
+                    </Button>
                 </Box>
             ) : null}
 
