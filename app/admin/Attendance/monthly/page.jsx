@@ -240,20 +240,24 @@ export default function StudentMonthlyAttendancePage() {
             <Typography variant='h5' fontWeight={700} sx={{ color: '#0a336b', fontSize: { xs: '1.25rem', sm: '1.5rem' }, lineHeight: { xs: 1.2, sm: 1.334 } }}>
               Student's Monthly Attendance
             </Typography>
-            <Typography color='text.secondary'>Review and download student monthly attendance reports.</Typography>
+            <Typography color='text.secondary' sx={{fontSize: { xs: '0', sm: '1rem' } }}>
+              Review and download student monthly attendance reports.
+            </Typography>
           </Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-            <Button
-              variant='contained'
-              onClick={() => {
-                const url = `/api/admin/attendance/monthly/export?centerId=${encodeURIComponent(selectedCenterId)}&classId=${encodeURIComponent(selectedClassIds.join(','))}&month=${String(selectedMonth).padStart(2, '0')}&year=${selectedYear}`;
-                window.open(url, '_blank');
-              }}
-              disabled={!selectedCenterId || !selectedClassIds.length || loadingRows}
-              sx={{ backgroundColor: '#0a336b', '&:hover': { backgroundColor: '#082b57' } }}
-            >
-              Download Excel
-            </Button>
+            {!isCompactScreen ? (
+              <Button
+                variant='contained'
+                onClick={() => {
+                  const url = `/api/admin/attendance/monthly/export?centerId=${encodeURIComponent(selectedCenterId)}&classId=${encodeURIComponent(selectedClassIds.join(','))}&month=${String(selectedMonth).padStart(2, '0')}&year=${selectedYear}`;
+                  window.open(url, '_blank');
+                }}
+                disabled={!selectedCenterId || !selectedClassIds.length || loadingRows}
+                sx={{ backgroundColor: '#0a336b', '&:hover': { backgroundColor: '#082b57' } }}
+              >
+                Download Excel
+              </Button>
+            ) : null}
             {!isCompactScreen ? (
               <Button
                 variant='contained'

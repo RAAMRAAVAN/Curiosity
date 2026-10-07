@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Box, Button, TablePagination, TextField, Typography } from '@mui/material';
+import { Box, Button, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { AddCircleOutline } from '@mui/icons-material';
 import AssessmentManager from '@/app/(components)/AssessmentManager';
+import AdminTablePagination from './AdminTablePagination';
 import usePagedData from './usePagedData';
 
 const emptyQuestion = () => ({
@@ -15,6 +16,8 @@ const emptyQuestion = () => ({
 });
 
 const AdminAssessmentsPage = ({ heading = 'View Assessment - A', moduleDescription = 'Review and manage assessments across all available subjects.' }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const paged = usePagedData({ endpoint: '/api/assessments/all', initialPageSize: 10 });
   const assessments = paged.rows;
   const loading = paged.loading;
@@ -123,11 +126,11 @@ const AdminAssessmentsPage = ({ heading = 'View Assessment - A', moduleDescripti
     <Box sx={{ width: '100%', maxWidth: 1400, mx: 'auto', minWidth: 0, p: { xs: 0, sm: 2, md: 3 } }}>
       <Box paddingX={2} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 2 }}>
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="h6" fontWeight={700} sx={{ mb: 1, fontSize: { xs: 16, sm: 20 }, overflowWrap: 'anywhere' }}>{heading}</Typography>
-          <Typography color="text.secondary" sx={{ fontSize: { xs: 12, sm: 16 }, overflowWrap: 'anywhere' }}>{moduleDescription}</Typography>
+          <Typography variant="h6" fontWeight={700} sx={{ my: 1, fontSize: { xs: 16, sm: 20 }, overflowWrap: 'anywhere' }}>{heading}</Typography>
+          <Typography color="text.secondary" sx={{ fontSize: { xs: 0, sm: 16 }, overflowWrap: 'anywhere' }}>{moduleDescription}</Typography>
         </Box>
-        {canCreateAssessments ? (
-          <Button variant="contained" startIcon={<AddCircleOutline />} onClick={handleOpenCreate} disabled={!selectedSubjectId} sx={{ width: { xs: '100%', sm: 'auto' }, minHeight: 44, flexShrink: 0, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
+        {canCreateAssessments && !isMobile ? (
+          <Button variant="contained" startIcon={<AddCircleOutline />} onClick={handleOpenCreate} disabled={!selectedSubjectId} sx={{ width: { xs: '100%', sm: 'auto' }, minHeight: 44, flexShrink: 0, borderRadius: 0, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
             Add New Assessment
           </Button>
         ) : null}
@@ -167,7 +170,38 @@ const AdminAssessmentsPage = ({ heading = 'View Assessment - A', moduleDescripti
         onAssessmentSubjectChange={handleAssessmentSubjectChange}
         onAllowedClassIdsChange={handleVisibleClassIdsChange}
       />
-      <TablePagination {...paged.paginationProps} rowsPerPageOptions={[10, 25, 50]} sx={{ maxWidth: '100%' }} />
+      <AdminTablePagination {...paged.paginationProps} />
+      {canCreateAssessments && isMobile ? (
+        <>
+          <Box sx={{ height: 'calc(64px + env(safe-area-inset-bottom, 0px))' }} />
+          <Box
+            sx={{
+              position: 'fixed',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: theme.zIndex.appBar + 1,
+              px: 0,
+              pt: 0,
+              pb: 'env(safe-area-inset-bottom, 0px)',
+              backgroundColor: 'background.paper',
+              borderTop: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Button
+              variant="contained"
+              startIcon={<AddCircleOutline />}
+              onClick={handleOpenCreate}
+              disabled={!selectedSubjectId}
+              fullWidth
+              sx={{ minHeight: 48, borderRadius: 0, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}
+            >
+              Add New Assessment
+            </Button>
+          </Box>
+        </>
+      ) : null}
     </Box>
   );
 };

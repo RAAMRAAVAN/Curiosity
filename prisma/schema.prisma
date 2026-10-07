@@ -426,7 +426,9 @@ model Student {
   schoolName    String?
   studyingClass String?
   teaGarden     String?
-  guardianName  String?
+  fatherName    String?  @map("guardianName")
+  motherName    String?  @map("mother_name")
+  identityKey   String?  @unique @map("identity_key")
 
   status Boolean @default(true)
 

@@ -21,7 +21,6 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -33,6 +32,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import Tooltip from '@mui/material/Tooltip';
 import usePagedData from '../usePagedData';
+import AdminTablePagination from '../AdminTablePagination';
 
 const emptyForm = {
   name: '',
@@ -252,19 +252,19 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
         </Alert>
       ) : null}
 
-      <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3, borderRadius: 3 }}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3, borderRadius: 0 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 2, flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap', gap: 2 }}>
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 14, sm: 16 } }}>Manage Roles</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: 11, sm: 13 } }}>
+            <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 0, sm: 16 } }}>Manage Roles</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: 0, sm: 13 } }}>
               Create custom management roles and configure exact permissions.
             </Typography>
           </Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap sx={{ width: { xs: '100%', sm: 'auto' }, flexWrap: 'wrap' }}>
-            {teachersPresetRole ? (
+            {!isMobile && teachersPresetRole ? (
               <Button variant="outlined" onClick={openTeachersPreset} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' } }}>Teachers Preset</Button>
             ) : null}
-            {canCreateRoles ? (
+            {canCreateRoles && !isMobile ? (
               <Button variant="contained" onClick={startCreate} size={isMobile ? "small" : "medium"} sx={{ width: { xs: '100%', sm: 'auto' }, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>Create Role</Button>
             ) : null}
           </Stack>
@@ -272,15 +272,15 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
 
         <TextField size="small" label="Search roles" value={paged.search} onChange={(event) => paged.setSearch(event.target.value)} sx={{ mb: 2, width: { xs: '100%', sm: 320 }, maxWidth: '100%' }} />
 
-        <TableContainer sx={{ maxWidth: '100%', overflow: "auto", maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
-          <Table sx={{ minWidth: { xs: 500, sm: 600 } }}>
+        <TableContainer sx={{ width: '100%', maxWidth: '100%', overflowX: 'auto', maxHeight: { xs: 'calc(100vh - 300px)', md: 'auto' } }}>
+          <Table sx={{ width: '100%', minWidth: { xs: 0, sm: 600 }, tableLayout: { xs: 'fixed', sm: 'auto' }, '& .MuiTableCell-root': { px: { xs: 0.5, sm: 2 } } }}>
             <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff' } }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Role Name</TableCell>
+                <TableCell sx={{ width: { xs: '35%', sm: 'auto' }, fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Role Name</TableCell>
                 {!isMobile && <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Description</TableCell>}
-                <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Permissions</TableCell>
-                <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Actions</TableCell>
+                <TableCell sx={{ width: { xs: '18%', sm: 'auto' }, fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>{isMobile ? 'Perms' : 'Permissions'}</TableCell>
+                <TableCell sx={{ width: { xs: '24%', sm: 'auto' }, fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Status</TableCell>
+                <TableCell sx={{ width: { xs: '23%', sm: 'auto' }, fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -292,7 +292,7 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
                 </TableRow>
               ) : roles.map((role) => (
                 <TableRow key={role.id} sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}>
-                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, overflowWrap: 'anywhere', minWidth: 120 }}>{role.name}</TableCell>
+                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, overflowWrap: 'anywhere', minWidth: { xs: 0, sm: 120 } }}>{role.name}</TableCell>
                   {!isMobile && <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, overflowWrap: 'anywhere', minWidth: 160 }}>{role.description || '-'}</TableCell>}
                   <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{permissionCountMap.get(role.id) || 0}</TableCell>
                   <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>
@@ -302,14 +302,14 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
                     <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'nowrap' }}>
                       {canEditRoles ? (
                         <Tooltip title="Edit role" arrow>
-                          <IconButton size="small" aria-label={`Edit ${role.name}`} onClick={() => startEdit(role)} sx={{ backgroundColor: '#e0f2fe', color: '#0a336b', '&:hover': { backgroundColor: '#bae6fd' } }}>
+                          <IconButton size="small" aria-label={`Edit ${role.name}`} onClick={() => startEdit(role)} sx={{ width: { xs: 28, sm: 40 }, height: { xs: 28, sm: 40 }, p: { xs: 0.5, sm: 1 }, backgroundColor: '#e0f2fe', color: '#0a336b', '&:hover': { backgroundColor: '#bae6fd' } }}>
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       ) : null}
                       {canDeleteRoles ? (
                         <Tooltip title="Delete role" arrow>
-                          <IconButton size="small" aria-label={`Delete ${role.name}`} onClick={() => deleteRole(role)} sx={{ backgroundColor: '#fee2e2', color: '#b91c1c', '&:hover': { backgroundColor: '#fecaca' } }}>
+                          <IconButton size="small" aria-label={`Delete ${role.name}`} onClick={() => deleteRole(role)} sx={{ width: { xs: 28, sm: 40 }, height: { xs: 28, sm: 40 }, p: { xs: 0.5, sm: 1 }, backgroundColor: '#fee2e2', color: '#b91c1c', '&:hover': { backgroundColor: '#fecaca' } }}>
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -326,8 +326,50 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
             </TableBody>
           </Table>
         </TableContainer>
-        <TablePagination {...paged.paginationProps} />
+        <Box
+          sx={{
+            position: { xs: 'fixed', sm: 'static' },
+            left: { xs: 0, sm: 'auto' },
+            right: { xs: 0, sm: 'auto' },
+            bottom: { xs: canCreateRoles ? 'calc(49px + env(safe-area-inset-bottom, 0px))' : 0, sm: 'auto' },
+            zIndex: theme.zIndex.appBar,
+            width: { xs: '100%', sm: 'auto' },
+          }}
+        >
+          <AdminTablePagination {...paged.paginationProps} />
+        </Box>
       </Paper>
+
+      {isMobile ? (
+        <Box sx={{ height: canCreateRoles ? 'calc(112px + env(safe-area-inset-bottom, 0px))' : 60 }} />
+      ) : null}
+
+      {canCreateRoles && isMobile ? (
+        <Box
+            sx={{
+              position: 'fixed',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: theme.zIndex.appBar + 1,
+              px: 0,
+              pt: 0,
+              pb: 'env(safe-area-inset-bottom, 0px)',
+              backgroundColor: 'background.paper',
+              borderTop: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Button
+              variant="contained"
+              onClick={startCreate}
+              fullWidth
+              sx={{ minHeight: 48, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}
+            >
+              Create Role
+            </Button>
+          </Box>
+      ) : null}
 
       <Dialog
         open={open}
@@ -377,7 +419,7 @@ const ManageRoles = ({ setMessage, role, permissions = [] }) => {
             <Grid container spacing={2}>
               {permissionGroups.map((group) => (
                 <Grid item xs={12} md={6} key={group.title}>
-                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 0 }}>
                     <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>{group.title}</Typography>
                     <Stack spacing={0.5}>
                       {group.permissions.map((permission) => (

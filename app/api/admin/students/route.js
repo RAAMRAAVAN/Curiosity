@@ -4,6 +4,7 @@ import { requireAdminPermission } from '@/lib/adminRbac';
 import bcrypt from "bcryptjs";
 import { nextStudentId } from "@/lib/studentId";
 import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
+import { createStudentIdentityKey, isStudentIdentityTaken } from "@/lib/studentIdentity";
 import { buildPaginationMeta, containsFilter, parsePagination } from "@/lib/pagination";
 
 function formatDateValue(value) {
@@ -35,7 +36,8 @@ function mapStudent(user, classMap = {}) {
     address: profile.address || "",
     schoolName: profile.schoolName || "",
     teaGarden: profile.teaGarden || "",
-    guardianName: profile.guardianName || "",
+    fatherName: profile.fatherName || "",
+    motherName: profile.motherName || "",
     status: user.status,
   };
 }
@@ -83,7 +85,8 @@ export async function GET(req) {
             { email: term },
             { student: { is: { phone: term } } },
             { student: { is: { schoolName: term } } },
-            { student: { is: { guardianName: term } } },
+            { student: { is: { fatherName: term } } },
+            { student: { is: { motherName: term } } },
             { student: { is: { teaGarden: term } } },
             { student: { is: { center: { name: term } } } },
           ],
@@ -154,11 +157,29 @@ export async function POST(req) {
 
   try {
     const body = await req.json();
-    if (!body.name) {
-      return ApiResponse.error("Name is required", 400);
+    const name = String(body.name || '').trim();
+    const fatherName = String(body.fatherName ?? body.guardianName ?? '').trim();
+    const motherName = String(body.motherName || '').trim();
+    const studyingClass = String(body.studyingClass || '').trim();
+    const dobValue = String(body.dob || '').trim();
+    const dob = dobValue ? new Date(dobValue) : null;
+    const gender = String(body.gender || '').trim();
+    const missingFields = [
+      ['Full Name', name],
+      ['Class', studyingClass],
+      ['Date of Birth', dobValue],
+      ['Gender', gender],
+      ["Father's Name", fatherName],
+      ["Mother's Name", motherName],
+    ].filter(([, value]) => !value).map(([label]) => label);
+    if (missingFields.length) {
+      return ApiResponse.error(`Please complete these required fields: ${missingFields.join(', ')}.`, 400);
+    }
+    if (!dob || Number.isNaN(dob.getTime())) {
+      return ApiResponse.error("A valid Date of Birth is required.", 400);
     }
 
-    let finalCenterId = body.centerId || null;
+    let finalCenterId = String(body.centerId || '').trim() || null;
     if (auth.actor.isTeacher) {
       const teacherProfile = await prisma.teacher.findUnique({
         where: { userId: auth.actor.userId },
@@ -177,11 +198,7 @@ export async function POST(req) {
     }
 
     if (!finalCenterId) {
-      return ApiResponse.error("Center is required when registering a student", 400);
-    }
-
-    if (!body.studyingClass) {
-      return ApiResponse.error("Class is required when registering a student", 400);
+      return ApiResponse.error("Please select a Center.", 400);
     }
 
     const center = finalCenterId
@@ -196,7 +213,7 @@ export async function POST(req) {
     }
 
     const selectedClass = await prisma.class.findUnique({
-      where: { id: body.studyingClass },
+      where: { id: studyingClass },
       select: { id: true, centerId: true, className: true },
     });
 
@@ -215,8 +232,12 @@ export async function POST(req) {
       }
     }
 
-    const baseEmail = body.name
-      .trim()
+    const identityKey = createStudentIdentityKey({ name, fatherName, motherName });
+    if (await isStudentIdentityTaken(prisma, identityKey)) {
+      return ApiResponse.error("A student with this Full Name, Father's Name, and Mother's Name already exists.", 409);
+    }
+
+    const baseEmail = name
       .toLowerCase()
       .split(/\s+/)[0];
     const generatedEmail = `${baseEmail}@curiosity.com`;
@@ -236,7 +257,7 @@ export async function POST(req) {
       return tx.user.create({
         data: {
           ...(studentId ? { id: studentId } : {}),
-          name: body.name,
+          name,
           email,
           password: hashedPassword,
           role: "STUDENT",
@@ -245,12 +266,14 @@ export async function POST(req) {
           student: {
             create: {
               centerId: finalCenterId,
-              studyingClass: body.studyingClass || null,
-              dob: body.dob ? new Date(body.dob) : null,
-              gender: body.gender || null,
+              studyingClass,
+              dob,
+              gender,
               schoolName: body.schoolName?.trim() || null,
               teaGarden: body.teaGarden?.trim() || null,
-              guardianName: body.guardianName?.trim() || null,
+              fatherName,
+              motherName,
+              identityKey,
             },
           },
         },
@@ -266,6 +289,9 @@ export async function POST(req) {
 
     return ApiResponse.success(mapStudent(user), "Student created successfully.");
   } catch (error) {
+    if (error?.code === 'P2002' && String(error?.meta?.target || '').includes('identity_key')) {
+      return ApiResponse.error("A student with this Full Name, Father's Name, and Mother's Name already exists.", 409);
+    }
     console.error(error);
     return ApiResponse.error("Unable to create student", 500, error);
   }

@@ -3,6 +3,7 @@ import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from '@/lib/adminRbac';
 import bcrypt from "bcryptjs";
 import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
+import { createStudentIdentityKey, isStudentIdentityTaken } from "@/lib/studentIdentity";
 
 function formatDateValue(value) {
   if (!value) return "";
@@ -33,7 +34,8 @@ function mapStudent(user, classMap = {}) {
     address: profile.address || "",
     schoolName: profile.schoolName || "",
     teaGarden: profile.teaGarden || "",
-    guardianName: profile.guardianName || "",
+    fatherName: profile.fatherName || "",
+    motherName: profile.motherName || "",
     status: user.status,
   };
 }
@@ -151,66 +153,89 @@ export async function PATCH(req, { params }) {
     }
 
     const body = await req.json();
-    const updateData = {};
+    const existingProfile = targetUser.student || {};
+    const name = body.name !== undefined ? String(body.name || '').trim() : String(targetUser.name || '').trim();
+    const fatherName = body.fatherName !== undefined || body.guardianName !== undefined
+      ? String(body.fatherName ?? body.guardianName ?? '').trim()
+      : String(existingProfile.fatherName || '').trim();
+    const motherName = body.motherName !== undefined
+      ? String(body.motherName || '').trim()
+      : String(existingProfile.motherName || '').trim();
+    const normalizedCenterId = teacherRole
+      ? scopedCenterId
+      : body.centerId !== undefined ? String(body.centerId || '').trim() : existingProfile.centerId || '';
+    const studyingClass = body.studyingClass !== undefined
+      ? String(body.studyingClass || '').trim()
+      : String(existingProfile.studyingClass || '').trim();
+    const dobValue = body.dob !== undefined
+      ? String(body.dob || '').trim()
+      : existingProfile.dob ? existingProfile.dob.toISOString().slice(0, 10) : '';
+    const dob = dobValue ? new Date(dobValue) : null;
+    const gender = body.gender !== undefined ? String(body.gender || '').trim() : String(existingProfile.gender || '').trim();
 
-    if (body.name !== undefined) updateData.name = body.name;
+    const missingFields = [
+      ['Full Name', name],
+      ['Center', normalizedCenterId],
+      ['Class', studyingClass],
+      ['Date of Birth', dobValue],
+      ['Gender', gender],
+      ["Father's Name", fatherName],
+      ["Mother's Name", motherName],
+    ].filter(([, value]) => !value).map(([label]) => label);
+    if (missingFields.length) {
+      return ApiResponse.error(`Please complete these required fields: ${missingFields.join(', ')}.`, 400);
+    }
+    if (!dob || Number.isNaN(dob.getTime())) {
+      return ApiResponse.error("A valid Date of Birth is required.", 400);
+    }
+
+    if (!auth.actor.isAdmin && !teacherRole && !auth.actor.canAccessCenter(normalizedCenterId)) {
+      return ApiResponse.error('Forbidden: center is not assigned to this user.', 403);
+    }
+    const selectedClass = await prisma.class.findUnique({
+      where: { id: studyingClass },
+      select: { id: true, centerId: true },
+    });
+    if (!selectedClass) return ApiResponse.error("Selected class does not exist", 400);
+    if (selectedClass.centerId && selectedClass.centerId !== normalizedCenterId) {
+      return ApiResponse.error("Selected class is outside the allowed center", 403);
+    }
+    if (teacherRole && assignedClassIds && !assignedClassIds.includes(selectedClass.id)) {
+      return ApiResponse.error("Selected class is not assigned to you", 403);
+    }
+
+    const identityKey = createStudentIdentityKey({ name, fatherName, motherName });
+    if (await isStudentIdentityTaken(prisma, identityKey, id)) {
+      return ApiResponse.error("A student with this Full Name, Father's Name, and Mother's Name already exists.", 409);
+    }
+
+    const updateData = { name };
     if (body.email !== undefined) updateData.email = body.email;
     if (body.password) updateData.password = await bcrypt.hash(body.password, 10);
     if (body.status !== undefined) updateData.status = Boolean(body.status);
 
-    const user = await prisma.user.update({
-      where: { id },
-      data: updateData,
-      include: {
-        student: {
-          include: {
-            center: true,
-          },
-        },
-      },
-    });
+    const profileData = {
+      centerId: normalizedCenterId,
+      studyingClass,
+      dob,
+      gender,
+      fatherName,
+      motherName,
+      identityKey,
+      ...(body.phone !== undefined ? { phone: body.phone || null } : {}),
+      ...(body.address !== undefined ? { address: body.address || null } : {}),
+      ...(body.schoolName !== undefined ? { schoolName: body.schoolName || null } : {}),
+      ...(body.teaGarden !== undefined ? { teaGarden: body.teaGarden?.trim() || null } : {}),
+    };
 
-    const profileData = {};
-    const normalizedCenterId = teacherRole ? scopedCenterId : (body.centerId || null);
-    if (!auth.actor.isAdmin && !teacherRole && !auth.actor.canAccessCenter(normalizedCenterId)) {
-      return ApiResponse.error('Forbidden: center is not assigned to this user.', 403);
-    }
-    if (body.centerId !== undefined || teacherRole) profileData.centerId = normalizedCenterId;
-    if (body.studyingClass !== undefined) profileData.studyingClass = body.studyingClass || null;
-    if (body.dob !== undefined) profileData.dob = body.dob ? new Date(body.dob) : null;
-    if (body.gender !== undefined) profileData.gender = body.gender || null;
-    if (body.phone !== undefined) profileData.phone = body.phone || null;
-    if (body.address !== undefined) profileData.address = body.address || null;
-    if (body.schoolName !== undefined) profileData.schoolName = body.schoolName || null;
-    if (body.teaGarden !== undefined) profileData.teaGarden = body.teaGarden?.trim() || null;
-    if (body.guardianName !== undefined) profileData.guardianName = body.guardianName?.trim() || null;
-
-    if (teacherRole && profileData.studyingClass) {
-      const selectedClass = await prisma.class.findUnique({
-        where: { id: profileData.studyingClass },
-        select: { id: true, centerId: true },
-      });
-
-      if (!selectedClass) {
-        return ApiResponse.error("Selected class does not exist", 400);
-      }
-
-      if (selectedClass.centerId && selectedClass.centerId !== scopedCenterId) {
-        return ApiResponse.error("Selected class is outside the allowed center", 403);
-      }
-
-      if (assignedClassIds && !assignedClassIds.includes(selectedClass.id)) {
-        return ApiResponse.error("Selected class is not assigned to you", 403);
-      }
-    }
-
-    if (Object.keys(profileData).length > 0) {
-      await prisma.student.upsert({
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id }, data: updateData });
+      await tx.student.upsert({
         where: { userId: id },
         create: { userId: id, ...profileData },
         update: profileData,
       });
-    }
+    });
 
     const [refreshedUser, classes] = await Promise.all([
       prisma.user.findUnique({
@@ -230,6 +255,9 @@ export async function PATCH(req, { params }) {
 
     return ApiResponse.success(mapStudent(refreshedUser, classMap), "Student updated successfully.");
   } catch (error) {
+    if (error?.code === 'P2002' && String(error?.meta?.target || '').includes('identity_key')) {
+      return ApiResponse.error("A student with this Full Name, Father's Name, and Mother's Name already exists.", 409);
+    }
     console.error(error);
     return ApiResponse.error("Unable to update student", 500, error);
   }

@@ -5,14 +5,15 @@ import { ApiResponse } from "@/utils/apiResponse";
 import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
 
 const columns = [
-  { header: "Name", key: "name", width: 28 },
+  { header: "Full Name", key: "name", width: 28 },
   { header: "Center", key: "center", width: 24 },
   { header: "Class", key: "class", width: 16 },
   { header: "DOB", key: "dob", width: 14 },
   { header: "Gender", key: "gender", width: 20 },
   { header: "School Name", key: "schoolName", width: 28 },
   { header: "Tea Garden", key: "teaGarden", width: 24 },
-  { header: "Guardian Name", key: "guardianName", width: 28 },
+  { header: "Father's Name", key: "fatherName", width: 28 },
+  { header: "Mother's Name", key: "motherName", width: 28 },
   { header: "Status", key: "status", width: 14 },
 ];
 

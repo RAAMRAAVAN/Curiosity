@@ -26,7 +26,6 @@ import {
   RadioGroup,
   Select,
   Stack,
-  TablePagination,
   TextField,
   Typography,
   useMediaQuery,
@@ -34,6 +33,7 @@ import {
 } from '@mui/material';
 import { AddCircleOutline, DeleteOutline, EditOutlined } from '@mui/icons-material';
 import Loader from '@/app/(components)/Loader';
+import AdminTablePagination from './AdminTablePagination';
 import usePagedData from './usePagedData';
 
 const emptyForm = { title: '', description: '', classIds: [], subjectIds: [], checklist: [{ itemText: 'Field 1', options: [''] }] };
@@ -502,22 +502,24 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
   const filteredAbsentStudents = filterGroupsByName(absentStudents, absentSearch);
 
   return (
-    <Box sx={{ width: '100%', maxWidth: 1400, mx: 'auto', minWidth: 0, p: { xs: 1, sm: 2, md: 3 } }}>
-      <Box  sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
+    <Box sx={{ width: '100%', maxWidth: 1400, mx: 'auto', minWidth: 0, p: { xs: 0, sm: 2, md: 3 } }}>
+      <Box  paddingX={1} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="h6" fontWeight={600} sx={{ overflowWrap: 'anywhere' }}>View Assessment - B</Typography>
-          <Typography color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>Manage age-range assessment records.</Typography>
+          <Typography color="text.secondary" sx={{ overflowWrap: 'anywhere', display:{ xs: 'none', sm: 'block' } }}>Manage age-range assessment records.</Typography>
         </Box>
-        {canCreate ? (
-          <Button variant="contained" startIcon={<AddCircleOutline />} onClick={openCreate} sx={{ minHeight: 44, flexShrink: 0, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }} fullWidth={isMobile} >
+        {canCreate && !isMobile ? (
+          <Button variant="contained" startIcon={<AddCircleOutline />} onClick={openCreate} sx={{ minHeight: 44, flexShrink: 0, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}>
             Add Assessment
           </Button>
         ) : null}
       </Box>
 
       {feedback ? <Alert severity={feedback.severity} sx={{ mb: 2 }} onClose={() => setFeedback(null)}>{feedback.message}</Alert> : null}
+      <Box display='flex' width='100%' paddingX={1} >
+              <TextField paddingX={1} size="small" label="Search assessments" value={paged.search} onChange={(event) => paged.setSearch(event.target.value)} sx={{ mb: 2, width: { xs: '100%', sm: 360 }, maxWidth: '100%' }} />
 
-      <TextField size="small" label="Search assessments" value={paged.search} onChange={(event) => paged.setSearch(event.target.value)} sx={{ mb: 2, width: { xs: '100%', sm: 360 }, maxWidth: '100%' }} />
+      </Box>
 
       {loading ? (
         <Loader variant='section' />
@@ -571,7 +573,37 @@ const AdminAssessments316Page = ({ role, permissions = [] }) => {
           ))}
         </Stack>
       )}
-      <TablePagination {...paged.paginationProps} rowsPerPageOptions={[10, 25, 50]} sx={{ maxWidth: '100%' }} />
+      <AdminTablePagination {...paged.paginationProps} />
+      {canCreate && isMobile ? (
+        <>
+          <Box sx={{ height: 'calc(64px + env(safe-area-inset-bottom, 0px))' }} />
+          <Box
+            sx={{
+              position: 'fixed',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: theme.zIndex.appBar + 1,
+              px: 0,
+              pt: 0,
+              pb: 'env(safe-area-inset-bottom, 0px)',
+              backgroundColor: 'background.paper',
+              borderTop: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Button
+              variant="contained"
+              startIcon={<AddCircleOutline />}
+              onClick={openCreate}
+              fullWidth
+              sx={{ minHeight: 48, borderRadius: 0, backgroundColor: '#0a336b', color: '#ffffff', '&:hover': { backgroundColor: '#082b57' } }}
+            >
+              Add Assessment
+            </Button>
+          </Box>
+        </>
+      ) : null}
 
       <Dialog
         open={pendingDialogOpen}

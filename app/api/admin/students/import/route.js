@@ -5,6 +5,7 @@ import { requireAdminPermission } from "@/lib/adminRbac";
 import { ApiResponse } from "@/utils/apiResponse";
 import { nextStudentId } from "@/lib/studentId";
 import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
+import { createStudentIdentityKey, isStudentIdentityTaken } from "@/lib/studentIdentity";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_GENDERS = new Set(["Male", "Female", "Other", "Prefer not to say"]);
@@ -77,10 +78,12 @@ export async function POST(req) {
     const preparedRows = [];
     rows.forEach((row, index) => {
       const rowNumber = index + 2;
-      const name = text(row.Name);
+      const name = text(row["Full Name"] || row.Name);
       const centerName = text(row.Center);
       const className = text(row.Class);
       const gender = text(row.Gender);
+      const fatherName = text(row["Father's Name"] || row["Guardian Name"]);
+      const motherName = text(row["Mother's Name"]);
       const status = parseStatus(row.Status);
       const dobValue = text(row.DOB);
       const dob = parseDate(row.DOB);
@@ -94,8 +97,11 @@ export async function POST(req) {
       if (center && selectedClass && selectedClass.centerId && selectedClass.centerId !== center.id) {
         rowErrors.push(`Class "${className}" is not assigned to center "${center.name}"`);
       }
-      if (dobValue && !dob) rowErrors.push("DOB is invalid");
-      if (gender && !ALLOWED_GENDERS.has(gender)) rowErrors.push("Gender is invalid");
+      if (!dobValue || !dob) rowErrors.push("A valid DOB is required");
+      if (!gender) rowErrors.push("Gender is required");
+      else if (!ALLOWED_GENDERS.has(gender)) rowErrors.push("Gender is invalid");
+      if (!fatherName) rowErrors.push("Father's Name is required");
+      if (!motherName) rowErrors.push("Mother's Name is required");
       if (text(row.Status) && status === null) rowErrors.push("Status must be Active or Inactive");
 
       if (rowErrors.length) {
@@ -109,7 +115,9 @@ export async function POST(req) {
           gender: gender || null,
           schoolName: text(row["School Name"]) || null,
           teaGarden: text(row["Tea Garden"]) || null,
-          guardianName: text(row["Guardian Name"]) || null,
+          fatherName,
+          motherName,
+          identityKey: createStudentIdentityKey({ name, fatherName, motherName }),
           status: status ?? true,
         });
       }
@@ -117,6 +125,21 @@ export async function POST(req) {
 
     if (errors.length) {
       return ApiResponse.error("The Excel file contains errors. No students were imported.", 400, errors);
+    }
+
+    const seenIdentities = new Set();
+    for (const [index, row] of preparedRows.entries()) {
+      if (seenIdentities.has(row.identityKey)) {
+        errors.push(`Row ${index + 2}: A student with this Full Name, Father's Name, and Mother's Name appears more than once in the file`);
+      }
+      seenIdentities.add(row.identityKey);
+    }
+    const existingIdentityRows = await Promise.all(preparedRows.map((row) => isStudentIdentityTaken(prisma, row.identityKey)));
+    existingIdentityRows.forEach((exists, index) => {
+      if (exists) errors.push(`Row ${index + 2}: A student with this Full Name, Father's Name, and Mother's Name already exists`);
+    });
+    if (errors.length) {
+      return ApiResponse.error("The Excel file contains duplicate students. No students were imported.", 409, errors);
     }
 
     const generatedPassword = "123456";
@@ -150,7 +173,9 @@ export async function POST(req) {
                 gender: row.gender,
                 schoolName: row.schoolName,
                 teaGarden: row.teaGarden,
-                guardianName: row.guardianName,
+                fatherName: row.fatherName,
+                motherName: row.motherName,
+                identityKey: row.identityKey,
               },
             },
           },

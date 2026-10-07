@@ -5,6 +5,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   FormControl,
   InputLabel,
   Link,
@@ -34,6 +35,9 @@ const monthOptions = Array.from({ length: 12 }, (_, index) => ({
   label: new Date(2024, index, 1).toLocaleString('en-US', { month: 'long' }),
 }));
 
+const SELECT_ALL_CENTERS = '__select_all_centers__';
+const DESELECT_ALL_CENTERS = '__deselect_all_centers__';
+
 function formatTime(value) {
   if (!value) return 'Not recorded';
   return new Intl.DateTimeFormat('en-IN', {
@@ -52,7 +56,9 @@ export default function StaffMonthlyAttendancePage({ audience }) {
   const singularLabel = isTeacherReport ? 'Teacher' : 'Management';
   const reportTitle = isTeacherReport ? "Teachers' Monthly Attendance" : "Management's Monthly Attendance";
   const [centers, setCenters] = useState([]);
-  const [selectedCenterId, setSelectedCenterId] = useState('');
+  const [selectedCenterIds, setSelectedCenterIds] = useState([]);
+  const [subroles, setSubroles] = useState([]);
+  const [selectedSubroleId, setSelectedSubroleId] = useState('');
   const [loadingOptions, setLoadingOptions] = useState(isTeacherReport);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [rows, setRows] = useState([]);
@@ -81,12 +87,7 @@ export default function StaffMonthlyAttendancePage({ audience }) {
 
         const centerList = data.data || [];
         setCenters(centerList);
-        const preferredCenter = admin.centerId
-          || admin.teacher?.centerId
-          || admin.management?.centerId
-          || admin.assignedCenterIds?.[0]
-          || '';
-        setSelectedCenterId(preferredCenter || centerList[0]?.id || '');
+        setSelectedCenterIds(centerList.map((center) => center.id));
       } catch (fetchError) {
         setError(fetchError.message || 'Unable to load centers.');
       } finally {
@@ -95,6 +96,30 @@ export default function StaffMonthlyAttendancePage({ audience }) {
     };
 
     fetchCenters();
+  }, [admin, isTeacherReport]);
+
+  useEffect(() => {
+    if (!admin || isTeacherReport) return;
+    const controller = new AbortController();
+    const fetchSubroles = async () => {
+      setLoadingOptions(true);
+      try {
+        const response = await fetch('/api/admin/attendance/monthly/staff?audience=management&subrolesOnly=1', {
+          credentials: 'include',
+          signal: controller.signal,
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || 'Unable to load subroles.');
+        setSubroles(data.data?.subroles || []);
+      } catch (fetchError) {
+        if (fetchError.name !== 'AbortError') setError(fetchError.message || 'Unable to load subroles.');
+      } finally {
+        if (!controller.signal.aborted) setLoadingOptions(false);
+      }
+    };
+
+    fetchSubroles();
+    return () => controller.abort();
   }, [admin, isTeacherReport]);
 
   const monthDates = useMemo(() => {
@@ -129,7 +154,7 @@ export default function StaffMonthlyAttendancePage({ audience }) {
   };
 
   const fetchReport = async () => {
-    if (isTeacherReport && !selectedCenterId) return;
+    if (isTeacherReport && !selectedCenterIds.length) return;
     setLoadingRows(true);
     setError('');
     const requestId = latestRequest.current + 1;
@@ -144,7 +169,8 @@ export default function StaffMonthlyAttendancePage({ audience }) {
         pageSize: String(pageSize),
       });
       if (debouncedSearch) params.set('search', debouncedSearch);
-      if (isTeacherReport) params.set('centerId', selectedCenterId);
+      if (isTeacherReport) params.set('centerIds', selectedCenterIds.join(','));
+      if (!isTeacherReport && selectedSubroleId) params.set('subroleId', selectedSubroleId);
       const response = await fetch(`/api/admin/attendance/monthly/staff?${params}`, { credentials: 'include' });
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.message || 'Unable to load monthly attendance report.');
@@ -170,7 +196,8 @@ export default function StaffMonthlyAttendancePage({ audience }) {
       month: String(selectedMonth),
       year: String(year),
     });
-    if (isTeacherReport) params.set('centerId', selectedCenterId);
+    if (isTeacherReport) params.set('centerIds', selectedCenterIds.join(','));
+    if (!isTeacherReport && selectedSubroleId) params.set('subroleId', selectedSubroleId);
     window.open(`/api/admin/attendance/monthly/staff/export?${params}`, '_blank');
   };
 
@@ -212,19 +239,23 @@ export default function StaffMonthlyAttendancePage({ audience }) {
             <Typography variant='h5' fontWeight={700} sx={{ color: '#0a336b', fontSize: { xs: '1.25rem', sm: '1.5rem' }, lineHeight: { xs: 1.2, sm: 1.334 } }}>
               {reportTitle}
             </Typography>
-            <Typography color='text.secondary'>Review and download monthly {singularLabel.toLowerCase()} attendance.</Typography>
+            <Typography color='text.secondary' sx={{fontSize: { xs: '0', sm: '1rem' } }}>
+              Review and download monthly {singularLabel.toLowerCase()} attendance.
+            </Typography>
           </Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-            <Button
-              variant='contained'
-              onClick={exportReport}
-              disabled={(isTeacherReport && !selectedCenterId) || loadingRows}
-              sx={{ backgroundColor: '#0a336b', '&:hover': { backgroundColor: '#082b57' } }}
-            >
-              Download Excel
-            </Button>
             {!isCompactScreen ? (
-              <Button variant='contained' onClick={requestReport} disabled={(isTeacherReport && !selectedCenterId) || loadingRows}>
+              <Button
+                variant='contained'
+                onClick={exportReport}
+                disabled={(isTeacherReport && !selectedCenterIds.length) || loadingRows}
+                sx={{ backgroundColor: '#0a336b', '&:hover': { backgroundColor: '#082b57' } }}
+              >
+                Download Excel
+              </Button>
+            ) : null}
+            {!isCompactScreen ? (
+              <Button variant='contained' onClick={requestReport} disabled={(isTeacherReport && !selectedCenterIds.length) || loadingRows}>
                 View report
               </Button>
             ) : null}
@@ -236,13 +267,54 @@ export default function StaffMonthlyAttendancePage({ audience }) {
             <FormControl fullWidth>
               <InputLabel id={`monthly-${audience}-center-label`}>Centre</InputLabel>
               <Select
+                multiple
                 labelId={`monthly-${audience}-center-label`}
-                value={selectedCenterId}
+                value={selectedCenterIds}
                 label='Centre'
-                onChange={(event) => setSelectedCenterId(event.target.value)}
+                onChange={(event) => {
+                  const selected = typeof event.target.value === 'string' ? event.target.value.split(',') : event.target.value;
+                  if (selected.includes(SELECT_ALL_CENTERS)) {
+                    setSelectedCenterIds(centers.map((center) => center.id));
+                  } else if (selected.includes(DESELECT_ALL_CENTERS)) {
+                    setSelectedCenterIds([]);
+                  } else {
+                    setSelectedCenterIds(selected);
+                  }
+                }}
+                renderValue={(selected) => selected.length === centers.length
+                  ? `All centres (${selected.length})`
+                  : selected.map((id) => centers.find((center) => center.id === id)?.name).filter(Boolean).join(', ') || 'Select centres'}
               >
+                <MenuItem value={SELECT_ALL_CENTERS}>
+                  <Checkbox checked={centers.length > 0 && selectedCenterIds.length === centers.length} />
+                  Select All
+                </MenuItem>
+                <MenuItem value={DESELECT_ALL_CENTERS}>
+                  <Checkbox checked={selectedCenterIds.length === 0} />
+                  Deselect All
+                </MenuItem>
                 {centers.map((center) => (
-                  <MenuItem key={center.id} value={center.id}>{center.name}</MenuItem>
+                  <MenuItem key={center.id} value={center.id}>
+                    <Checkbox checked={selectedCenterIds.includes(center.id)} />
+                    {center.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ) : null}
+
+          {!isTeacherReport ? (
+            <FormControl fullWidth sx={{ maxWidth: { md: 260 } }}>
+              <InputLabel id='monthly-management-subrole-label'>Subrole</InputLabel>
+              <Select
+                labelId='monthly-management-subrole-label'
+                value={selectedSubroleId}
+                label='Subrole'
+                onChange={(event) => setSelectedSubroleId(event.target.value)}
+              >
+                <MenuItem value=''>All subroles</MenuItem>
+                {subroles.map((subrole) => (
+                  <MenuItem key={subrole.id} value={subrole.id}>{subrole.name}</MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -264,7 +336,7 @@ export default function StaffMonthlyAttendancePage({ audience }) {
         </Stack>
 
         {isCompactScreen ? (
-          <Button variant='contained' onClick={requestReport} disabled={(isTeacherReport && !selectedCenterId) || loadingRows} sx={{ width: '100%', mb: 2 }}>
+          <Button variant='contained' onClick={requestReport} disabled={(isTeacherReport && !selectedCenterIds.length) || loadingRows} sx={{ width: '100%', mb: 2 }}>
             View report
           </Button>
         ) : null}
@@ -343,8 +415,17 @@ export default function StaffMonthlyAttendancePage({ audience }) {
                           '&:hover > td': { backgroundColor: '#f8fbff' },
                         }}
                       >
-                        <TableCell sx={{ position: 'sticky', left: 0, zIndex: 1, width: 220, minWidth: 220, maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', backgroundColor: 'background.paper', fontWeight: 500 }}>
-                          <span title={row.name}>{row.name}</span>
+                        <TableCell sx={{ position: 'sticky', left: 0, zIndex: 1, width: 220, minWidth: 220, maxWidth: 220, overflow: 'hidden', backgroundColor: 'background.paper', fontWeight: 500 }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <Typography component='span' title={row.name} sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {row.name}
+                            </Typography>
+                            {!isTeacherReport && row.subroleName ? (
+                              <Typography variant='caption' fontWeight={700} sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                ({row.subroleName})
+                              </Typography>
+                            ) : null}
+                          </Box>
                         </TableCell>
                         {monthDates.map(({ dateKey }) => {
                           return (
@@ -382,7 +463,7 @@ export default function StaffMonthlyAttendancePage({ audience }) {
         ) : null}
 
         {!loadingRows && !reportLoaded && !error ? (
-          <Alert severity='info'>Select a {isTeacherReport ? 'centre and ' : ''}month, then click View report.</Alert>
+          <Alert severity='info'>Select {isTeacherReport ? 'one or more centres and a ' : 'a '}month, then click View report.</Alert>
         ) : null}
       </Paper>
     </Box>

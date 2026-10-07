@@ -57,12 +57,14 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
     address: "",
     schoolName: "",
     teaGarden: "",
-    guardianName: "",
+    fatherName: "",
+    motherName: "",
     status: true,
   });
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [formError, setFormError] = useState('');
   const [deleteConfirmation, setDeleteConfirmation] = useState(null);
   const [templateLoading, setTemplateLoading] = useState(false);
   const [importMessage, setImportMessage] = useState(null);
@@ -167,6 +169,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
     }
 
     setEditingStudent(null);
+    setFormError('');
     const lockedCenterId = authUser?.role === "TEACHER" ? authUser.centerId || "" : "";
     setForm({
       name: "",
@@ -180,7 +183,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
       address: "",
       schoolName: "",
       teaGarden: "",
-      guardianName: "",
+      fatherName: "",
+      motherName: "",
       status: true,
     });
     setDialogOpen(true);
@@ -191,6 +195,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
       setMessage("You are not authorized to perform this operation.");
       return;
     }
+
+    setFormError('');
 
     try {
       const response = await fetch(`/api/admin/students/${encodeURIComponent(student.id)}`, {
@@ -213,7 +219,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
           address: latestStudent.address || "",
           schoolName: latestStudent.schoolName || "",
           teaGarden: latestStudent.teaGarden || "",
-          guardianName: latestStudent.guardianName || "",
+          fatherName: latestStudent.fatherName || "",
+          motherName: latestStudent.motherName || "",
           status: latestStudent.status ?? true,
         });
       } else {
@@ -230,7 +237,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
           address: student.address || "",
           schoolName: student.schoolName || "",
           teaGarden: student.teaGarden || "",
-          guardianName: student.guardianName || "",
+          fatherName: student.fatherName || "",
+          motherName: student.motherName || "",
           status: student.status ?? true,
         });
         setMessage(data.message || "Unable to load latest student details.");
@@ -251,7 +259,8 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
         address: student.address || "",
         schoolName: student.schoolName || "",
         teaGarden: student.teaGarden || "",
-        guardianName: student.guardianName || "",
+        fatherName: student.fatherName || "",
+        motherName: student.motherName || "",
         status: student.status ?? true,
       });
       setDialogOpen(true);
@@ -261,6 +270,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
 
   const handleSubmit = async () => {
     if (isSubmitting) return;
+    setFormError('');
 
     if (editingStudent && !canEditStudents) {
       setMessage("You are not authorized to perform this operation.");
@@ -269,6 +279,23 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
 
     if (!editingStudent && !canCreateStudents) {
       setMessage("You are not authorized to perform this operation.");
+      return;
+    }
+
+    const requiredFields = [
+      ['Full Name', form.name],
+      ['Center', authUser?.role === 'TEACHER' ? authUser.centerId : form.centerId],
+      ['Class', resolveClassId(form.studyingClass)],
+      ['Date of Birth', form.dob],
+      ['Gender', form.gender],
+      ["Father's Name", form.fatherName],
+      ["Mother's Name", form.motherName],
+    ];
+    const missingFields = requiredFields.filter(([, value]) => !String(value || '').trim());
+    if (missingFields.length) {
+      const errorMessage = `Please complete these required fields: ${missingFields.map(([label]) => label).join(', ')}.`;
+      setFormError(errorMessage);
+      setMessage(errorMessage);
       return;
     }
 
@@ -283,6 +310,9 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
 
       const payload = {
         ...form,
+        name: form.name.trim(),
+        fatherName: form.fatherName.trim(),
+        motherName: form.motherName.trim(),
         centerId: isTeacherRole ? authUser.centerId || null : form.centerId || null,
         studyingClass: form.studyingClass || null,
       };
@@ -297,14 +327,21 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
       const data = await response.json();
       if (data.success) {
         setDialogOpen(false);
+        setFormError('');
         setMessage(data.message || "Student saved successfully.");
         await loadData();
       } else {
-        setMessage(data.message || "Unable to save student.");
+        const details = Array.isArray(data.errors) ? data.errors.filter(Boolean).join(' ') : '';
+        const errorMessage = [data.message, details].filter(Boolean).join(' ')
+          || "Unable to save student. Check the entered details and try again.";
+        setFormError(errorMessage);
+        setMessage(errorMessage);
       }
     } catch (error) {
       console.error(error);
-      setMessage("Unable to save student.");
+      const errorMessage = error.message || "Unable to save student. Check the entered details and try again.";
+      setFormError(errorMessage);
+      setMessage(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -746,6 +783,11 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
         <DialogTitle sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 } }}>{editingStudent ? "Edit Student" : "Create Student"}</DialogTitle>
         <DialogContent dividers sx={{ overflowY: 'auto' }}>
           <Stack spacing={2} sx={{ mt: 1 }}>
+            {formError ? (
+              <Alert severity="error" onClose={() => setFormError('')}>
+                {formError}
+              </Alert>
+            ) : null}
             {editingStudent ? (
               <TextField
                 label="Enrollment ID"
@@ -786,6 +828,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
             <TextField
               select
               label="Center"
+              required
               value={form.centerId}
               onChange={(e) => setForm({ ...form, centerId: e.target.value })}
               fullWidth
@@ -804,7 +847,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
               value={resolveClassId(form.studyingClass)}
               onChange={(e) => setForm({ ...form, studyingClass: e.target.value })}
               fullWidth
-              required={!editingStudent}
+              required
             >
               {editingStudent ? <MenuItem value="">None</MenuItem> : null}
               {classOptions.map((cls) => (
@@ -819,11 +862,13 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
               value={form.dob}
               onChange={(e) => setForm({ ...form, dob: e.target.value })}
               fullWidth
+              required
               InputLabelProps={{ shrink: true }}
             />
             <TextField
               select
               label="Gender"
+              required
               value={form.gender}
               onChange={(e) => setForm({ ...form, gender: e.target.value })}
               fullWidth
@@ -862,10 +907,18 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
               fullWidth
             />
             <TextField
-              label="Guardian Name"
-              value={form.guardianName}
-              onChange={(e) => setForm({ ...form, guardianName: e.target.value })}
+              label="Father's Name"
+              value={form.fatherName}
+              onChange={(e) => setForm({ ...form, fatherName: e.target.value })}
               fullWidth
+              required
+            />
+            <TextField
+              label="Mother's Name"
+              value={form.motherName}
+              onChange={(e) => setForm({ ...form, motherName: e.target.value })}
+              fullWidth
+              required
             />
 
             <TextField

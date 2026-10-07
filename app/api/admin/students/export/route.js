@@ -83,7 +83,8 @@ export async function GET(req) {
         Gender: profile.gender || "",
         "School Name": profile.schoolName || "",
         "Tea Garden": profile.teaGarden || "",
-        "Guardian Name": profile.guardianName || "",
+        "Father's Name": profile.fatherName || "",
+        "Mother's Name": profile.motherName || "",
         Status: user.status ? "Active" : "Inactive",
       };
     });

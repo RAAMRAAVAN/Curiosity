@@ -53,6 +53,8 @@ export async function GET(req) {
     const report = await getStaffMonthlyAttendance(auth.actor, {
       audience,
       centerId: searchParams.get('centerId') || '',
+      centerIds: (searchParams.get('centerIds') || '').split(',').filter(Boolean),
+      subroleId: searchParams.get('subroleId') || '',
       month: Number(searchParams.get('month') || new Date().getMonth() + 1),
       year: Number(searchParams.get('year') || new Date().getFullYear()),
     });

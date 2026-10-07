@@ -22,13 +22,15 @@ import {
   TableBody,
   TableCell,
   TableHead,
-  TablePagination,
   TableRow,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { ClearAll, SelectAll } from "@mui/icons-material";
 import Loader from '@/app/(components)/Loader';
+import AdminTablePagination from '../AdminTablePagination';
 
 function todayValue() {
   return new Date().toISOString().slice(0, 10);
@@ -46,6 +48,8 @@ function hasPermission(permissions, permission, role) {
 }
 
 export default function AttendanceManager({ admin, role, permissions = [] }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [centers, setCenters] = useState([]);
   const [centerIds, setCenterIds] = useState([]);
   const [selectedCenterName, setSelectedCenterName] = useState("");
@@ -227,11 +231,13 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
 
   return (
     <Box sx={{ width: { xs: '100%', sm: '100%' }, ml: { xs: 0, sm: 0 }, p: { xs: 0, sm: 0, md: 0 }}}>
-      <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3, borderRadius: 3, boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+      <Paper sx={{ p: { xs: 1, sm: 3 }, mb: 3, borderRadius: { xs: 0, sm: 3 }, boxShadow: { xs: 'none', sm: "0 20px 48px rgba(15, 23, 42, 0.08)" } }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }} justifyContent="space-between">
           <Box>
-            <Typography variant="h5" fontWeight={700} sx={{ color: '#0a336b', fontSize: { xs: 20, sm: 24 } }}>Attendance</Typography>
-            <Typography color="text.secondary">Mark and review daily student attendance.</Typography>
+            <Typography variant="h5" fontWeight={700} sx={{ color: '#0a336b', fontSize: { xs: 0, sm: 24 } }}>Attendance</Typography>
+            <Typography color="text.secondary" sx={{ fontSize: { xs: 0, sm: 16 } }}>
+              Mark and review daily student attendance.
+            </Typography>
           </Box>
 
         </Stack>
@@ -418,8 +424,9 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
 
       {message ? <Alert severity={message.severity} sx={{ mb: 2 }} onClose={() => setMessage(null)}>{message.text}</Alert> : null}
 
-      <Paper sx={{ border: '1px solid rgba(59, 130, 246, 0.18)', borderRadius: 3, mx: { xs: 1, sm: 2 }, mb: { xs: 5, sm: 0 }, overflowX: "auto", maxWidth: '100%', boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
+      <Paper sx={{ border: '1px solid rgba(59, 130, 246, 0.18)', borderRadius: 0, mx: { xs: 1, sm: 2 }, mb: { xs: 5, sm: 0 }, overflowX: "auto", maxWidth: '100%', boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}>
         {!hasLoadedAttendance && loading ? <Loader variant='section' label='Loading attendance...' sx={{ py: 4, minHeight: 'auto' }} /> : !hasLoadedAttendance ? null : !classIds.length ? <Typography sx={{ p: 3 }} color="text.secondary">Select one or more classes to view students.</Typography> : loading ? <Loader variant='section' sx={{ py: 4, minHeight: 'auto' }} /> : students.length === 0 ? <Typography sx={{ p: 3 }} color="text.secondary">{debouncedSearch ? "No students match your search." : "No students found for this class."}</Typography> : (
+          <Box sx={{ maxHeight: { xs: '60dvh', md: '70dvh' }, overflow: 'auto' }}>
           <Table
             size="small"
             sx={{
@@ -428,7 +435,7 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
               '& .MuiTableCell-root': { whiteSpace: "nowrap" },
             }}
           >
-            <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff' } }}>
+            <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { position: 'sticky', top: 0, zIndex: 2, backgroundColor: '#0a336b', color: '#ffffff' } }}>
               <TableRow>
                 <TableCell sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>Enrollment ID</TableCell>
                 <TableCell sx={{ fontWeight: 700, whiteSpace: "nowrap", textAlign: "right" }}>Class</TableCell>
@@ -453,20 +460,49 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
               </TableRow>
             ))}</TableBody>
           </Table>
+          </Box>
         )}
-        {hasLoadedAttendance && classIds.length ? (
-          <TablePagination
+        {hasLoadedAttendance && classIds.length && !isMobile ? (
+          <AdminTablePagination
             component="div"
             count={total}
             page={page}
             onPageChange={(_event, next) => setPage(next)}
             rowsPerPage={pageSize}
             onRowsPerPageChange={(event) => setPageSize(Number(event.target.value))}
-            rowsPerPageOptions={[25, 50, 100, 200]}
+            rowsPerPageOptions={[10, 25, 50, 100]}
             sx={{ position: 'sticky', left: 0, maxWidth: '100%' }}
           />
         ) : null}
       </Paper>
+      {hasLoadedAttendance && classIds.length && isMobile ? (
+        <>
+          <Box sx={{ height: 'calc(96px + env(safe-area-inset-bottom, 0px))' }} />
+          <Box
+            sx={{
+              position: 'fixed',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: theme.zIndex.appBar + 1,
+              pb: 'env(safe-area-inset-bottom, 0px)',
+              backgroundColor: 'background.paper',
+              borderTop: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <AdminTablePagination
+              component="div"
+              count={total}
+              page={page}
+              onPageChange={(_event, next) => setPage(next)}
+              rowsPerPage={pageSize}
+              onRowsPerPageChange={(event) => setPageSize(Number(event.target.value))}
+              rowsPerPageOptions={[10, 25, 50, 100]}
+            />
+          </Box>
+        </>
+      ) : null}
       <Dialog open={holidayDialogOpen} onClose={() => !markingHoliday && setHolidayDialogOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Mark holiday</DialogTitle>
         <DialogContent>

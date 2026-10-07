@@ -209,8 +209,8 @@ function AdminLayoutContent({ children }) {
           transition: 'margin-left 0.3s ease-in-out',
           pt: 0,
           pb: { xs: 1, sm: 2, md: 3 },
-          px: { xs: ['attendance', 'results-3-16', 'users', 'classes', 'teachers', 'centers', 'students'].includes(activeView) || monthlyAttendanceViews.includes(activeView) ? 0 : 2, sm: monthlyAttendanceViews.includes(activeView) ? 0 : 3, md: 0 },
-          pr: { xs: ['attendance', 'results-3-16', 'users', 'classes', 'teachers', 'centers', 'students'].includes(activeView) || monthlyAttendanceViews.includes(activeView) ? 0 : 2, sm: monthlyAttendanceViews.includes(activeView) ? 0 : 3, md: 0 },
+          px: { xs: ['attendance', 'student-attendance', 'results', 'results-3-16', 'users', 'classes', 'teachers', 'centers', 'students', 'roles', 'assessments', 'assessments-3-16'].includes(activeView) || monthlyAttendanceViews.includes(activeView) ? 0 : 2, sm: monthlyAttendanceViews.includes(activeView) ? 0 : 3, md: 0 },
+          pr: { xs: ['attendance', 'student-attendance', 'results', 'results-3-16', 'users', 'classes', 'teachers', 'centers', 'students', 'roles', 'assessments', 'assessments-3-16'].includes(activeView) || monthlyAttendanceViews.includes(activeView) ? 0 : 2, sm: monthlyAttendanceViews.includes(activeView) ? 0 : 3, md: 0 },
           boxSizing: 'border-box',
           minWidth: 0,
           maxWidth: '100%',
@@ -221,7 +221,7 @@ function AdminLayoutContent({ children }) {
             ? (isMobile
               ? (drawerOpen ? '100dvh' : 'calc(100dvh - 73px)')
               : (drawerOpen ? '100dvh' : 'calc(100dvh - 73px)'))
-            : 'calc(100vh - 64px)',
+            : activeView === 'results' ? 'auto' : 'calc(100vh - 64px)',
           overflow: monthlyAttendanceViews.includes(activeView) && !isMobile ? 'hidden' : undefined,
         }}
       >

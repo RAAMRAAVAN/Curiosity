@@ -18,9 +18,9 @@ export default function AssessmentResultsRoutePage() {
 
   return (
     <Box sx={{ maxWidth: 1400, mx: 'auto', width: '100%', minWidth: 0 }}>
-      <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: '0 20px 48px rgba(15, 23, 42, 0.08)' }}>
+      <Paper sx={{ p: { xs:1, sm: 3 }, borderRadius: { xs: 0, sm: 3 }, boxShadow: { xs: 'none', sm: '0 20px 48px rgba(15, 23, 42, 0.08)' } }}>
         <Typography variant="h5" fontWeight={700} sx={{ mb: 2, fontSize: { xs: '1.25rem', sm: '1.5rem' }, overflowWrap: 'anywhere' }}>Assessment Results - A</Typography>
-        <Typography color="text.secondary" sx={{ mb: 3 }}>Review live submissions from students across subjects.</Typography>
+        <Typography color="text.secondary" sx={{ mb: 3, fontSize: { xs: '0', sm: '1rem' } }}>Review live submissions from students across subjects.</Typography>
         <AssessmentResultsDashboard assessmentId="" />
       </Paper>
     </Box>

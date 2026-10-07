@@ -387,7 +387,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
     return (
       <Box sx={{ mt: 2, minWidth: 0, maxWidth: '100%' }}>
         <TableContainer component={Paper} variant="outlined" sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-          <Table>
+          <Table sx={{ width: 'max-content', minWidth: '100%', '& .MuiTableCell-root': { whiteSpace: 'nowrap' } }}>
             <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700 } }}>
               <TableRow>
                 <TableCell>Assessment Name</TableCell>
@@ -596,7 +596,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
                 </Box>
 
                 <TableContainer component={Paper} variant="outlined" sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-                  <Table size="small">
+                  <Table size="small" sx={{ width: 'max-content', minWidth: '100%', '& .MuiTableCell-root': { whiteSpace: 'nowrap' } }}>
                     <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700 } }}>
                       <TableRow>
                         <TableCell>S.No</TableCell>
@@ -626,11 +626,13 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
               </>
             )}
           </DialogContent>
-          <DialogActions sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
-            <Button variant="contained" color="primary" onClick={export316ResultRowsToExcel} disabled={filteredResultDialogRows.length === 0} sx={{ width: { xs: '100%', sm: 'auto' }, minHeight: 44 }}>
-              Download Excel
-            </Button>
-          </DialogActions>
+          {!isMobile ? (
+            <DialogActions sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+              <Button variant="contained" color="primary" onClick={export316ResultRowsToExcel} disabled={filteredResultDialogRows.length === 0} sx={{ width: { xs: '100%', sm: 'auto' }, minHeight: 44 }}>
+                Download Excel
+              </Button>
+            </DialogActions>
+          ) : null}
         </Dialog>
       </Box>
     );
@@ -945,7 +947,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
   };
 
   return (
-    <Box sx={{ mt: 4, minWidth: 0, maxWidth: '100%' }}>
+    <Box sx={{ mt: { xs: 0, md: 4 }, minWidth: 0, maxWidth: '100%' }}>
       {/* <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
         Assessment Results Dashboard
       </Typography> */}
@@ -986,7 +988,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
             Assessment Summary
           </Typography>
           <TableContainer component={Paper} variant="outlined" sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-            <Table>
+            <Table sx={{ '& .MuiTableCell-root': { whiteSpace: 'nowrap' } }}>
               <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700 } }}>
                 <TableRow>
                   <TableCell>Assessment</TableCell>
@@ -1276,9 +1278,11 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
               <Box />
             )}
 
-            <Button variant="contained" size="small" onClick={downloadDetailResults} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-              Download Excel
-            </Button>
+            {!isMobile ? (
+              <Button variant="contained" size="small" onClick={downloadDetailResults}>
+                Download Excel
+              </Button>
+            ) : null}
           </Box>
 
           <Box sx={{ mb: 3 }}>
@@ -1310,7 +1314,7 @@ const AssessmentResultsDashboard = ({ assessmentId, assessmentType }) => {
             </Box>
           </Box>
           <TableContainer component={Paper} variant="outlined" sx={{ mt: 2, maxWidth: '100%', overflowX: 'auto' }}>
-            <Table>
+            <Table sx={{ '& .MuiTableCell-root': { whiteSpace: 'nowrap' } }}>
               <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700 } }}>
                 <TableRow>
                   {assessmentType === '3-16' ? (
