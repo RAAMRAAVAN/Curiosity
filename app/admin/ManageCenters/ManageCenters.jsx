@@ -14,6 +14,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  MenuItem,
   Paper,
   Stack,
   Table,
@@ -30,6 +31,14 @@ import {
 } from "@mui/material";
 import { Delete, Edit, Add } from "@mui/icons-material";
 
+const centerTypeOptions = [
+  { value: 'TUITION_CENTER', label: 'Tuition Centre' },
+  { value: 'SCHOOL', label: 'School' },
+  { value: 'MANAGEMENT_OFFICE', label: 'Management Office' },
+];
+
+const centerTypeLabels = Object.fromEntries(centerTypeOptions.map(({ value, label }) => [value, label]));
+
 export default function ManageCenters({ setMessage, role, permissions = [] }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -39,7 +48,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
   const { rows: centers, loading } = paged;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCenter, setEditingCenter] = useState(null);
-  const [form, setForm] = useState({ name: "", slug: "", status: true });
+  const [form, setForm] = useState({ name: "", slug: "", centerType: 'TUITION_CENTER', status: true });
   const [alert, setAlert] = useState(null);
 
   const hasPermission = (permission) => {
@@ -77,7 +86,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
     }
 
     setEditingCenter(null);
-    setForm({ name: "", slug: "", status: true });
+    setForm({ name: "", slug: "", centerType: 'TUITION_CENTER', status: true });
     setAlert(null);
     setDialogOpen(true);
   };
@@ -92,6 +101,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
     setForm({
       name: center.name || "",
       slug: center.slug || "",
+      centerType: center.centerType || 'TUITION_CENTER',
       status: center.status ?? true,
     });
     setAlert(null);
@@ -189,11 +199,12 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
 
       <Box sx={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0 }}>
       <TableContainer component={Paper} sx={{ flex: '1 1 auto', minHeight: 0, maxWidth: '100%', border: '1px solid rgba(59, 130, 246, 0.24)', borderRadius: { xs: 0, sm: 3 }, overflow: "auto", maxHeight: 'calc(100dvh - 300px)' }}>
-        <Table sx={{ minWidth: { xs: 500, sm: 600 } }}>
+        <Table sx={{ minWidth: { xs: 560, sm: 720 } }}>
           <TableHead sx={{ backgroundColor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff' } }}>
             <TableRow>
               <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Name</TableCell>
-              {!isMobile && <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Description</TableCell>}
+              {!isMobile && <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Slug</TableCell>}
+              <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Center Type</TableCell>
               <TableCell sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Status</TableCell>
               <TableCell align="right" sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>Actions</TableCell>
             </TableRow>
@@ -201,13 +212,13 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={isMobile ? 3 : 4} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={isMobile ? 4 : 5} align="center" sx={{ py: 4 }}>
                   <Loader variant='section' label='Loading centers...' sx={{ minHeight: 'auto', py: 0 }} />
                 </TableCell>
               </TableRow>
             ) : centers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isMobile ? 3 : 4} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={isMobile ? 4 : 5} align="center" sx={{ py: 4 }}>
                   No centers found.
                 </TableCell>
               </TableRow>
@@ -216,6 +227,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
                 <TableRow key={center.id} hover sx={{ '&:hover': { backgroundColor: '#f8fbff' } }}>
                   <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, overflowWrap: 'anywhere', minWidth: 120 }}>{center.name}</TableCell>
                   {!isMobile && <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>{center.slug}</TableCell>}
+                  <TableCell sx={{ fontSize: { xs: 12, sm: 14 }, whiteSpace: 'nowrap' }}>{centerTypeLabels[center.centerType] || centerTypeLabels.TUITION_CENTER}</TableCell>
                   <TableCell sx={{ fontSize: { xs: 12, sm: 14 } }}>
                     <Chip label={center.status ? "Active" : "Inactive"} color={center.status ? "success" : "default"} size="small" />
                   </TableCell>
@@ -321,6 +333,19 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
               helperText={editingCenter ? "Slug cannot be changed after creation" : "Exactly 3 uppercase letters"}
               size={isMobile ? "small" : "medium"}
             />
+            <TextField
+              select
+              label="Center Type"
+              value={form.centerType}
+              onChange={(e) => setForm({ ...form, centerType: e.target.value })}
+              fullWidth
+              required
+              size={isMobile ? "small" : "medium"}
+            >
+              {centerTypeOptions.map((option) => (
+                <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+              ))}
+            </TextField>
             <TextField
               select
               label="Status"

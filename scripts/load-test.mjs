@@ -8,17 +8,23 @@ const password = process.env.LOAD_TEST_PASSWORD;
 const concurrency = Number(process.env.LOAD_TEST_CONCURRENCY || 25);
 const durationSeconds = Number(process.env.LOAD_TEST_DURATION_SECONDS || 60);
 const timeoutMs = Number(process.env.LOAD_TEST_TIMEOUT_MS || 15000);
+const accessHeaders = process.env.CF_ACCESS_CLIENT_ID && process.env.CF_ACCESS_CLIENT_SECRET
+  ? {
+      "CF-Access-Client-Id": process.env.CF_ACCESS_CLIENT_ID,
+      "CF-Access-Client-Secret": process.env.CF_ACCESS_CLIENT_SECRET,
+    }
+  : {};
 
 const scenarios = [
   { name: "database health", weight: 5, path: "/api/health/db" },
   { name: "admin context", weight: 15, path: "/api/admin/me", auth: true },
   { name: "centers", weight: 10, path: "/api/admin/centers", auth: true },
-  { name: "teachers", weight: 15, path: "/api/admin/teachers", auth: true },
-  { name: "students", weight: 25, path: "/api/admin/students", auth: true },
+  { name: "teachers", weight: 15, path: "/api/admin/teachers?page=1&pageSize=50", auth: true },
+  { name: "students", weight: 25, path: "/api/admin/students?page=1&pageSize=50", auth: true },
   {
     name: "all-center attendance",
     weight: 30,
-    path: "/api/admin/attendance?centerId=all&classId=all",
+    path: "/api/admin/attendance?centerId=all&classId=all&page=1&pageSize=50",
     auth: true,
   },
 ];
@@ -82,7 +88,11 @@ async function fetchWithTimeout(path, options = {}) {
   const canonicalPath = `${pathname.endsWith("/") ? pathname : `${pathname}/`}${query ? `?${query}` : ""}`;
 
   try {
-    const response = await fetch(`${baseUrl}${canonicalPath}`, { ...options, signal: controller.signal });
+    const response = await fetch(`${baseUrl}${canonicalPath}`, {
+      ...options,
+      headers: { ...accessHeaders, ...options.headers },
+      signal: controller.signal,
+    });
     await response.arrayBuffer();
     return { status: response.status, elapsed: performance.now() - startedAt };
   } finally {
@@ -95,7 +105,7 @@ async function login() {
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const rawResponse = await fetch(`${baseUrl}/api/auth/login/`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { ...accessHeaders, "content-type": "application/json" },
     body: JSON.stringify({ email, password }),
     signal: controller.signal,
   });

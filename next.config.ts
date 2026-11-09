@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  distDir: process.env.NODE_ENV === 'development' ? '.next-dev-webpack' : '.next',
+  distDir: process.env.NEXT_BUILD_DIR === 'test'
+    ? '.next-test'
+    : process.env.NODE_ENV === 'development' ? '.next-dev-webpack' : '.next',
   // For static export (static hosting like Netlify, Vercel, GitHub Pages)
   // output: 'export',
   

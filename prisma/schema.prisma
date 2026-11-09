@@ -24,6 +24,12 @@ enum Role {
   PARENT
 }
 
+enum CenterType {
+  TUITION_CENTER
+  SCHOOL
+  MANAGEMENT_OFFICE
+}
+
 enum TeacherRole {
   OWNER
   EDITOR
@@ -72,6 +78,7 @@ model Center {
 
   name   String  @unique
   slug   String  @unique
+  centerType CenterType @default(TUITION_CENTER) @map("center_type")
   status Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -119,6 +126,9 @@ model User {
   admin      Admin?
   management Management?
   parent     Parent?
+
+  studentsAdded    Student[] @relation("StudentAddedBy")
+  studentsModified Student[] @relation("StudentModifiedBy")
 
   classAccesses               UserClassAccess[]
   subjectAccesses             UserSubjectAccess[]
@@ -416,6 +426,11 @@ model Student {
   userId String @unique @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  addedById    String? @map("added_by")
+  addedBy      User?   @relation("StudentAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
+  modifiedById String? @map("modified_by")
+  modifiedBy   User?   @relation("StudentModifiedBy", fields: [modifiedById], references: [id], onDelete: SetNull)
+
   centerId String? @map("center_id")
   center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
 
@@ -434,6 +449,46 @@ model Student {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model StudentAuditLog {
+  id          String   @id @default(cuid())
+  studentId   String   @map("student_id")
+  studentName String   @map("student_name")
+  centerId    String?  @map("center_id")
+  classId     String?  @map("class_id")
+  actorId     String?  @map("actor_id")
+  actorName   String   @map("actor_name")
+  action      String
+  changes     Json
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([studentId, createdAt])
+  @@index([centerId, createdAt])
+  @@index([createdAt])
+  @@map("student_audit_logs")
+}
+
+model StudentAttendanceAuditLog {
+  id             String   @id @default(cuid())
+  studentId      String   @map("student_id")
+  studentName    String   @map("student_name")
+  attendanceDate DateTime @map("attendance_date") @db.Date
+  centerId       String?  @map("center_id")
+  centerName     String?  @map("center_name")
+  classId        String?  @map("class_id")
+  className      String?  @map("class_name")
+  actorId        String?  @map("actor_id")
+  actorName      String   @map("actor_name")
+  action         String
+  beforeStatus   String?  @map("before_status")
+  afterStatus    String?  @map("after_status")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([studentId, attendanceDate, createdAt])
+  @@index([centerId, attendanceDate])
+  @@index([createdAt])
+  @@map("student_attendance_audit_logs")
 }
 
 model Admin {

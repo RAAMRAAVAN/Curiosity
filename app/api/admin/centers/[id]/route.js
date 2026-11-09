@@ -3,6 +3,8 @@ import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { isValidCenterSlug, normalizeCenterSlug } from "@/lib/centerSlug";
 
+const centerTypes = new Set(['TUITION_CENTER', 'SCHOOL', 'MANAGEMENT_OFFICE']);
+
 export async function PATCH(req, { params }) {
   const auth = await requireAdminPermission(req, 'centers.edit');
   if (!auth.ok) {
@@ -20,6 +22,13 @@ export async function PATCH(req, { params }) {
         return ApiResponse.error("Slug must contain exactly 3 uppercase letters", 400);
       }
       updateData.slug = slug;
+    }
+    if (body.centerType !== undefined) {
+      const centerType = String(body.centerType || '').trim().toUpperCase();
+      if (!centerTypes.has(centerType)) {
+        return ApiResponse.error('Choose a valid center type.', 400);
+      }
+      updateData.centerType = centerType;
     }
     if (body.status !== undefined) updateData.status = Boolean(body.status);
 

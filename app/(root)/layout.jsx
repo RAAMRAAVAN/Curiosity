@@ -3,7 +3,7 @@ import { ReactNode } from "react";
 
 // ✅ Dynamically generate metadata
 export async function generateMetadata() {
-  const hospital = {HospitalName: "Curiosity With PK", domain: "https://evurev.com", smallName:"edu"};
+  const hospital = {HospitalName: "Curiosity", domain: "https://evurev.com", smallName:"edu"};
 
   return {
     metadataBase: new URL(hospital.domain),

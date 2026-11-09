@@ -4,6 +4,8 @@ import { requireAdminPermission } from '@/lib/adminRbac';
 import { isValidCenterSlug, normalizeCenterSlug } from "@/lib/centerSlug";
 import { buildPaginationMeta, containsFilter, parsePagination } from "@/lib/pagination";
 
+const centerTypes = new Set(['TUITION_CENTER', 'SCHOOL', 'MANAGEMENT_OFFICE']);
+
 export async function GET(req) {
   const auth = await requireAdminPermission(req, [
     'centers.view',
@@ -56,14 +58,19 @@ export async function POST(req) {
   try {
     const body = await req.json();
     const slug = normalizeCenterSlug(body.slug);
+    const centerType = String(body.centerType || 'TUITION_CENTER').trim().toUpperCase();
     if (!body.name || !isValidCenterSlug(slug)) {
       return ApiResponse.error("Name and a unique 3-letter uppercase slug are required", 400);
+    }
+    if (!centerTypes.has(centerType)) {
+      return ApiResponse.error('Choose a valid center type.', 400);
     }
 
     const center = await prisma.center.create({
       data: {
         name: body.name,
         slug,
+        centerType,
         status: body.status !== undefined ? Boolean(body.status) : true,
       },
     });

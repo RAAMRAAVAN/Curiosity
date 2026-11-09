@@ -6,6 +6,7 @@ import { ApiResponse } from "@/utils/apiResponse";
 import { nextStudentId } from "@/lib/studentId";
 import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
 import { createStudentIdentityKey, isStudentIdentityTaken } from "@/lib/studentIdentity";
+import { createStudentAuditLog, getStudentAuditChanges, getStudentAuditSnapshot } from "@/lib/studentAudit";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_GENDERS = new Set(["Male", "Female", "Other", "Prefer not to say"]);
@@ -144,6 +145,10 @@ export async function POST(req) {
 
     const generatedPassword = "123456";
     const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+    const actor = await prisma.user.findUnique({
+      where: { id: auth.actor.userId },
+      select: { name: true },
+    });
     const created = await prisma.$transaction(async (tx) => {
       const result = [];
       for (const row of preparedRows) {
@@ -167,6 +172,7 @@ export async function POST(req) {
             status: row.status,
             student: {
               create: {
+                addedById: auth.actor.userId,
                 centerId: row.center.id,
                 studyingClass: row.selectedClass.id,
                 dob: row.dob,
@@ -180,6 +186,29 @@ export async function POST(req) {
             },
           },
           select: { id: true },
+        });
+        const snapshot = getStudentAuditSnapshot(
+          { name: row.name, email, status: row.status },
+          {
+            centerId: row.center.id,
+            studyingClass: row.selectedClass.id,
+            dob: row.dob,
+            gender: row.gender,
+            schoolName: row.schoolName,
+            teaGarden: row.teaGarden,
+            fatherName: row.fatherName,
+            motherName: row.motherName,
+          },
+        );
+        await createStudentAuditLog(tx, {
+          studentId: user.id,
+          studentName: row.name,
+          centerId: row.center.id,
+          classId: row.selectedClass.id,
+          actorId: auth.actor.userId,
+          actorName: actor?.name,
+          action: "IMPORTED",
+          changes: getStudentAuditChanges({}, snapshot),
         });
         result.push(user.id);
       }

@@ -3,21 +3,14 @@ import { requireAdminPermission } from "@/lib/adminRbac";
 import { ApiResponse } from "@/utils/apiResponse";
 import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
 import { buildPaginationMeta, containsFilter, parsePagination } from "@/lib/pagination";
+import { createStudentAttendanceAuditLog } from "@/lib/studentAttendanceAudit";
+import { getIndiaDateString } from "@/lib/indiaDate";
 
 function dateValue(value) {
   const raw = String(value || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
   const date = new Date(`${raw}T00:00:00.000Z`);
   return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function todayValue() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
 }
 
 function sortClasses(classes) {
@@ -83,7 +76,7 @@ export async function GET(req) {
   if (!auth.ok) return ApiResponse.error(auth.message, auth.status);
 
   try {
-    const dateText = searchParams.get("date") || todayValue();
+    const dateText = searchParams.get("date") || getIndiaDateString();
     const date = dateValue(dateText);
     const requestedClassIds = (searchParams.get("classId") || "").split(",").map((value) => value.trim()).filter(Boolean);
     const scope = await attendanceScope(auth.actor, searchParams.get("centerId"));
@@ -102,9 +95,9 @@ export async function GET(req) {
     });
     const classes = sortClasses(rawClasses);
     if (isMonthlyOptionsRequest) {
-      return ApiResponse.success({ center: scope.center, classes, students: [], date: dateText, today: todayValue() });
+      return ApiResponse.success({ center: scope.center, classes, students: [], date: dateText, today: getIndiaDateString() });
     }
-    if (!requestedClassIds.length) return ApiResponse.success({ center: scope.center, classes, students: [], date: dateText, today: todayValue() });
+    if (!requestedClassIds.length) return ApiResponse.success({ center: scope.center, classes, students: [], date: dateText, today: getIndiaDateString() });
 
     const classMap = Object.fromEntries(classes.map((item) => [item.id, item.className]));
     const isAllClasses = requestedClassIds.includes("all");
@@ -157,7 +150,7 @@ export async function GET(req) {
           ? selectedClasses[0]
           : { id: selectedClassIds.join(","), className: "Selected classes" },
       date: dateText,
-      today: todayValue(),
+      today: getIndiaDateString(),
       students: users.map((user) => ({
         id: user.id,
         name: user.name,
@@ -186,11 +179,14 @@ export async function POST(req) {
 
   try {
     const body = await req.json();
-    const dateText = String(body.date || todayValue());
+    const dateText = String(body.date || getIndiaDateString());
     const date = dateValue(dateText);
     if (!date) return ApiResponse.error("Invalid attendance date.", 400);
 
-    const today = todayValue();
+    const today = getIndiaDateString();
+    if (dateText > today) {
+      return ApiResponse.error("Attendance cannot be marked for future dates. Use Mark Holiday instead.", 403);
+    }
     if (!auth.actor.hasPermission("attendance.mark") && !auth.actor.hasPermission("attendance.edit")) {
       return ApiResponse.error("You are not authorized to change attendance.", 403);
     }
@@ -208,18 +204,46 @@ export async function POST(req) {
     }
     const classRecord = await prisma.class.findFirst({
       where: { id: body.classId, status: true, OR: [{ centerId: { in: scope.centerIds } }, { centerId: null }] },
-      select: { id: true },
+      select: { id: true, className: true },
     });
     if (!classRecord) return ApiResponse.error("Class is not available for this center.", 403);
 
     const student = await prisma.user.findFirst({
       where: { id: body.studentId, role: "STUDENT", student: { centerId: { in: scope.centerIds }, studyingClass: body.classId } },
-      select: { id: true, student: { select: { centerId: true } } },
+      select: { id: true, name: true, student: { select: { centerId: true, center: { select: { name: true } } } } },
     });
     if (!student) return ApiResponse.error("Student is not in the selected class and center.", 403);
 
+    const actor = await prisma.user.findUnique({
+      where: { id: auth.actor.userId },
+      select: { name: true },
+    });
+
     if (body.status === null || body.status === "REVERT") {
-      await prisma.studentAttendance.deleteMany({ where: { attendanceDate: date, studentId: student.id } });
+      await prisma.$transaction(async (tx) => {
+        const existing = await tx.studentAttendance.findUnique({
+          where: { attendanceDate_studentId: { attendanceDate: date, studentId: student.id } },
+          select: { status: true, centerId: true, classId: true },
+        });
+        if (!existing) return;
+
+        await tx.studentAttendance.delete({
+          where: { attendanceDate_studentId: { attendanceDate: date, studentId: student.id } },
+        });
+        await createStudentAttendanceAuditLog(tx, {
+          studentId: student.id,
+          studentName: student.name,
+          attendanceDate: date,
+          centerId: existing.centerId,
+          centerName: student.student.center?.name,
+          classId: existing.classId,
+          className: classRecord.className,
+          actorId: auth.actor.userId,
+          actorName: actor?.name,
+          beforeStatus: existing.status,
+          afterStatus: null,
+        });
+      });
       return ApiResponse.success({ studentId: student.id, status: null, markedAt: null, markedBy: null, markedByName: null }, "Attendance reverted.");
     }
 
@@ -227,17 +251,39 @@ export async function POST(req) {
       return ApiResponse.error("Attendance status must be PRESENT or ABSENT.", 400);
     }
 
-    const record = await prisma.studentAttendance.upsert({
-      where: { attendanceDate_studentId: { attendanceDate: date, studentId: student.id } },
-      create: { attendanceDate: date, studentId: student.id, centerId: student.student.centerId, classId: classRecord.id, status: body.status, markedBy: auth.actor.userId },
-      update: { centerId: student.student.centerId, classId: classRecord.id, status: body.status, markedBy: auth.actor.userId, markedAt: new Date() },
-      select: {
-        studentId: true,
-        status: true,
-        markedAt: true,
-        markedBy: true,
-        marker: { select: { name: true } },
-      },
+    const record = await prisma.$transaction(async (tx) => {
+      const attendanceKey = { attendanceDate_studentId: { attendanceDate: date, studentId: student.id } };
+      const existing = await tx.studentAttendance.findUnique({
+        where: attendanceKey,
+        select: { status: true },
+      });
+      const updatedRecord = await tx.studentAttendance.upsert({
+        where: attendanceKey,
+        create: { attendanceDate: date, studentId: student.id, centerId: student.student.centerId, classId: classRecord.id, status: body.status, markedBy: auth.actor.userId },
+        update: { centerId: student.student.centerId, classId: classRecord.id, status: body.status, markedBy: auth.actor.userId, markedAt: new Date() },
+        select: {
+          studentId: true,
+          status: true,
+          markedAt: true,
+          markedBy: true,
+          marker: { select: { name: true } },
+        },
+      });
+
+      await createStudentAttendanceAuditLog(tx, {
+        studentId: student.id,
+        studentName: student.name,
+        attendanceDate: date,
+        centerId: student.student.centerId,
+        centerName: student.student.center?.name,
+        classId: classRecord.id,
+        className: classRecord.className,
+        actorId: auth.actor.userId,
+        actorName: actor?.name,
+        beforeStatus: existing?.status,
+        afterStatus: body.status,
+      });
+      return updatedRecord;
     });
 
     return ApiResponse.success({

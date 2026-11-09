@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import { prisma } from "@/server/prisma";
 import { requireAdminPermission } from "@/lib/adminRbac";
 import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
+import { getIndiaDateString } from "@/lib/indiaDate";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -16,15 +17,6 @@ function dateValue(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
   const date = new Date(`${raw}T00:00:00.000Z`);
   return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function todayValue() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
 }
 
 function toExcelLocalDate(value) {
@@ -88,7 +80,7 @@ export async function GET(req) {
 
   try {
     const { searchParams } = new URL(req.url);
-    const dateText = searchParams.get("date") || todayValue();
+    const dateText = searchParams.get("date") || getIndiaDateString();
     const date = dateValue(dateText);
     const classId = searchParams.get("classId") || "";
     const scope = await attendanceScope(auth.actor, searchParams.get("centerId"));

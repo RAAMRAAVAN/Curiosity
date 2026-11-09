@@ -61,6 +61,12 @@ const AdminDrawer = ({
   const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [adminModuleMode, setAdminModuleMode] = useState('assessment');
+
+  useEffect(() => {
+    const savedModule = sessionStorage.getItem('adminModule');
+    setAdminModuleMode(savedModule === 'assets' ? 'assets' : 'assessment');
+  }, []);
 
   const normalizedPermissions = Array.isArray(permissions)
     ? permissions.map((item) => String(item || '').toLowerCase())
@@ -241,13 +247,13 @@ const AdminDrawer = ({
   const visibleAssessmentItems = assessmentSubmenuItems.filter((item) => hasPermission(item.permission));
   const visibleAssetManagementItems = assetManagementSubmenuItems.filter((item) => hasPermission(item.permission));
   const visibleAttendanceItems = attendanceSubmenuItems.filter((item) => hasPermission(item.permission));
-  const visibleMenuItems = menuItems.filter((item) => {
+  const visibleMenuItems = adminModuleMode === 'assets' ? [] : menuItems.filter((item) => {
     if (!item.permission) return true;
     return hasPermission(item.permission);
   });
-  const shouldShowAssessmentModule = visibleAssessmentItems.length > 0;
-  const shouldShowAssetManagementModule = visibleAssetManagementItems.length > 0;
-  const shouldShowAttendanceModule = visibleAttendanceItems.length > 0;
+  const shouldShowAssessmentModule = adminModuleMode !== 'assets' && visibleAssessmentItems.length > 0;
+  const shouldShowAssetManagementModule = adminModuleMode === 'assets' && visibleAssetManagementItems.length > 0;
+  const shouldShowAttendanceModule = adminModuleMode !== 'assets' && visibleAttendanceItems.length > 0;
   const isAssessmentViewActive = visibleAssessmentItems.some((item) => item.value === adminView);
   const isAssetManagementViewActive = visibleAssetManagementItems.some((item) => item.value === adminView);
   const isAttendanceViewActive = visibleAttendanceItems.some((item) => item.value === adminView);
@@ -680,6 +686,7 @@ const AdminDrawer = ({
           <ListItemButton
             onClick={() => {
               sessionStorage.removeItem("authDetails");
+              sessionStorage.removeItem('adminModule');
               document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
               window.location.href = "/";
             }}

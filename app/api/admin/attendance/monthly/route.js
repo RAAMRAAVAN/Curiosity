@@ -3,16 +3,11 @@ import { requireAdminPermission } from '@/lib/adminRbac';
 import { ApiResponse } from '@/utils/apiResponse';
 import { getTeacherAssignedClassIds } from '@/lib/teacherClassAccess';
 import { buildPaginationMeta, containsFilter, parsePagination } from '@/lib/pagination';
-
-function getMonthDates(year, month) {
-  const start = new Date(year, month - 1, 1);
-  const end = new Date(year, month, 0);
-  const dates = [];
-  for (let day = 1; day <= end.getDate(); day += 1) {
-    dates.push(new Date(year, month - 1, day));
-  }
-  return dates;
-}
+import {
+  getMonthlyAttendanceDateKey,
+  getMonthlyAttendanceDates,
+  getMonthlyAttendanceRange,
+} from '@/lib/monthlyAttendanceDates';
 
 async function getCenterIds(actor, centerId) {
   const requestedCenterIds = String(centerId || '')
@@ -73,9 +68,8 @@ export async function GET(req) {
     }
     const classNameById = new Map(classes.map(({ id, className }) => [id, className]));
 
-    const monthDates = getMonthDates(year, month);
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
+    const monthDates = getMonthlyAttendanceDates(year, month);
+    const { start, endExclusive } = getMonthlyAttendanceRange(year, month);
 
     const pagination = parsePagination(req);
     const userWhere = {
@@ -107,8 +101,8 @@ export async function GET(req) {
         classId: { in: requestedClassIds },
         ...(pagination ? { studentId: { in: users.map((user) => user.id) } } : {}),
         attendanceDate: {
-          gte: new Date(year, month - 1, 1),
-          lte: new Date(year, month, 0, 23, 59, 59, 999),
+          gte: start,
+          lt: endExclusive,
         },
       },
       select: {
@@ -119,7 +113,7 @@ export async function GET(req) {
     });
 
     const attendanceMap = attendanceRecords.reduce((acc, item) => {
-      const dateKey = new Date(item.attendanceDate).toISOString().slice(0, 10);
+      const dateKey = getMonthlyAttendanceDateKey(item.attendanceDate);
       if (!acc[item.studentId]) acc[item.studentId] = {};
       acc[item.studentId][dateKey] = item.status;
       return acc;
@@ -132,7 +126,7 @@ export async function GET(req) {
       let holidayCount = 0;
 
       monthDates.forEach((currentDate) => {
-        const dateKey = currentDate.toISOString().slice(0, 10);
+        const dateKey = getMonthlyAttendanceDateKey(currentDate);
         const status = attendanceMap[user.id]?.[dateKey] || '—';
         dailyStatus[dateKey] = status;
 
@@ -158,7 +152,8 @@ export async function GET(req) {
       month,
       year,
       rows,
-      monthLabel: new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1)),
+      monthLabel: new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+        .format(new Date(Date.UTC(year, month - 1, 1))),
     };
     return pagination
       ? ApiResponse.paginated(payload, buildPaginationMeta(totalStudents, pagination))

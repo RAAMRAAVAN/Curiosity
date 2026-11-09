@@ -26,6 +26,10 @@ import {
 import ScreenRotation from '@mui/icons-material/ScreenRotation';
 import Loader from '@/app/(components)/Loader';
 import { useAdminAuth } from '../../AdminAuthContext';
+import {
+  getMonthlyAttendanceDateKey,
+  getMonthlyAttendanceDates,
+} from '@/lib/monthlyAttendanceDates';
 
 const monthOptions = Array.from({ length: 12 }, (_, index) => {
   const month = index + 1;
@@ -35,14 +39,6 @@ const monthOptions = Array.from({ length: 12 }, (_, index) => {
     label: new Date(2024, month - 1, 1).toLocaleString('en-US', { month: 'long' }),
   };
 });
-
-function monthStart(date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-function monthEnd(date) {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
-}
 
 function calculatePresentCount(attendance) {
   if (!Array.isArray(attendance) || !attendance.length) return 0;
@@ -138,13 +134,7 @@ export default function StudentMonthlyAttendancePage() {
   }, [centersLoaded, selectedCenterId]);
 
   const monthDates = useMemo(() => {
-    const start = new Date(selectedYear, selectedMonth - 1, 1);
-    const end = monthEnd(start);
-    const dates = [];
-    for (let day = 1; day <= end.getDate(); day += 1) {
-      dates.push(new Date(selectedYear, selectedMonth - 1, day));
-    }
-    return dates;
+    return getMonthlyAttendanceDates(selectedYear, selectedMonth);
   }, [selectedMonth, selectedYear]);
 
   const filteredRows = rows;
@@ -449,8 +439,8 @@ export default function StudentMonthlyAttendancePage() {
                     borderBottom: '2px solid #cbd8e3',
                   }}>Student</TableCell>
                   {monthDates.map((date) => (
-                    <TableCell key={date.toISOString()} title={date.toLocaleDateString('en-US', { dateStyle: 'full' })} align='center' sx={{ position: 'sticky', top: 0, zIndex: 2, width: '2%', minWidth: 0, px: 0, fontWeight: 700, backgroundColor: '#edf3f8', borderBottom: '2px solid #cbd8e3' }}>
-                      {date.getDate()}
+                    <TableCell key={getMonthlyAttendanceDateKey(date)} title={date.toLocaleDateString('en-US', { dateStyle: 'full', timeZone: 'UTC' })} align='center' sx={{ position: 'sticky', top: 0, zIndex: 2, width: '2%', minWidth: 0, px: 0, fontWeight: 700, backgroundColor: '#edf3f8', borderBottom: '2px solid #cbd8e3' }}>
+                      {date.getUTCDate()}
                     </TableCell>
                   ))}
                   <TableCell align='center' sx={{ position: 'sticky', top: 0, zIndex: 2, width: '5.99%', px: 0.5, whiteSpace: 'nowrap', fontWeight: 700, backgroundColor: '#edf3f8', borderBottom: '2px solid #cbd8e3' }}>Present</TableCell>
@@ -500,7 +490,7 @@ export default function StudentMonthlyAttendancePage() {
                       <span title={row.studentName} style={{ fontWeight: 500 }}>{row.studentName}</span>
                     </TableCell>
                     {monthDates.map((date) => {
-                      const dayKey = date.toISOString().slice(0, 10);
+                      const dayKey = getMonthlyAttendanceDateKey(date);
                       const status = row.dailyStatus[dayKey] || '—';
                       const statusLabel = status === '—' ? 'No record' : status.replace('_', ' ').toLowerCase();
                       const statusBackground = status === 'PRESENT'
@@ -534,7 +524,7 @@ export default function StudentMonthlyAttendancePage() {
                         <TableCell key={`${row.id}-${dayKey}`} align='center' sx={{ width: 40, minWidth: 40, px: 0.25 }}>
                           <Box
                             component='span'
-                            title={`${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: ${statusLabel}`}
+                            title={`${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}: ${statusLabel}`}
                             sx={{
                               width: 24,
                               height: 24,

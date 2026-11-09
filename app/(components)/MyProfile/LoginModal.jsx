@@ -14,6 +14,10 @@ import {
   Button,
   Typography,
   Box,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
   IconButton,
   InputAdornment,
 } from "@mui/material";
@@ -46,6 +50,7 @@ const LoginModal = ({
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [adminModule, setAdminModule] = useState('assessment');
 
   const handleChange = (e) => {
     setForm((prev) => ({
@@ -77,6 +82,9 @@ const LoginModal = ({
       const data = await res.json();
 
       if (data.success) {
+        const userRole = (data.data?.role || data.data?.userType || '').toString().toUpperCase();
+        const isAdminPanelUser = ['ADMIN', 'MANAGEMENT'].includes(userRole);
+        let selectedModule = isAdminPanelUser && adminModule === 'assets' ? 'assets' : 'assessment';
         const authData = {
           email: form.email,
           user: data.data,
@@ -87,23 +95,63 @@ const LoginModal = ({
           "authDetails",
           JSON.stringify(authData)
         );
+        if (isAdminPanelUser) {
+          sessionStorage.setItem('adminModule', selectedModule);
+        } else {
+          sessionStorage.removeItem('adminModule');
+        }
 
         dispatch(setAuthUser(authData.user));
         dispatch(setDefaultClass(authData.user.studyingClass || 1));
 
         onClose();
 
-        const userRole = (authData.user?.role || authData.user?.userType || "")
-          .toString()
-          .toUpperCase();
-        const redirectPath =
-          userRole === "ADMIN"
-            ? "/admin/users"
-            : userRole === "TEACHER"
-              ? "/admin/attendance/teachers"
-              : userRole === "MANAGEMENT"
-                ? "/admin/attendance/management"
+        let redirectPath = userRole === 'ADMIN'
+          ? '/admin/users'
+          : userRole === 'TEACHER'
+            ? '/admin/attendance/teachers'
+            : userRole === 'MANAGEMENT'
+              ? '/admin/attendance/management'
               : `/courses/${authData.user.studyingClass || 1}/home`;
+
+        if (isAdminPanelUser && selectedModule === 'assets') {
+          try {
+            const adminResponse = await fetch('/api/admin/me/', { credentials: 'include' });
+            const adminResult = await adminResponse.json();
+            const moduleUser = adminResult?.data || {};
+            const permissions = [
+              ...(Array.isArray(moduleUser.permissions) ? moduleUser.permissions : []),
+              ...(Array.isArray(moduleUser.customRole?.permissions) ? moduleUser.customRole.permissions : []),
+            ].map((permission) => String(permission || '').toLowerCase());
+            const hasAssetPermission = (permission) => userRole === 'ADMIN'
+              || permissions.includes('*')
+              || permissions.includes(permission)
+              || permissions.some((granted) => granted.endsWith('.*') && permission.startsWith(`${granted.slice(0, -2)}.`));
+            const assetRoutes = [
+              ['asset_categories.view', '/admin/asset-management/categories'],
+              ['asset_items.view', '/admin/asset-management/items'],
+              ['asset_list.view', '/admin/asset-management/assets'],
+              ['asset_transfer.view', '/admin/asset-management/transfers'],
+              ['asset_receive.view', '/admin/asset-management/receive'],
+              ['asset_tracking.view', '/admin/asset-management/tracking'],
+              ['asset_reports.view', '/admin/asset-management/reports'],
+            ];
+            const accessibleAssetRoute = assetRoutes.find(([permission]) => hasAssetPermission(permission));
+
+            if (adminResponse.ok && adminResult.success && accessibleAssetRoute) {
+              redirectPath = accessibleAssetRoute[1];
+            } else {
+              selectedModule = 'assessment';
+              sessionStorage.setItem('adminModule', selectedModule);
+              alert('Your account does not have access to Asset Management. Opening Assessment Module instead.');
+            }
+          } catch (moduleError) {
+            console.error('Unable to resolve Asset Management access:', moduleError);
+            selectedModule = 'assessment';
+            sessionStorage.setItem('adminModule', selectedModule);
+            alert('Unable to verify Asset Management access. Opening Assessment Module instead.');
+          }
+        }
 
         router.replace(redirectPath);
       } else {
@@ -274,12 +322,12 @@ const LoginModal = ({
 
       <DialogContent sx={{ gridColumn: useFullScreenLayout ? { xs: "1", md: "2" } : undefined, gridRow: useFullScreenLayout ? { xs: "4", md: "2" } : undefined, alignSelf: "stretch", display: useFullScreenLayout ? "flex" : undefined, flexDirection: useFullScreenLayout ? "column" : undefined, justifyContent: useFullScreenLayout ? "center" : undefined, transform: useFullScreenLayout ? { xs: "none", md: "translateX(-80px)" } : undefined, p: useFullScreenLayout ? { xs: 3, sm: 5, md: 4 } : 4, width: "100%" }}>
         {useFullScreenLayout ? (
-          <Typography component="h2" sx={{ fontSize: { xs: 28, sm: 32 }, lineHeight: 1.15, fontWeight: 800, mb: 4, textAlign: { xs: "center", md: "left" } }}>
-            Welcome to CBLC<br />Management
+          <Typography component="h2" sx={{ fontSize: { xs: 18, sm: 32 }, lineHeight: 1.15, fontWeight: 800, mb: 4, textAlign: { xs: "center", md: "left" } }}>
+            Welcome to CBLC Management
           </Typography>
         ) : null}
 
-        <Box display="flex" flexDirection="column" gap={2} mt={1}>
+        <Box display="flex" flexDirection="column" gap={2} mt={0}>
 
           <TextField
             label="Email Address"
@@ -425,7 +473,57 @@ const LoginModal = ({
             }}
           />
 
-          {showForgotPassword && (
+          {useFullScreenLayout ? (
+            <FormControl fullWidth variant="outlined">
+              <InputLabel id="admin-module-select-label">Module</InputLabel>
+              <Select
+                labelId="admin-module-select-label"
+                label="Module"
+                value={adminModule}
+                onChange={(event) => setAdminModule(event.target.value)}
+                MenuProps={{
+                  anchorOrigin: { vertical: 'bottom', horizontal: 'left' },
+                  transformOrigin: { vertical: 'top', horizontal: 'left' },
+                  PaperProps: {
+                    sx: {
+                      mt: 0.75,
+                      minWidth: 260,
+                      border: '1px solid rgba(38, 59, 65, 0.12)',
+                      borderRadius: 2,
+                      boxShadow: '0 12px 30px rgba(15, 35, 43, 0.16)',
+                    },
+                  },
+                  MenuListProps: {
+                    sx: {
+                      p: 0.75,
+                      '& .MuiMenuItem-root': {
+                        minHeight: 48,
+                        px: 1.5,
+                        borderRadius: 1,
+                        color: '#263b41',
+                        '&.Mui-selected': { backgroundColor: '#e8f4f1' },
+                        '&.Mui-selected:hover': { backgroundColor: '#dceeea' },
+                        '&:hover': { backgroundColor: '#f4f8f7' },
+                      },
+                    },
+                  },
+                }}
+                sx={{
+                  borderRadius: 2,
+                  backgroundColor: '#ffffff',
+                  boxShadow: '0 8px 20px rgba(15, 23, 42, 0.06)',
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(148, 163, 184, 0.8)' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#7c3aed' },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b8c82' },
+                }}
+              >
+                <MenuItem value="assessment">Assessment Module</MenuItem>
+                <MenuItem value="assets">Asset Management</MenuItem>
+              </Select>
+            </FormControl>
+          ) : null}
+
+          {/* {showForgotPassword && (
             <Box textAlign="right">
               <Button
                 size="small"
@@ -436,10 +534,10 @@ const LoginModal = ({
                 Forgot Password?
               </Button>
             </Box>
-          )}
+          )} */}
         </Box>
 
-        {showSignup && (
+        {/* {showSignup && (
           <Box
             display="flex"
             alignItems="center"
@@ -457,9 +555,9 @@ const LoginModal = ({
 
             <Box flex={1} height={1} bgcolor="#E5E7EB" />
           </Box>
-        )}
+        )} */}
 
-        {showSignup && (
+        {/* {showSignup && (
           <Box
             sx={{
               bgcolor: "#F8FAFC",
@@ -486,7 +584,7 @@ const LoginModal = ({
               Create Free Account
             </Button>
           </Box>
-        )}
+        )} */}
 
         {useFullScreenLayout ? (
           <Button
@@ -496,7 +594,7 @@ const LoginModal = ({
             disabled={loading}
             onClick={handleSubmit}
             sx={{
-              mt: 5,
+              mt: 1,
               py: 1.5,
               borderRadius: 1.5,
               textTransform: "none",
@@ -514,7 +612,7 @@ const LoginModal = ({
         ) : null}
 
       </DialogContent>
-
+{/* 
       <DialogActions sx={{ display: useFullScreenLayout ? "none" : "flex", gridColumn: useFullScreenLayout ? { xs: "1", md: "2" } : undefined, gridRow: useFullScreenLayout ? { xs: "5", md: "3" } : undefined, alignSelf: "start", px: useFullScreenLayout ? { xs: 3, sm: 5, md: 4 } : 4, pb: useFullScreenLayout ? { xs: 3, md: 4 } : 4 }}>
         <Button
           fullWidth
@@ -546,7 +644,7 @@ const LoginModal = ({
             "Login"
           )}
         </Button>
-      </DialogActions>
+      </DialogActions> */}
 
       {loading ? <Loader variant='overlay' label='Signing you in...' /> : null}
     </Dialog>

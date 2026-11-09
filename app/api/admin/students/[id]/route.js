@@ -4,6 +4,7 @@ import { requireAdminPermission } from '@/lib/adminRbac';
 import bcrypt from "bcryptjs";
 import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
 import { createStudentIdentityKey, isStudentIdentityTaken } from "@/lib/studentIdentity";
+import { createStudentAuditLog, getStudentAuditChanges, getStudentAuditSnapshot } from "@/lib/studentAudit";
 
 function formatDateValue(value) {
   if (!value) return "";
@@ -228,13 +229,39 @@ export async function PATCH(req, { params }) {
       ...(body.teaGarden !== undefined ? { teaGarden: body.teaGarden?.trim() || null } : {}),
     };
 
+    const before = getStudentAuditSnapshot(targetUser);
+    const after = getStudentAuditSnapshot(
+      { ...targetUser, ...updateData },
+      { ...existingProfile, ...profileData },
+    );
+    const changes = getStudentAuditChanges(before, after);
+    if (body.password) {
+      changes.Password = { before: null, after: "Changed" };
+    }
+    const actor = await prisma.user.findUnique({
+      where: { id: auth.actor.userId },
+      select: { name: true },
+    });
+
     await prisma.$transaction(async (tx) => {
       await tx.user.update({ where: { id }, data: updateData });
-      await tx.student.upsert({
+      const updatedProfile = await tx.student.upsert({
         where: { userId: id },
-        create: { userId: id, ...profileData },
-        update: profileData,
+        create: { userId: id, addedById: auth.actor.userId, ...profileData },
+        update: { ...profileData, modifiedById: auth.actor.userId },
       });
+      if (Object.keys(changes).length) {
+        await createStudentAuditLog(tx, {
+          studentId: id,
+          studentName: name,
+          centerId: updatedProfile.centerId,
+          classId: updatedProfile.studyingClass,
+          actorId: auth.actor.userId,
+          actorName: actor?.name,
+          action: "UPDATED",
+          changes,
+        });
+      }
     });
 
     const [refreshedUser, classes] = await Promise.all([
@@ -285,7 +312,24 @@ export async function DELETE(req, { params }) {
       return ApiResponse.error('Forbidden', 403);
     }
 
-    await prisma.user.delete({ where: { id } });
+    const actor = await prisma.user.findUnique({
+      where: { id: auth.actor.userId },
+      select: { name: true },
+    });
+    const snapshot = getStudentAuditSnapshot(target);
+    await prisma.$transaction(async (tx) => {
+      await createStudentAuditLog(tx, {
+        studentId: target.id,
+        studentName: target.name,
+        centerId: target.student?.centerId,
+        classId: target.student?.studyingClass,
+        actorId: auth.actor.userId,
+        actorName: actor?.name,
+        action: "DELETED",
+        changes: getStudentAuditChanges(snapshot, {}),
+      });
+      await tx.user.delete({ where: { id } });
+    });
     return ApiResponse.success(null, "Student deleted successfully.");
   } catch (error) {
     console.error(error);

@@ -3,6 +3,7 @@ import { prisma } from "@/server/prisma";
 import { ApiResponse } from "@/utils/apiResponse";
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
+import { containsFilter } from "@/lib/pagination";
 
 function formatDateForExport(value) {
   if (!value) return "";
@@ -18,6 +19,11 @@ export async function GET(req) {
   }
 
   try {
+    const params = new URL(req.url).searchParams;
+    const centerId = params.get("centerId");
+    const classId = params.get("classId");
+    const status = params.get("status");
+    const search = String(params.get("search") || "").trim();
     const teacherRole = auth.actor.isTeacher;
     const adminOrManagement = auth.actor.isAdmin || auth.actor.isManagement;
 
@@ -37,23 +43,51 @@ export async function GET(req) {
       assignedClassIds = await getTeacherAssignedClassIds(prisma, auth.actor.userId);
     }
 
+    const studentWhere = {
+      ...(teacherRole
+        ? {
+            centerId: scopedCenterId,
+            ...(assignedClassIds ? { studyingClass: { in: assignedClassIds } } : {}),
+          }
+        : auth.actor.isAdmin
+          ? {}
+          : { centerId: { in: auth.actor.assignedCenterIds.length ? auth.actor.assignedCenterIds : ["__NO_CENTER__"] } }),
+      ...(centerId && (auth.actor.isAdmin || teacherRole || auth.actor.canAccessCenter(centerId))
+        ? { centerId }
+        : {}),
+      ...(classId ? { studyingClass: classId } : {}),
+    };
+    const term = containsFilter(search);
+    const where = {
+      role: "STUDENT",
+      student: studentWhere,
+      ...(status === "true" || status === "false" ? { status: status === "true" } : {}),
+      ...(search
+        ? {
+            OR: [
+              { id: term },
+              { name: term },
+              { email: term },
+              { student: { is: { phone: term } } },
+              { student: { is: { schoolName: term } } },
+              { student: { is: { fatherName: term } } },
+              { student: { is: { motherName: term } } },
+              { student: { is: { teaGarden: term } } },
+              { student: { is: { center: { name: term } } } },
+            ],
+          }
+        : {}),
+    };
+
     let [users, classes] = await Promise.all([
       prisma.user.findMany({
-        where: {
-          role: "STUDENT",
-          ...(teacherRole
-            ? {
-                student: {
-                  centerId: scopedCenterId,
-                  ...(assignedClassIds ? { studyingClass: { in: assignedClassIds } } : {}),
-                },
-              }
-            : {}),
-        },
+        where,
         include: {
           student: {
             include: {
               center: true,
+              addedBy: { select: { name: true } },
+              modifiedBy: { select: { name: true } },
             },
           },
         },
@@ -86,6 +120,8 @@ export async function GET(req) {
         "Father's Name": profile.fatherName || "",
         "Mother's Name": profile.motherName || "",
         Status: user.status ? "Active" : "Inactive",
+        "Added By": profile.addedBy?.name || "",
+        "Last edited by": profile.modifiedBy?.name || "",
       };
     });
 
@@ -109,6 +145,9 @@ export async function GET(req) {
       { wch: 22 },
       { wch: 24 },
       { wch: 12 },
+      { wch: 12 },
+      { wch: 24 },
+      { wch: 24 },
     ];
 
     const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1");

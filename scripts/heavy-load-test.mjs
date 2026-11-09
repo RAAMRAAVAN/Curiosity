@@ -7,40 +7,68 @@ const baseUrl = (process.env.LOAD_TEST_BASE_URL || "http://127.0.0.1:5000").repl
 const jwtSecret = process.env.JWT_SECRET;
 const workerCount = Number(process.env.HEAVY_LOAD_USERS || 935);
 const timeoutMs = Number(process.env.LOAD_TEST_TIMEOUT_MS || 30000);
-const date = new Date().toISOString().slice(0, 10);
+const accessHeaders = process.env.CF_ACCESS_CLIENT_ID && process.env.CF_ACCESS_CLIENT_SECRET
+  ? {
+      "CF-Access-Client-Id": process.env.CF_ACCESS_CLIENT_ID,
+      "CF-Access-Client-Secret": process.env.CF_ACCESS_CLIENT_SECRET,
+    }
+  : {};
+const date = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Kolkata",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(new Date());
 
 if (!jwtSecret) throw new Error("JWT_SECRET must be loaded from the test environment.");
 if (!Number.isInteger(workerCount) || workerCount < 1 || workerCount > 935) throw new Error("HEAVY_LOAD_USERS must be between 1 and 935.");
 
 const loadId = (kind, index) => `load_${kind}_${String(index).padStart(4, "0")}`;
+const studentId = (centerIndex, studentIndex) => loadId(`student_${centerIndex}_${studentIndex}`, 0);
+const classForStudentIndex = (centerIndex, studentIndex) => loadId(
+  `class_${centerIndex}_${studentIndex % 3}`,
+  0
+);
+const studentCountAtCenter = (centerIndex) => centerIndex < 2 ? 99 : 98;
 
 function cookieFor(userId, role) {
   return `token=${jwt.sign({ id: userId, userId, role }, jwtSecret, { expiresIn: "1h" })}`;
 }
 
 function actor(index) {
-  if (index < 900) {
-    const centerIndex = Math.floor(index / 6);
-    const teacherIndex = index % 6;
-    const studentIndex = teacherIndex;
+  const centerIndex = index % 51;
+  const studentIndex = Math.floor(index / 51) % studentCountAtCenter(centerIndex);
+  const rolePosition = index % 202;
+  const common = {
+    centerId: loadId("center", centerIndex),
+    classId: classForStudentIndex(centerIndex, studentIndex),
+    studentId: studentId(centerIndex, studentIndex),
+  };
+
+  if (rolePosition < 51) {
     return {
-      name: `teacher-${centerIndex + 1}-${teacherIndex + 1}`,
-      userId: loadId(`teacher_${centerIndex}_${teacherIndex}`, 0),
+      name: `teacher-${centerIndex + 1}`,
+      userId: loadId(`teacher_${centerIndex}_0`, 0),
       role: "TEACHER",
-      centerId: loadId("center", centerIndex),
-      classId: loadId(`class_${centerIndex}_0`, 0),
-      studentId: loadId(`student_${centerIndex}_${studentIndex}`, 0),
+      ...common,
     };
   }
 
-  const adminIndex = index - 900;
+  if (rolePosition < 102) {
+    return {
+      name: `coordinator-${centerIndex + 1}`,
+      userId: loadId("management", 100 + centerIndex),
+      role: "MANAGEMENT",
+      ...common,
+    };
+  }
+
+  const managerIndex = rolePosition - 102;
   return {
-    name: adminIndex < 5 ? `admin-${adminIndex + 1}` : `management-${adminIndex - 4}`,
-    userId: adminIndex < 5 ? loadId("admin", adminIndex) : loadId("management", adminIndex - 5),
-    role: adminIndex < 5 ? "ADMIN" : "MANAGEMENT",
-    centerId: loadId("center", adminIndex % 150),
-    classId: loadId(`class_${adminIndex % 150}_0`, 0),
-    studentId: loadId(`student_${adminIndex % 150}_${adminIndex % 50}`, 0),
+    name: `manager-${managerIndex + 1}`,
+    userId: loadId("management", managerIndex),
+    role: "MANAGEMENT",
+    ...common,
   };
 }
 
@@ -48,10 +76,19 @@ async function request(path, options = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const started = performance.now();
-  const response = await fetch(`${baseUrl}${path}`, { ...options, signal: controller.signal });
-  const body = await response.arrayBuffer();
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers: { ...accessHeaders, ...options.headers },
+    signal: controller.signal,
+  });
+  const body = await response.text();
   clearTimeout(timer);
-  return { status: response.status, elapsed: performance.now() - started, bytes: body.byteLength };
+  return {
+    status: response.status,
+    elapsed: performance.now() - started,
+    bytes: Buffer.byteLength(body),
+    errorBody: response.ok ? undefined : body.slice(0, 250),
+  };
 }
 
 async function main() {
@@ -74,7 +111,9 @@ async function main() {
       try {
         const response = await request(operation.path, { headers, ...(operation.options || {}) });
         item.requests.push({ name: operation.name, status: response.status, elapsed: response.elapsed, bytes: response.bytes });
-        if (response.status < 200 || response.status >= 300) item.errors.push(`${operation.name}:${response.status}`);
+        if (response.status < 200 || response.status >= 300) {
+          item.errors.push(`${operation.name}:${response.status}${response.errorBody ? `:${response.errorBody}` : ""}`);
+        }
       } catch (error) {
         item.errors.push(`${operation.name}:${error.name === "AbortError" ? "timeout" : error.message}`);
       }

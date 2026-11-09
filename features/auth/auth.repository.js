@@ -35,7 +35,7 @@ export const authRepository = {
     });
   },
 
-  createRoleProfile(userId, role, profileData) {
+  createRoleProfile(userId, role, profileData, actorUserId = userId) {
     if (!profileData || Object.keys(profileData).length === 0) {
       return null;
     }
@@ -44,7 +44,7 @@ export const authRepository = {
 
     switch (role) {
       case "STUDENT":
-        return prisma.student.create({ data });
+        return prisma.student.create({ data: { ...data, addedById: actorUserId } });
       case "ADMIN":
         return prisma.admin.create({ data });
       case "MANAGEMENT":

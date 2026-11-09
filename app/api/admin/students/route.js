@@ -6,6 +6,7 @@ import { nextStudentId } from "@/lib/studentId";
 import { getTeacherAssignedClassIds } from "@/lib/teacherClassAccess";
 import { createStudentIdentityKey, isStudentIdentityTaken } from "@/lib/studentIdentity";
 import { buildPaginationMeta, containsFilter, parsePagination } from "@/lib/pagination";
+import { createStudentAuditLog, getStudentAuditChanges, getStudentAuditSnapshot } from "@/lib/studentAudit";
 
 function formatDateValue(value) {
   if (!value) return "";
@@ -49,6 +50,7 @@ export async function GET(req) {
   }
 
   try {
+    const status = new URL(req.url).searchParams.get('status');
     const teacherRole = auth.actor.isTeacher;
     let scopedCenterId = null;
     let assignedClassIds = null;
@@ -78,6 +80,7 @@ export async function GET(req) {
       const where = {
         role: "STUDENT",
         student: studentWhere,
+        ...(status === 'true' || status === 'false' ? { status: status === 'true' } : {}),
         ...(pagination.search ? {
           OR: [
             { id: term },
@@ -114,6 +117,7 @@ export async function GET(req) {
       prisma.user.findMany({
         where: {
           role: "STUDENT",
+          ...(status === 'true' || status === 'false' ? { status: status === 'true' } : {}),
           ...(teacherRole
             ? {
                 student: {
@@ -244,6 +248,10 @@ export async function POST(req) {
     const generatedPassword = "123456";
 
     const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+    const actor = await prisma.user.findUnique({
+      where: { id: auth.actor.userId },
+      select: { name: true },
+    });
     const user = await prisma.$transaction(async (tx) => {
       let email = generatedEmail;
       let counter = 1;
@@ -254,7 +262,7 @@ export async function POST(req) {
 
       const studentId = await nextStudentId(tx, center.slug, selectedClass.className);
 
-      return tx.user.create({
+      const createdUser = await tx.user.create({
         data: {
           ...(studentId ? { id: studentId } : {}),
           name,
@@ -265,6 +273,7 @@ export async function POST(req) {
           status: body.status !== undefined ? Boolean(body.status) : true,
           student: {
             create: {
+                addedById: auth.actor.userId,
               centerId: finalCenterId,
               studyingClass,
               dob,
@@ -285,6 +294,18 @@ export async function POST(req) {
           },
         },
       });
+      const snapshot = getStudentAuditSnapshot(createdUser);
+      await createStudentAuditLog(tx, {
+        studentId: createdUser.id,
+        studentName: createdUser.name,
+        centerId: createdUser.student?.centerId,
+        classId: createdUser.student?.studyingClass,
+        actorId: auth.actor.userId,
+        actorName: actor?.name,
+        action: "CREATED",
+        changes: getStudentAuditChanges({}, snapshot),
+      });
+      return createdUser;
     });
 
     return ApiResponse.success(mapStudent(user), "Student created successfully.");

@@ -2,15 +2,11 @@ import ExcelJS from 'exceljs';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
 import { getTeacherAssignedClassIds } from '@/lib/teacherClassAccess';
-
-function getMonthDates(year, month) {
-  const dates = [];
-  const lastDay = new Date(year, month, 0).getDate();
-  for (let day = 1; day <= lastDay; day += 1) {
-    dates.push(new Date(year, month - 1, day));
-  }
-  return dates;
-}
+import {
+  getMonthlyAttendanceDateKey,
+  getMonthlyAttendanceDates,
+  getMonthlyAttendanceRange,
+} from '@/lib/monthlyAttendanceDates';
 
 export async function GET(req) {
   const auth = await requireAdminPermission(req, 'attendance.students.monthly.view');
@@ -67,13 +63,14 @@ export async function GET(req) {
       },
     });
 
+    const { start, endExclusive } = getMonthlyAttendanceRange(year, month);
     const attendanceRecords = await prisma.studentAttendance.findMany({
       where: {
         centerId,
         classId: { in: requestedClassIds },
         attendanceDate: {
-          gte: new Date(year, month - 1, 1),
-          lte: new Date(year, month, 0, 23, 59, 59, 999),
+          gte: start,
+          lt: endExclusive,
         },
       },
       select: {
@@ -84,13 +81,13 @@ export async function GET(req) {
     });
 
     const attendanceMap = attendanceRecords.reduce((acc, item) => {
-      const key = new Date(item.attendanceDate).toISOString().slice(0, 10);
+      const key = getMonthlyAttendanceDateKey(item.attendanceDate);
       if (!acc[item.studentId]) acc[item.studentId] = {};
       acc[item.studentId][key] = item.status;
       return acc;
     }, {});
 
-    const monthDates = getMonthDates(year, month);
+    const monthDates = getMonthlyAttendanceDates(year, month);
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Monthly Attendance');
@@ -99,8 +96,8 @@ export async function GET(req) {
     headers.push('Present', 'Absent', 'Holiday / Off');
 
     const columnCount = headers.length;
-    const monthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' })
-      .format(new Date(year, month - 1, 1));
+    const monthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+      .format(new Date(Date.UTC(year, month - 1, 1)));
     worksheet.addRow(['Student Monthly Attendance']);
     worksheet.mergeCells(1, 1, 1, columnCount);
     worksheet.addRow([`${monthLabel} | Classes: ${classes.map((classItem) => classItem.className).join(', ')}`]);
@@ -170,7 +167,7 @@ export async function GET(req) {
       const statuses = [];
 
       monthDates.forEach((date) => {
-        const key = date.toISOString().slice(0, 10);
+        const key = getMonthlyAttendanceDateKey(date);
         const status = attendanceMap[user.id]?.[key] || '—';
         statuses.push(status);
         rowValues.push(statusStyles[status]?.code || '—');

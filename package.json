@@ -10,7 +10,16 @@
     "lint": "next lint",
     "build:export": "npm run build && npm run export",
     "studio": "node scripts/with-db-env.js studio",
-    "prisma": "node scripts/with-db-env.js"
+    "prisma": "node scripts/with-db-env.js",
+    "test:db:push": "node scripts/with-test-env.js prisma db push --skip-generate",
+    "test:db:seed": "node scripts/with-test-env.js node scripts/seed-load-test.mjs seed",
+    "test:db:cleanup-seed": "node scripts/with-test-env.js node scripts/seed-load-test.mjs cleanup",
+    "test:admin:create": "node scripts/with-test-env.js node scripts/ensure-test-admin.mjs",
+    "test:build": "node scripts/with-test-env.js next build",
+    "test:start": "node scripts/with-test-env.js next start --hostname 127.0.0.1 --port 3100",
+    "test:dev": "node scripts/with-test-env.js next dev --hostname 127.0.0.1 --port 3100",
+    "test:load:readonly": "node scripts/with-test-env.js node scripts/load-test.mjs",
+    "test:load:write": "node scripts/with-test-env.js node scripts/heavy-load-test.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

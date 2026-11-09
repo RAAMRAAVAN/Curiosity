@@ -102,7 +102,7 @@ async function deleteExistingProfiles(userId) {
   await prisma.parent.deleteMany({ where: { userId } });
 }
 
-async function upsertProfile(userId, role, profileData, userName) {
+async function upsertProfile(userId, role, profileData, userName, actorUserId) {
   if (role === "TEACHER") {
     return prisma.teacher.upsert({
       where: { userId },
@@ -114,8 +114,8 @@ async function upsertProfile(userId, role, profileData, userName) {
   if (role === "STUDENT") {
     return prisma.student.upsert({
       where: { userId },
-      create: { userId, ...profileData },
-      update: profileData,
+      create: { userId, addedById: actorUserId, ...profileData },
+      update: { ...profileData, modifiedById: actorUserId },
     });
   }
 
@@ -254,8 +254,8 @@ export async function PATCH(req, context) {
     await deleteExistingProfiles(id);
   }
 
-  if (Object.keys(profileData).length > 0 || role === "TEACHER") {
-    await upsertProfile(id, role, profileData, name);
+  if (Object.keys(profileData).length > 0 || role === "TEACHER" || role === "STUDENT") {
+    await upsertProfile(id, role, profileData, name, auth.actor.userId);
   }
 
   if (role === 'MANAGEMENT') {

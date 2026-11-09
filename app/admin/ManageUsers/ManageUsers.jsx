@@ -7,6 +7,7 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
+import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import Loader from '@/app/(components)/Loader';
 
 const emptyUserForm = {
@@ -37,6 +38,7 @@ const ManageUsersPage = ({ users = [], paged, setUsers, messgae, refreshUsers, s
   
   const [roles, setRoles] = useState([]);
   const [centers, setCenters] = useState([]);
+  const [backupLoading, setBackupLoading] = useState(false);
   const referenceDataRequested = useRef(false);
 
   const hasPermission = (permission) => {
@@ -55,6 +57,38 @@ const ManageUsersPage = ({ users = [], paged, setUsers, messgae, refreshUsers, s
   const canCreateUsers = hasPermission('users.create');
   const canEditUsers = hasPermission('users.edit');
   const canDeleteUsers = hasPermission('users.delete');
+  const canDownloadDatabaseBackup = String(role || '').toUpperCase() === 'ADMIN';
+
+  const downloadDatabaseBackup = async () => {
+    if (backupLoading) return;
+    setBackupLoading(true);
+    try {
+      const response = await fetch('/api/admin/database-backup', { credentials: 'include' });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message || 'Unable to create the database backup.');
+      }
+
+      const backupBlob = await response.blob();
+      const disposition = response.headers.get('Content-Disposition') || '';
+      const fileName = disposition.match(/filename="?([^";]+)"?/i)?.[1]
+        || 'curiosity-database-backup.dump';
+      const objectUrl = URL.createObjectURL(backupBlob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = objectUrl;
+      downloadLink.download = fileName;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      setMessage('Full database backup downloaded. Store it on a separate device; see DATABASE_BACKUP_RESTORE.md to restore it.');
+    } catch (error) {
+      console.error('Database backup download failed:', error);
+      setMessage(error.message || 'Unable to create the database backup.');
+    } finally {
+      setBackupLoading(false);
+    }
+  };
     
     const [filters, setFilters] = useState({
         name: "",
@@ -318,6 +352,22 @@ const ManageUsersPage = ({ users = [], paged, setUsers, messgae, refreshUsers, s
                 <Typography variant="h6" fontWeight={700} sx={{ fontSize: { xs: 0, sm: 16 }, minWidth: 0, overflowWrap: 'anywhere' }}>
                     Management Users
                 </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {canDownloadDatabaseBackup ? (
+                  <Tooltip title="Download a complete PostgreSQL backup that can be restored on another PC." arrow>
+                    <span>
+                      <Button
+                        variant="outlined"
+                        onClick={downloadDatabaseBackup}
+                        disabled={backupLoading}
+                        size={isMobile ? "small" : "medium"}
+                        startIcon={backupLoading ? <Loader variant='inline' size={16} /> : <FileDownloadOutlinedIcon />}
+                      >
+                        {backupLoading ? 'Preparing backup...' : 'Download DB Backup'}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                ) : null}
                 {canCreateUsers ? (
                   <Button
                     variant="contained"
@@ -333,6 +383,7 @@ const ManageUsersPage = ({ users = [], paged, setUsers, messgae, refreshUsers, s
                       Create New User
                   </Button>
                 ) : null}
+                </Box>
             </Box>
 
             <Box sx={{ display: 'block', width: '100%', px: 1, pb: 2, visibility: 'visible' }}>

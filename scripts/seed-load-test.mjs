@@ -5,9 +5,10 @@ import { createHash } from "node:crypto";
 import { prisma } from "../server/prisma.js";
 
 const MARKER_KEY = "load-test.dataset.v1";
-const CENTER_COUNT = 150;
-const STUDENTS_PER_CENTER = 50;
-const TEACHERS_PER_CENTER = 6;
+const CENTER_COUNT = 51;
+const STUDENT_COUNT = 5000;
+const MANAGER_COUNT = 100;
+const COORDINATOR_COUNT = 51;
 const CLASSES_PER_CENTER = 3;
 const ATTENDANCE_DAYS = Number(process.env.LOAD_TEST_ATTENDANCE_DAYS || 7);
 const LOAD_PASSWORD = process.env.LOAD_TEST_SEED_PASSWORD || "LoadTest@2026!";
@@ -74,24 +75,34 @@ async function seed() {
     classByCenter.set(centerIndex, list);
   }
 
-  const teacherUsers = centers.flatMap((center, centerIndex) => Array.from({ length: TEACHERS_PER_CENTER }, (_, teacherIndex) => ({
-    id: loadId(`teacher_${centerIndex}_${teacherIndex}`, 0),
-    name: `Load Teacher ${centerIndex + 1}-${teacherIndex + 1}`,
-    email: `load.teacher.${centerIndex + 1}.${teacherIndex + 1}@curiosity.test`,
+  const teacherUsers = centers.map((center, centerIndex) => ({
+    id: loadId(`teacher_${centerIndex}_0`, 0),
+    name: `Load Teacher ${centerIndex + 1}`,
+    email: `load.teacher.${centerIndex + 1}@curiosity.test`,
     password: passwordHash,
     role: "TEACHER",
     centerId: center.id,
     status: true,
-  })));
-  const studentUsers = centers.flatMap((center, centerIndex) => Array.from({ length: STUDENTS_PER_CENTER }, (_, studentIndex) => ({
-    id: loadId(`student_${centerIndex}_${studentIndex}`, 0),
-    name: `Load Student ${centerIndex + 1}-${studentIndex + 1}`,
-    email: `load.student.${centerIndex + 1}.${studentIndex + 1}@curiosity.test`,
-    password: passwordHash,
-    role: "STUDENT",
-    centerId: center.id,
-    status: true,
-  })));
+  }));
+  const baseStudentsPerCenter = Math.floor(STUDENT_COUNT / CENTER_COUNT);
+  const extraStudents = STUDENT_COUNT % CENTER_COUNT;
+  const studentRecords = centers.flatMap((center, centerIndex) => {
+    const studentsAtCenter = baseStudentsPerCenter + (centerIndex < extraStudents ? 1 : 0);
+    return Array.from({ length: studentsAtCenter }, (_, studentIndex) => ({
+      centerIndex,
+      studentIndex,
+      user: {
+        id: loadId(`student_${centerIndex}_${studentIndex}`, 0),
+        name: `Load Student ${centerIndex + 1}-${studentIndex + 1}`,
+        email: `load.student.${centerIndex + 1}.${studentIndex + 1}@curiosity.test`,
+        password: passwordHash,
+        role: "STUDENT",
+        centerId: center.id,
+        status: true,
+      },
+    }));
+  });
+  const studentUsers = studentRecords.map((record) => record.user);
   const adminUsers = Array.from({ length: 5 }, (_, index) => ({
     id: loadId("admin", index),
     name: `Load Admin ${index + 1}`,
@@ -100,14 +111,24 @@ async function seed() {
     role: "ADMIN",
     status: true,
   }));
-  const managementUsers = Array.from({ length: 30 }, (_, index) => ({
+  const managerUsers = Array.from({ length: MANAGER_COUNT }, (_, index) => ({
     id: loadId("management", index),
-    name: `Load Management ${index + 1}`,
-    email: `load.management.${index + 1}@curiosity.test`,
+    name: `Load Manager ${index + 1}`,
+    email: `load.manager.${index + 1}@curiosity.test`,
     password: passwordHash,
     role: "MANAGEMENT",
     status: true,
   }));
+  const coordinatorUsers = centers.map((center, centerIndex) => ({
+    id: loadId("management", MANAGER_COUNT + centerIndex),
+    name: `Load Ground-level Coordinator ${centerIndex + 1}`,
+    email: `load.coordinator.${centerIndex + 1}@curiosity.test`,
+    password: passwordHash,
+    role: "MANAGEMENT",
+    centerId: center.id,
+    status: true,
+  }));
+  const managementUsers = [...managerUsers, ...coordinatorUsers];
 
   await createInBatches(prisma.center, centers);
   await createInBatches(prisma.class, classes);
@@ -115,13 +136,17 @@ async function seed() {
   await createInBatches(prisma.teacher, teacherUsers.map((user, index) => ({
     id: loadId("teacher_profile", index), userId: user.id, centerId: user.centerId, name: user.name, status: true,
   })));
-  await createInBatches(prisma.student, studentUsers.map((user, index) => {
-    const centerIndex = Math.floor(index / STUDENTS_PER_CENTER);
+  await createInBatches(prisma.student, studentRecords.map(({ user, centerIndex, studentIndex }, index) => {
     const classList = classByCenter.get(centerIndex);
-    return { id: loadId("student_profile", index), userId: user.id, centerId: user.centerId, studyingClass: classList[index % CLASSES_PER_CENTER].id, status: true };
+    return { id: loadId("student_profile", index), userId: user.id, centerId: user.centerId, studyingClass: classList[studentIndex % CLASSES_PER_CENTER].id, status: true };
   }));
   await createInBatches(prisma.admin, adminUsers.map((user, index) => ({ id: loadId("admin_profile", index), userId: user.id, status: true })));
-  await createInBatches(prisma.management, managementUsers.map((user, index) => ({ id: loadId("management_profile", index), userId: user.id, status: true })));
+  await createInBatches(prisma.management, managementUsers.map((user, index) => ({
+    id: loadId("management_profile", index),
+    userId: user.id,
+    centerId: index < MANAGER_COUNT ? null : centers[index - MANAGER_COUNT].id,
+    status: true,
+  })));
 
   let attendanceRows = 0;
   for (let dayOffset = 0; dayOffset < ATTENDANCE_DAYS; dayOffset += 1) {
@@ -129,17 +154,17 @@ async function seed() {
     date.setUTCHours(0, 0, 0, 0);
     date.setUTCDate(date.getUTCDate() - dayOffset);
     const dayRows = [];
-    for (let index = 0; index < studentUsers.length; index += 1) {
-      const centerIndex = Math.floor(index / STUDENTS_PER_CENTER);
+    for (let index = 0; index < studentRecords.length; index += 1) {
+      const { centerIndex, studentIndex, user } = studentRecords[index];
       const classList = classByCenter.get(centerIndex);
       dayRows.push({
         id: loadId(`attendance_${dayOffset}`, index),
         attendanceDate: date,
-        studentId: studentUsers[index].id,
-        centerId: studentUsers[index].centerId,
-        classId: classList[index % CLASSES_PER_CENTER].id,
+        studentId: user.id,
+        centerId: user.centerId,
+        classId: classList[studentIndex % CLASSES_PER_CENTER].id,
         status: index % 17 === 0 ? "ABSENT" : "PRESENT",
-        markedBy: teacherUsers[centerIndex * TEACHERS_PER_CENTER].id,
+        markedBy: teacherUsers[centerIndex].id,
       });
     }
     await createInBatches(prisma.studentAttendance, dayRows);
@@ -180,9 +205,9 @@ async function seed() {
   const assessmentAttendances = [];
   for (let centerIndex = 0; centerIndex < centers.length; centerIndex += 1) {
     const assessment = assessments[centerIndex];
-    for (let studentIndex = 0; studentIndex < STUDENTS_PER_CENTER; studentIndex += 1) {
-      const globalStudentIndex = centerIndex * STUDENTS_PER_CENTER + studentIndex;
-      const student = studentUsers[globalStudentIndex];
+    const studentsAtCenter = studentRecords.filter((student) => student.centerIndex === centerIndex);
+    for (let studentIndex = 0; studentIndex < studentsAtCenter.length; studentIndex += 1) {
+      const student = studentsAtCenter[studentIndex].user;
       results.push({
         id: loadId(`result_${centerIndex}`, studentIndex),
         assessmentId: assessment.id,
@@ -200,7 +225,7 @@ async function seed() {
         assessmentId: assessment.id,
         userId: student.id,
         status: studentIndex % 17 === 0 ? "ABSENT" : "PRESENT",
-        markedBy: teacherUsers[centerIndex * TEACHERS_PER_CENTER].id,
+        markedBy: teacherUsers[centerIndex].id,
         markedAt: new Date(),
       });
     }
@@ -210,7 +235,7 @@ async function seed() {
 
   const roles = [
     { id: "load_role_it_admin", name: "Load IT Admin", permissions: ["*"] },
-    { id: "load_role_manager", name: "Load Manager", permissions: ["users.view", "teachers.view", "students.view", "results.view", "attendance.view"] },
+    { id: "load_role_manager", name: "Load Manager", permissions: ["users.view", "teachers.view", "students.view", "results.view", "attendance.view", "attendance.mark"] },
     { id: "load_role_coordinator", name: "Load Coordinator", permissions: ["teachers.view", "students.view", "attendance.view", "attendance.mark", "assessments.view"] },
   ];
   const permissionKeys = Array.from(new Set(roles.flatMap((role) => role.permissions)));
@@ -241,10 +266,14 @@ async function seed() {
   const assignmentRows = [];
   const assignmentCenterRows = [];
   for (let index = 0; index < managementUsers.length; index += 1) {
-    const role = index < 10 ? roles[0] : index < 20 ? roles[1] : roles[2];
+    const role = index < MANAGER_COUNT ? roles[1] : roles[2];
     const userId = managementUsers[index].id;
     assignmentRows.push({ userId, roleId: role.id });
-    assignmentCenterRows.push(...centers.map((center) => ({ userId, centerId: center.id })));
+    if (index < MANAGER_COUNT) {
+      assignmentCenterRows.push(...centers.map((center) => ({ userId, centerId: center.id })));
+    } else {
+      assignmentCenterRows.push({ userId, centerId: centers[index - MANAGER_COUNT].id });
+    }
   }
   await createInBatches(prisma.userAccessAssignment, assignmentRows);
   await createInBatches(prisma.userAccessAssignmentCenter, assignmentCenterRows);
@@ -252,9 +281,15 @@ async function seed() {
   console.log(JSON.stringify({
     centers: centers.length,
     students: studentUsers.length,
+    studentsPerCenter: {
+      minimum: baseStudentsPerCenter,
+      maximum: baseStudentsPerCenter + (extraStudents > 0 ? 1 : 0),
+      centersWithMaximum: extraStudents,
+    },
     teachers: teacherUsers.length,
     admins: adminUsers.length,
-    managementUsers: managementUsers.length,
+    managers: managerUsers.length,
+    groundLevelCoordinators: coordinatorUsers.length,
     classes: classes.length,
     attendanceRows,
     assessments: assessments.length,

@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import Loader from '@/app/(components)/Loader';
 import usePagedData from '../usePagedData';
 import AdminTablePagination from '../AdminTablePagination';
+import StudentAuditHistory from "./StudentAuditHistory";
+import { canViewStudentAudit } from "@/lib/studentAuditAccess";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -29,10 +32,11 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import { Delete, Edit, Add } from "@mui/icons-material";
+import { Delete, Edit, Add, History } from "@mui/icons-material";
 
 const ALL_CENTERS = "ALL";
 const ALL_CLASSES = "ALL";
+const ALL_STATUSES = "ALL";
 
 export default function ManageStudents({ setMessage, role, permissions = [] }) {
   const theme = useTheme();
@@ -40,11 +44,13 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [centers, setCenters] = useState([]);
   const [editingStudent, setEditingStudent] = useState(null);
+  const [activityStudent, setActivityStudent] = useState(null);
   const [authUser, setAuthUser] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedClassFilter, setSelectedClassFilter] = useState(ALL_CLASSES);
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState(ALL_STATUSES);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -88,6 +94,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   const canCreateStudents = hasPermission('students.create');
   const canEditStudents = hasPermission('students.edit');
   const canDeleteStudents = hasPermission('students.delete');
+  const canViewAuditLogs = canViewStudentAudit(authUser);
 
   const canUseCenterFilter = authUser?.role === "ADMIN" || authUser?.role === "MANAGEMENT";
   const paged = usePagedData({
@@ -95,6 +102,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
     params: {
       centerId: canUseCenterFilter && selectedCenter !== ALL_CENTERS ? selectedCenter : '',
       classId: selectedClassFilter !== ALL_CLASSES ? selectedClassFilter : '',
+      status: selectedStatusFilter !== ALL_STATUSES ? selectedStatusFilter : '',
     },
     initialPageSize: 50,
   });
@@ -383,7 +391,21 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
   const handleDownloadStudents = async () => {
     try {
       setExporting(true);
-      const response = await fetch("/api/admin/students/export", {
+      const exportParams = new URLSearchParams();
+      if (canUseCenterFilter && selectedCenter !== ALL_CENTERS) {
+        exportParams.set("centerId", selectedCenter);
+      }
+      if (selectedClassFilter !== ALL_CLASSES) {
+        exportParams.set("classId", selectedClassFilter);
+      }
+      if (selectedStatusFilter !== ALL_STATUSES) {
+        exportParams.set("status", selectedStatusFilter);
+      }
+      if (studentSearch.trim()) {
+        exportParams.set("search", studentSearch.trim());
+      }
+      const query = exportParams.toString();
+      const response = await fetch(`/api/admin/students/export${query ? `?${query}` : ""}`, {
         credentials: "include",
       });
 
@@ -566,6 +588,11 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
           <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: 0, sm: 18, md: 20 } }}>Manage Students</Typography>
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 2, sm: 0 }} useFlexGap sx={{ width: { xs: '100%', md: 'auto' }, minWidth: 0, flexWrap: 'wrap', gap: { sm: 1 } }}>
+          {canViewAuditLogs ? (
+            <Button component={Link} href="/admin/student-activity" variant="outlined" size="small">
+              Activity Logs
+            </Button>
+          ) : null}
           <TextField
             size="small"
             label="Search Students"
@@ -605,6 +632,19 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
                 {item.name}
               </MenuItem>
             ))}
+          </TextField>
+          <TextField
+            select
+            size="small"
+            label="Filter By Status"
+            value={selectedStatusFilter}
+            onChange={(event) => setSelectedStatusFilter(event.target.value)}
+            sx={{ minWidth: { xs: 0, sm: 160 }, width: { xs: '100%', sm: 'auto' } }}
+            InputLabelProps={{ shrink: true }}
+          >
+            <MenuItem value={ALL_STATUSES}>All</MenuItem>
+            <MenuItem value="true">Active</MenuItem>
+            <MenuItem value="false">Inactive</MenuItem>
           </TextField>
           <Button variant="outlined" onClick={handleDownloadStudents} disabled={exporting || loading} size="small" sx={{ display: { xs: 'none', sm: 'inline-flex' }, width: { xs: '100%', sm: 'auto' }, minHeight: { xs: 40, sm: 'auto' }, fontSize: 12, py: 0.5, px: 1.5 }}>
             {exporting ? "Exporting..." : "Export Students"}
@@ -647,7 +687,7 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
             ) : filteredStudents.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={isMobile ? 5 : isTablet ? 6 : 7} align="center" sx={{ py: 4 }}>
-                  {paged.total === 0 && !studentSearch.trim() && selectedCenter === ALL_CENTERS && selectedClassFilter === ALL_CLASSES
+                  {paged.total === 0 && !studentSearch.trim() && selectedCenter === ALL_CENTERS && selectedClassFilter === ALL_CLASSES && selectedStatusFilter === ALL_STATUSES
                     ? "No students found."
                     : studentSearch.trim()
                       ? "No students match your search."
@@ -668,6 +708,17 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
                   </TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={0.5} justifyContent="flex-end" sx={{ flexWrap: 'nowrap' }}>
+                      {canViewAuditLogs ? (
+                        <Tooltip title="Student activity history" arrow>
+                          <IconButton
+                            aria-label={`View activity for ${student.name || 'student'}`}
+                            onClick={() => setActivityStudent(student)}
+                            size="small"
+                          >
+                            <History fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      ) : null}
                       {canEditStudents ? (
                         <Tooltip title="Edit student" arrow>
                           <IconButton aria-label={`Edit ${student.name || 'student'}`} onClick={() => openEditDialog(student)} size="small" sx={{ backgroundColor: '#e0f2fe', color: '#0a336b', '&:hover': { backgroundColor: '#bae6fd' } }}>
@@ -761,6 +812,23 @@ export default function ManageStudents({ setMessage, role, permissions = [] }) {
           <Button color="error" variant="contained" onClick={handleDelete}>
             Delete
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={canViewAuditLogs && Boolean(activityStudent)}
+        onClose={() => setActivityStudent(null)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          Activity History: {activityStudent?.name || "Student"}
+        </DialogTitle>
+        <DialogContent dividers>
+          {activityStudent ? <StudentAuditHistory studentId={activityStudent.id} /> : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setActivityStudent(null)}>Close</Button>
         </DialogActions>
       </Dialog>
 

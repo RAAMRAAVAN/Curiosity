@@ -31,10 +31,9 @@ import {
 import { ClearAll, SelectAll } from "@mui/icons-material";
 import Loader from '@/app/(components)/Loader';
 import AdminTablePagination from '../AdminTablePagination';
-
-function todayValue() {
-  return new Date().toISOString().slice(0, 10);
-}
+import AttendanceAuditHistory from "./AttendanceAuditHistory";
+import { canViewStudentAudit } from "@/lib/studentAuditAccess";
+import { getIndiaDateString } from "@/lib/indiaDate";
 
 function formatMarkedAt(value) {
   if (!value) return "-";
@@ -56,13 +55,14 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
   const [classes, setClasses] = useState([]);
   const [classIds, setClassIds] = useState([]);
   const [date, setDate] = useState("");
-  const [today, setToday] = useState(todayValue());
+  const [today, setToday] = useState(getIndiaDateString());
   const [students, setStudents] = useState([]);
   const [hasLoadedAttendance, setHasLoadedAttendance] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [holidayDialogOpen, setHolidayDialogOpen] = useState(false);
+  const [attendanceHistoryOpen, setAttendanceHistoryOpen] = useState(false);
   const [holidayType, setHolidayType] = useState("HOLIDAY");
   const [markingHoliday, setMarkingHoliday] = useState(false);
   const [message, setMessage] = useState(null);
@@ -76,9 +76,11 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
   const canMark = hasPermission(permissions, "attendance.mark", role);
   const canEdit = hasPermission(permissions, "attendance.edit", role);
   const canMarkHoliday = hasPermission(permissions, "attendance.holiday", role);
-  const isHistorical = date !== today;
-  const canChange = canMark && (!isHistorical || canEdit);
-  const canMarkSelectedHoliday = canMarkHoliday && (!isHistorical || canEdit);
+  const canViewAttendanceHistory = canViewStudentAudit(admin);
+  const isPastDate = Boolean(date && date < today);
+  const isFutureDate = Boolean(date && date > today);
+  const canChange = canMark && !isFutureDate && (!isPastDate || canEdit);
+  const canMarkSelectedHoliday = canMarkHoliday && (!isPastDate || canEdit);
   const centerQuery = centerIds.join(",");
   const classQuery = classIds.join(",");
   const SELECT_ALL = "__select_all__";
@@ -115,7 +117,7 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
       if (!data.success) throw new Error(data.message || "Unable to load attendance.");
       if (latestRequest.current !== requestId) return;
       setClasses(data.data.classes || []);
-      setToday(data.data.today || todayValue());
+      setToday(data.data.today || getIndiaDateString());
       if (isInitialLoad) {
         skipDateReload.current = true;
         setDate(data.data.date || data.data.today || todayValue());
@@ -250,6 +252,11 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
             {canMarkHoliday ? <Button variant="outlined" color="warning" onClick={() => setHolidayDialogOpen(true)} disabled={!centerIds.length || !classIds.length || !total || loading || !canMarkSelectedHoliday} sx={{ display: { xs: "none", sm: "inline-flex" } }}>
               Mark holiday
             </Button> : null}
+            {canViewAttendanceHistory ? (
+              <Button variant="outlined" onClick={() => setAttendanceHistoryOpen(true)} sx={{ ml: 1 }}>
+                Attendance Logs
+              </Button>
+            ) : null}
           </Box>
           <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="stretch" sx={{ width: '100%', flex: { md: 1 }, minWidth: 0 }}>
             {String(role || "").toUpperCase() === "TEACHER" ? (
@@ -415,11 +422,19 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
                 ))}
               </Select>
             </FormControl>
-            <TextField type="date" label="Date" value={date} onChange={(event) => setDate(event.target.value)} inputProps={{ max: today }} InputLabelProps={{ shrink: true }} fullWidth size="small" sx={{ flex: { md: 1 }, minWidth: 0 }} />
+            <TextField type="date" label="Date" value={date} onChange={(event) => setDate(event.target.value)} InputLabelProps={{ shrink: true }} fullWidth size="small" sx={{ flex: { md: 1 }, minWidth: 0 }} />
           </Stack>
         </Box>
         <TextField label="Search by Name" value={studentSearch} onChange={(event) => setStudentSearch(event.target.value)} fullWidth sx={{ mt: 2 }} />
-        {isHistorical ? <Alert severity="info" sx={{ mt: 2 }}>You are viewing past attendance. {canEdit ? "You can edit this date." : "This date is read-only."}</Alert> : null}
+        {isFutureDate ? (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Future dates are reserved for holidays. Present, absent, and revert actions are disabled.
+          </Alert>
+        ) : isPastDate ? (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            You are viewing past attendance. {canEdit ? "You can edit this date." : "This date is read-only."}
+          </Alert>
+        ) : null}
       </Paper>
 
       {message ? <Alert severity={message.severity} sx={{ mb: 2 }} onClose={() => setMessage(null)}>{message.text}</Alert> : null}
@@ -502,6 +517,22 @@ export default function AttendanceManager({ admin, role, permissions = [] }) {
             />
           </Box>
         </>
+      ) : null}
+      {canViewAttendanceHistory ? (
+        <Dialog
+          open={attendanceHistoryOpen}
+          onClose={() => setAttendanceHistoryOpen(false)}
+          fullWidth
+          maxWidth="xl"
+        >
+          <DialogTitle>Student Attendance Change Logs</DialogTitle>
+          <DialogContent dividers>
+            <AttendanceAuditHistory />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setAttendanceHistoryOpen(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
       ) : null}
       <Dialog open={holidayDialogOpen} onClose={() => !markingHoliday && setHolidayDialogOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Mark holiday</DialogTitle>

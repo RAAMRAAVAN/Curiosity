@@ -217,7 +217,7 @@ export async function POST(req) {
       ...profileData,
       centerId: body.centerId || null,
       ...(role === "TEACHER" ? { name: user.name } : {}),
-    });
+    }, auth.actor.userId);
   }
 
   const createdUser = await authRepository.findById(user.id);
