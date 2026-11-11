@@ -7,6 +7,8 @@ const conditions = ['GOOD', 'FAIR', 'NEEDS_REPAIR', 'DAMAGED'];
 const assetInclude = {
   itemMaster: { include: { category: { select: { id: true, name: true } } } },
   center: { select: { id: true, name: true, slug: true } },
+  assignedEmployee: { select: { id: true, name: true, role: true } },
+  project: { select: { id: true, name: true, suffix: true } },
 };
 
 class LifecycleError extends Error {
@@ -79,7 +81,7 @@ export async function POST(req, { params }) {
       await tx.assetList.update({ where: { id }, data: { quantity: { decrement: requested } } });
       const child = await tx.assetList.create({
         data: {
-          assetCode: await generateAssetCode(tx, record.itemMaster.categoryId),
+          assetCode: await generateAssetCode(tx, record.itemMasterId, record.centerId),
           itemMasterId: record.itemMasterId,
           centerId: record.centerId,
           quantity: requested,
@@ -93,6 +95,10 @@ export async function POST(req, { params }) {
           invoiceNumber: record.invoiceNumber,
           warrantyExpiry: record.warrantyExpiry,
           notes: record.notes,
+          manufacturer: record.manufacturer,
+          modelNumber: record.modelNumber,
+          assignedEmployeeId: record.assignedEmployeeId,
+          projectId: record.projectId,
         },
         include: assetInclude,
       });

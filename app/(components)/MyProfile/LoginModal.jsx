@@ -130,6 +130,7 @@ const LoginModal = ({
             const assetRoutes = [
               ['asset_categories.view', '/admin/asset-management/categories'],
               ['asset_items.view', '/admin/asset-management/items'],
+              ['projects.view', '/admin/asset-management/projects'],
               ['asset_list.view', '/admin/asset-management/assets'],
               ['asset_transfer.view', '/admin/asset-management/transfers'],
               ['asset_receive.view', '/admin/asset-management/receive'],

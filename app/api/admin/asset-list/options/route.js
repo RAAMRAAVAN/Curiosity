@@ -9,7 +9,7 @@ export async function GET(req) {
 
   try {
     const centerScope = getAssetCenterScope(auth.actor);
-    const [centers, items] = await Promise.all([
+    const [centers, items, employees, projects] = await Promise.all([
       prisma.center.findMany({
         where: { status: true, ...(centerScope === null ? {} : { id: { in: centerScope } }) },
         select: { id: true, name: true, slug: true },
@@ -20,8 +20,18 @@ export async function GET(req) {
         select: { id: true, name: true, unit: true, category: { select: { id: true, name: true } } },
         orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }],
       }),
+      prisma.user.findMany({
+        where: { status: true, role: { notIn: ['STUDENT', 'ADMIN'] } },
+        select: { id: true, name: true, role: true },
+        orderBy: { name: 'asc' },
+      }),
+      prisma.project.findMany({
+        where: { status: true },
+        select: { id: true, name: true, suffix: true },
+        orderBy: { name: 'asc' },
+      }),
     ]);
-    return ApiResponse.success({ centers, items });
+    return ApiResponse.success({ centers, items, employees, projects });
   } catch (error) {
     console.error('Load asset options error:', error);
     return ApiResponse.error('Unable to load asset options.', 500, error);

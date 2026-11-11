@@ -6,6 +6,8 @@ import { getAssetCenterScope, resolveNames } from '@/lib/assetManagement';
 const assetInclude = {
   itemMaster: { include: { category: { select: { id: true, name: true } } } },
   center: { select: { id: true, name: true } },
+  assignedEmployee: { select: { id: true, name: true, role: true } },
+  project: { select: { id: true, name: true, suffix: true } },
 };
 
 // Walks split parents so a child asset shows the history it inherited.

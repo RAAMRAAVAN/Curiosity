@@ -51,6 +51,7 @@ export async function GET(req) {
         categoryId: item?.category?.id || '',
         categoryName: item?.category?.name || '-',
         available: 0,
+        inUse: 0,
         underRepair: 0,
         disposed: 0,
         inTransit: inTransit[key] || 0,
@@ -59,6 +60,7 @@ export async function GET(req) {
       });
       const quantity = row._sum.quantity || 0;
       if (row.lifecycle === 'AVAILABLE') entry.available += quantity;
+      if (row.lifecycle === 'IN_USE') entry.inUse += quantity;
       if (row.lifecycle === 'UNDER_REPAIR') entry.underRepair += quantity;
       if (row.lifecycle === 'DISPOSED') entry.disposed += quantity;
       entry.records += row._count._all;
@@ -84,7 +86,7 @@ export async function GET(req) {
       centerItem: (row) => `${row.centerId}|${row.itemId}`,
     }[groupBy];
     const groups = new Map();
-    const totals = { available: 0, underRepair: 0, inTransit: 0, disposed: 0, totalCost: 0 };
+    const totals = { available: 0, inUse: 0, underRepair: 0, inTransit: 0, disposed: 0, totalCost: 0 };
     all
       .filter((row) => (!centerFilter || row.centerId === centerFilter) && (!categoryFilter || row.categoryId === categoryFilter))
       .filter((row) => !query || [row.centerName, row.categoryName, row.itemName].some((value) => String(value || '').toLowerCase().includes(query)))
@@ -95,10 +97,10 @@ export async function GET(req) {
           center: groupBy === 'center' || groupBy === 'centerItem' ? row.centerName : '',
           category: groupBy !== 'center' ? row.categoryName : '',
           item: groupBy === 'item' || groupBy === 'centerItem' ? row.itemName : '',
-          available: 0, underRepair: 0, disposed: 0, inTransit: 0, records: 0, totalCost: 0,
+          available: 0, inUse: 0, underRepair: 0, disposed: 0, inTransit: 0, records: 0, totalCost: 0,
         };
-        ['available', 'underRepair', 'disposed', 'inTransit', 'records', 'totalCost'].forEach((field) => { group[field] += row[field]; });
-        ['available', 'underRepair', 'disposed', 'inTransit', 'totalCost'].forEach((field) => { totals[field] += row[field]; });
+        ['available', 'inUse', 'underRepair', 'disposed', 'inTransit', 'records', 'totalCost'].forEach((field) => { group[field] += row[field]; });
+        ['available', 'inUse', 'underRepair', 'disposed', 'inTransit', 'totalCost'].forEach((field) => { totals[field] += row[field]; });
         groups.set(key, group);
       });
     const sorted = Array.from(groups.values()).sort((a, b) => `${a.center}${a.category}${a.item}`.localeCompare(`${b.center}${b.category}${b.item}`));

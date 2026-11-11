@@ -21,9 +21,14 @@ export async function GET(req) {
 
   try {
     const pagination = parsePagination(req);
+    const requestedCenterType = new URL(req.url).searchParams.get('centerType');
+    if (requestedCenterType && !centerTypes.has(requestedCenterType)) {
+      return ApiResponse.error('Choose a valid center type.', 400);
+    }
     if (pagination) {
       const term = containsFilter(pagination.search);
       const where = {
+        ...(requestedCenterType ? { centerType: requestedCenterType } : {}),
         ...(auth.actor.isAdmin ? {} : { id: { in: auth.actor.assignedCenterIds.length ? auth.actor.assignedCenterIds : ["__NO_CENTER__"] } }),
         ...(pagination.search ? { OR: [{ name: term }, { slug: term }] } : {}),
       };
@@ -35,6 +40,7 @@ export async function GET(req) {
     }
 
     let centers = await prisma.center.findMany({
+      where: requestedCenterType ? { centerType: requestedCenterType } : {},
       orderBy: { createdAt: "asc" },
     });
 

@@ -92,6 +92,10 @@ function AssetTrackingContent() {
             <Box sx={{ display: 'grid', gap: { xs: 2, md: 3 }, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}>
               <Detail label="Item" value={asset.itemMaster?.name} />
               <Detail label="Category" value={asset.itemMaster?.category?.name} />
+              <Detail label="Project" value={asset.project?.name} />
+              <Detail label="Manufacturer" value={asset.manufacturer} />
+              <Detail label="Model number" value={asset.modelNumber} />
+              <Detail label="Assigned employee" value={asset.assignedEmployee?.name} />
               <Detail label="Serial number" value={asset.serialNumber} />
               <Detail label="Asset tag" value={asset.assetTag} />
               <Detail label="Current center" value={asset.center?.name} />

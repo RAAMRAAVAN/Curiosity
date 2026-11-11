@@ -76,10 +76,17 @@ export async function DELETE(req, { params }) {
       return ApiResponse.error('Forbidden', 403);
     }
 
-    await prisma.center.delete({ where: { id: params.id } });
-    return ApiResponse.success(null, "Center deleted successfully.");
+    if (!existingCenter.status) {
+      return ApiResponse.success(existingCenter, 'Center is already deactivated.');
+    }
+
+    const center = await prisma.center.update({
+      where: { id: params.id },
+      data: { status: false },
+    });
+    return ApiResponse.success(center, 'Center deactivated successfully. Its related records have been preserved.');
   } catch (error) {
     console.error(error);
-    return ApiResponse.error("Unable to delete center", 500, error);
+    return ApiResponse.error("Unable to deactivate center", 500, error);
   }
 }

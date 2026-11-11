@@ -7,6 +7,8 @@ import { buildPaginationMeta, containsFilter, parsePagination } from '@/lib/pagi
 const assetInclude = {
   itemMaster: { include: { category: { select: { id: true, name: true } } } },
   center: { select: { id: true, name: true, slug: true } },
+  assignedEmployee: { select: { id: true, name: true, role: true } },
+  project: { select: { id: true, name: true, suffix: true } },
 };
 
 const parseQuantity = (value) => {
@@ -26,7 +28,6 @@ export async function GET(req) {
     }
 
     const where = {
-      status: true,
       ...(centerScope === null ? {} : { centerId: { in: centerScope } }),
       ...(requestedCenterId ? { centerId: requestedCenterId } : {}),
     };
@@ -36,16 +37,27 @@ export async function GET(req) {
     if (pagination) {
       const condition = pagination.params.get('condition');
       const lifecycle = pagination.params.get('lifecycle');
+      const projectId = pagination.params.get('projectId');
+      const recordStatus = pagination.params.get('recordStatus');
+      if (recordStatus && !['active', 'deactivated'].includes(recordStatus)) {
+        return ApiResponse.error('Asset record status filter is invalid.', 400);
+      }
       if (condition) where.condition = condition;
       if (lifecycle) where.lifecycle = lifecycle;
+      if (projectId) where.projectId = projectId;
+      if (recordStatus) where.status = recordStatus === 'active';
       if (pagination.search) {
         const term = containsFilter(pagination.search);
         where.OR = [
           { assetCode: term },
           { serialNumber: term },
           { assetTag: term },
+          { manufacturer: term },
+          { modelNumber: term },
           { location: term },
           { vendor: term },
+          { assignedEmployee: { name: term } },
+          { project: { name: term } },
           { itemMaster: { name: term } },
           { itemMaster: { category: { name: term } } },
           { center: { name: term } },
@@ -83,10 +95,28 @@ export async function POST(req) {
       return ApiResponse.error('You are not authorized to create assets for this center.', 403);
     }
 
-    const item = await prisma.itemMaster.findFirst({ where: { id: itemMasterId, status: true }, select: { id: true, categoryId: true } });
+    const item = await prisma.itemMaster.findFirst({ where: { id: itemMasterId, status: true }, select: { id: true } });
     const center = await prisma.center.findFirst({ where: { id: centerId, status: true }, select: { id: true } });
     if (!item) return ApiResponse.error('Select an active item.', 400);
     if (!center) return ApiResponse.error('Select an active center.', 400);
+
+    const lifecycle = body?.lifecycle || 'AVAILABLE';
+    if (!['AVAILABLE', 'IN_USE'].includes(lifecycle)) {
+      return ApiResponse.error('Select In Stock or In Use for the asset status.', 400);
+    }
+    const assignedEmployeeId = String(body?.assignedEmployeeId || '').trim() || null;
+    if (assignedEmployeeId) {
+      const employee = await prisma.user.findFirst({
+        where: { id: assignedEmployeeId, status: true, role: { notIn: ['STUDENT', 'ADMIN'] } },
+        select: { id: true },
+      });
+      if (!employee) return ApiResponse.error('Select an active employee.', 400);
+    }
+    const projectId = String(body?.projectId || '').trim() || null;
+    if (projectId) {
+      const project = await prisma.project.findFirst({ where: { id: projectId, status: true }, select: { id: true } });
+      if (!project) return ApiResponse.error('Select a valid project.', 400);
+    }
 
     const serialNumber = normalizeAssetText(body?.serialNumber);
     if (serialNumber && quantity !== 1) {
@@ -106,12 +136,17 @@ export async function POST(req) {
     if (!warrantyExpiry.ok) return ApiResponse.error('Warranty expiry date is invalid.', 400);
 
     const record = await prisma.$transaction(async (tx) => {
-      const assetCode = await generateAssetCode(tx, item.categoryId);
+      const assetCode = await generateAssetCode(tx, itemMasterId, centerId);
       const created = await tx.assetList.create({
         data: {
           assetCode,
           itemMasterId,
+          manufacturer: normalizeAssetText(body?.manufacturer),
+          modelNumber: normalizeAssetText(body?.modelNumber),
           centerId,
+          assignedEmployeeId,
+          projectId,
+          lifecycle,
           quantity,
           assetTag: normalizeAssetText(body?.assetTag),
           serialNumber,

@@ -43,3 +43,9 @@ The Admin Users page downloads a complete PostgreSQL custom-format archive (`.du
 5. Start Curiosity with `npm run dev` or `npm start`.
 
 The archive contains the database schema and data, but PostgreSQL roles and passwords are server-level settings and are not part of a database dump. Create the application role separately as shown above.
+
+## Hourly OneDrive backups on Windows
+
+Run `backup-db-to-onedrive.bat` from the project folder to start continuous hourly backups. It takes the first backup immediately, then starts another backup one hour after each run begins. Close the command window or press `Ctrl+C` to stop it.
+
+The script uses the database configured by `DATABASE_URL` or `DB_MODE` and the matching database URL in `.env.local` (or `.env`). It requires PostgreSQL's `pg_dump.exe` to be on `PATH` or installed under `C:\Program Files\PostgreSQL`. Completed custom-format `.dump` files are copied into `Curiosity-Database-Backups` under the signed-in user's OneDrive folder, which OneDrive syncs to the cloud. On each hourly run, dated backup files older than 30 days are deleted from that folder (and OneDrive syncs those deletions). Make sure OneDrive is signed in and has enough available storage.

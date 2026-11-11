@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { ApiResponse } from '@/utils/apiResponse';
 import { prisma } from '@/server/prisma';
 import { requireAdminPermission } from '@/lib/adminRbac';
-import { canAccessAssetCenter, normalizeAssetText, parseAssetDate, parseMoney } from '@/lib/assetManagement';
+import { canAccessAssetCenter, formatAssetCode, normalizeAssetText, parseAssetDate, parseMoney } from '@/lib/assetManagement';
 
 const MAX_ROWS = 500;
 const conditions = ['GOOD', 'FAIR', 'NEEDS_REPAIR', 'DAMAGED'];
@@ -17,12 +17,16 @@ export async function POST(req) {
     if (!rows.length) return ApiResponse.error('No rows to import.', 400);
     if (rows.length > MAX_ROWS) return ApiResponse.error(`A maximum of ${MAX_ROWS} rows can be added at once.`, 400);
 
-    const [items, centers] = await Promise.all([
-      prisma.itemMaster.findMany({ where: { status: true, category: { status: true } }, select: { id: true, categoryId: true } }),
-      prisma.center.findMany({ where: { status: true }, select: { id: true } }),
+    const [items, centers, employees, projects] = await Promise.all([
+      prisma.itemMaster.findMany({ where: { status: true, category: { status: true } }, select: { id: true, name: true, categoryId: true } }),
+      prisma.center.findMany({ where: { status: true }, select: { id: true, slug: true } }),
+      prisma.user.findMany({ where: { status: true, role: { notIn: ['STUDENT', 'ADMIN'] } }, select: { id: true } }),
+      prisma.project.findMany({ where: { status: true }, select: { id: true } }),
     ]);
     const itemById = Object.fromEntries(items.map((item) => [item.id, item]));
-    const centerIds = new Set(centers.map((center) => center.id));
+    const centerById = Object.fromEntries(centers.map((center) => [center.id, center]));
+    const employeeById = Object.fromEntries(employees.map((employee) => [employee.id, employee]));
+    const projectById = Object.fromEntries(projects.map((project) => [project.id, project]));
 
     const errors = [];
     const prepared = [];
@@ -36,16 +40,22 @@ export async function POST(req) {
       const serialNumber = normalizeAssetText(row?.serialNumber);
       const assetTag = normalizeAssetText(row?.assetTag);
       const condition = row?.condition || 'GOOD';
+      const lifecycle = row?.lifecycle || 'AVAILABLE';
+      const assignedEmployeeId = String(row?.assignedEmployeeId || '').trim() || null;
+      const projectId = String(row?.projectId || '').trim() || null;
       const purchaseDate = parseAssetDate(row?.purchaseDate);
       const warrantyExpiry = parseAssetDate(row?.warrantyExpiry);
       const purchaseCost = parseMoney(row?.purchaseCost);
 
       if (!itemById[itemMasterId]) return fail('Item not found or inactive.');
-      if (!centerIds.has(centerId)) return fail('Center not found or inactive.');
+      if (!centerById[centerId]) return fail('Center not found or inactive.');
       if (!canAccessAssetCenter(auth.actor, centerId)) return fail('You are not authorized for this center.');
       if (!Number.isInteger(quantity) || quantity < 1) return fail('Quantity must be a whole number greater than zero.');
       if (serialNumber && quantity !== 1) return fail('An asset with a serial number must have a quantity of 1.');
       if (!conditions.includes(condition)) return fail('Condition is invalid.');
+      if (!['AVAILABLE', 'IN_USE'].includes(lifecycle)) return fail('Asset status must be In Stock or In Use.');
+      if (assignedEmployeeId && !employeeById[assignedEmployeeId]) return fail('Assigned employee not found or inactive.');
+      if (projectId && !projectById[projectId]) return fail('Project not found or inactive.');
       if (!purchaseDate.ok) return fail('Purchase date is invalid.');
       if (!warrantyExpiry.ok) return fail('Warranty expiry date is invalid.');
       if (!purchaseCost.ok) return fail('Purchase cost is invalid.');
@@ -60,6 +70,11 @@ export async function POST(req) {
         quantity,
         serialNumber,
         assetTag,
+        assignedEmployeeId,
+        projectId,
+        lifecycle,
+        manufacturer: normalizeAssetText(row?.manufacturer),
+        modelNumber: normalizeAssetText(row?.modelNumber),
         condition,
         location: normalizeAssetText(row?.location),
         purchaseDate: purchaseDate.value ?? null,
@@ -89,10 +104,12 @@ export async function POST(req) {
       const perCategory = {};
       prepared.forEach((row) => {
         const categoryId = itemById[row.itemMasterId].categoryId;
-        perCategory[categoryId] = (perCategory[categoryId] || 0) + 1;
+        if (!perCategory[categoryId]) perCategory[categoryId] = {};
+        perCategory[categoryId][row.centerId] = (perCategory[categoryId][row.centerId] || 0) + 1;
       });
       const next = {};
-      for (const [categoryId, count] of Object.entries(perCategory)) {
+      for (const [categoryId, centerCounts] of Object.entries(perCategory)) {
+        const count = Object.values(centerCounts).reduce((total, value) => total + value, 0);
         const category = await tx.itemCategory.update({
           where: { id: categoryId },
           data: { codeCounter: { increment: count } },
@@ -102,9 +119,14 @@ export async function POST(req) {
       }
 
       const records = prepared.map((row) => {
-        const slot = next[itemById[row.itemMasterId].categoryId];
+        const item = itemById[row.itemMasterId];
+        const slot = next[item.categoryId];
         slot.counter += 1;
-        return { ...row, id: randomUUID(), assetCode: `${slot.prefix}-${String(slot.counter).padStart(5, '0')}` };
+        return {
+          ...row,
+          id: randomUUID(),
+          assetCode: formatAssetCode(slot.prefix, item.name, centerById[row.centerId].slug, slot.counter),
+        };
       });
       await tx.assetList.createMany({ data: records });
       await tx.assetEvent.createMany({

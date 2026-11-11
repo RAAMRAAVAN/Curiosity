@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Chip,
@@ -76,6 +77,9 @@ const emptyForm = {
   unit: 'unit',
   manufacturer: '',
   modelNumber: '',
+  assignedEmployeeId: '',
+  projectId: '',
+  lifecycle: 'AVAILABLE',
   itemMasterId: '',
   centerId: '',
   quantity: '1',
@@ -95,24 +99,33 @@ const emptyForm = {
 const emptyBulk = {
   itemMasterId: '',
   centerId: '',
+  projectId: '',
   entry: 'serials',
   serials: '',
   count: '5',
   condition: 'GOOD',
+  lifecycle: 'AVAILABLE',
+  manufacturer: '',
+  modelNumber: '',
+  assignedEmployeeId: '',
   location: '',
   purchaseDate: '',
-  purchaseCost: '',
-  vendor: '',
-  invoiceNumber: '',
   warrantyExpiry: '',
   notes: '',
 };
 
-const importHeaders = ['itemName', 'category', 'center', 'quantity', 'serialNumber', 'assetTag', 'condition', 'location', 'purchaseDate', 'purchaseCost', 'vendor', 'invoiceNumber', 'warrantyExpiry', 'notes'];
+const importHeaders = ['itemName', 'category', 'center', 'quantity', 'serialNumber', 'condition', 'project', 'manufacturer', 'modelNumber', 'assignedEmployee', 'assetStatus', 'location', 'purchaseDate', 'warrantyExpiry', 'notes'];
 
 const normalizeCondition = (value) => {
   const key = String(value || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
   return key || 'GOOD';
+};
+
+const normalizeLifecycle = (value) => {
+  const key = String(value || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+  if (!key || key === 'IN_STOCK' || key === 'AVAILABLE') return 'AVAILABLE';
+  if (key === 'IN_USE') return 'IN_USE';
+  return null;
 };
 
 const dateInputValue = (value) => (value ? new Date(value).toISOString().slice(0, 10) : '');
@@ -123,6 +136,8 @@ export default function AssetManagementPage({ mode }) {
   const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
   const [centers, setCenters] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -131,6 +146,9 @@ export default function AssetManagementPage({ mode }) {
   const [form, setForm] = useState(emptyForm);
   const [centerFilter, setCenterFilter] = useState('');
   const [conditionFilter, setConditionFilter] = useState('');
+  const [projectFilter, setProjectFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [recordStatusFilter, setRecordStatusFilter] = useState('');
   const router = useRouter();
   const [lifecycleTarget, setLifecycleTarget] = useState(null);
   const [lifecycleRemarks, setLifecycleRemarks] = useState('');
@@ -143,7 +161,9 @@ export default function AssetManagementPage({ mode }) {
   const [importPreview, setImportPreview] = useState(null);
   const [rowErrors, setRowErrors] = useState([]);
 
-  const listParams = mode === 'assets' ? { centerId: centerFilter, condition: conditionFilter } : {};
+  const listParams = mode === 'assets'
+    ? { centerId: centerFilter, condition: conditionFilter, projectId: projectFilter, lifecycle: statusFilter, recordStatus: recordStatusFilter }
+    : {};
   const paged = usePagedData({ endpoint: config.endpoint, enabled: !authLoading && Boolean(admin), params: listParams });
   const { rows, loading, search, setSearch } = paged;
 
@@ -168,6 +188,8 @@ export default function AssetManagementPage({ mode }) {
         if (!optionsResponse.ok || !optionsResult.success) throw new Error(optionsResult.message || 'Unable to load asset options.');
         setCenters(optionsResult.data?.centers || []);
         setItems(optionsResult.data?.items || []);
+        setEmployees(optionsResult.data?.employees || []);
+        setProjects(optionsResult.data?.projects || []);
       }
     } catch (error) {
       setFeedback({ severity: 'error', message: error.message || `Unable to load ${config.title.toLowerCase()}.` });
@@ -208,6 +230,9 @@ export default function AssetManagementPage({ mode }) {
       unit: row.unit || 'unit',
       manufacturer: row.manufacturer || '',
       modelNumber: row.modelNumber || '',
+      assignedEmployeeId: row.assignedEmployeeId || '',
+      projectId: row.projectId || '',
+      lifecycle: row.lifecycle || 'AVAILABLE',
       itemMasterId: row.itemMasterId || '',
       centerId: row.centerId || '',
       quantity: String(row.quantity ?? 1),
@@ -231,7 +256,7 @@ export default function AssetManagementPage({ mode }) {
       ? { name: form.name, codePrefix: form.codePrefix, description: form.description, status: form.status }
       : mode === 'items'
         ? { name: form.name, categoryId: form.categoryId, unit: form.unit, manufacturer: form.manufacturer, modelNumber: form.modelNumber, description: form.description, status: form.status }
-        : { itemMasterId: form.itemMasterId, centerId: form.centerId, quantity: Number(form.quantity), assetTag: form.assetTag, serialNumber: form.serialNumber, condition: form.condition, location: form.location, purchaseDate: form.purchaseDate || null, purchaseCost: form.purchaseCost === '' ? null : Number(form.purchaseCost), vendor: form.vendor, invoiceNumber: form.invoiceNumber, warrantyExpiry: form.warrantyExpiry || null, notes: form.notes };
+        : { itemMasterId: form.itemMasterId, centerId: form.centerId, quantity: Number(form.quantity), assetTag: form.assetTag, serialNumber: form.serialNumber, condition: form.condition, location: form.location, purchaseDate: form.purchaseDate || null, purchaseCost: form.purchaseCost === '' ? null : Number(form.purchaseCost), vendor: form.vendor, invoiceNumber: form.invoiceNumber, warrantyExpiry: form.warrantyExpiry || null, notes: form.notes, manufacturer: form.manufacturer, modelNumber: form.modelNumber, assignedEmployeeId: form.assignedEmployeeId, projectId: form.projectId, lifecycle: form.lifecycle };
 
     try {
       setSaving(true);
@@ -313,12 +338,14 @@ export default function AssetManagementPage({ mode }) {
     const base = {
       itemMasterId: bulkForm.itemMasterId,
       centerId: bulkForm.centerId,
+      projectId: bulkForm.projectId,
+      manufacturer: bulkForm.manufacturer,
+      modelNumber: bulkForm.modelNumber,
+      assignedEmployeeId: bulkForm.assignedEmployeeId,
+      lifecycle: bulkForm.lifecycle,
       condition: bulkForm.condition,
       location: bulkForm.location,
       purchaseDate: bulkForm.purchaseDate || null,
-      purchaseCost: bulkForm.purchaseCost === '' ? null : Number(bulkForm.purchaseCost),
-      vendor: bulkForm.vendor,
-      invoiceNumber: bulkForm.invoiceNumber,
       warrantyExpiry: bulkForm.warrantyExpiry || null,
       notes: bulkForm.notes,
       quantity: 1,
@@ -338,10 +365,10 @@ export default function AssetManagementPage({ mode }) {
       const all = await fetchAllPages(config.endpoint, { search: search.trim(), ...listParams });
       downloadCsv(
         `assets-${new Date().toISOString().slice(0, 10)}.csv`,
-        ['Asset code', 'Item', 'Category', 'Center', 'Quantity', 'Unit', 'Serial number', 'Asset tag', 'Condition', 'Status', 'Location', 'Purchase date', 'Purchase cost', 'Vendor', 'Invoice number', 'Warranty expiry', 'Notes'],
+        ['Asset code', 'Item', 'Category', 'Center', 'Project', 'Project suffix', 'Quantity', 'Unit', 'Manufacturer', 'Model number', 'Assigned employee', 'Employee role', 'Serial number', 'Asset tag', 'Condition', 'Asset status', 'Record status', 'Location', 'Purchase date', 'Purchase cost', 'Vendor', 'Invoice number', 'Warranty expiry', 'Notes'],
         all.map((row) => [
-          row.assetCode, row.itemMaster?.name, row.itemMaster?.category?.name, row.center?.name, row.quantity, row.itemMaster?.unit,
-          row.serialNumber, row.assetTag, row.condition, lifecycleMeta[row.lifecycle]?.label || row.lifecycle, row.location,
+          row.assetCode, row.itemMaster?.name, row.itemMaster?.category?.name, row.center?.name, row.project?.name, row.project?.suffix, row.quantity, row.itemMaster?.unit, row.manufacturer, row.modelNumber, row.assignedEmployee?.name, row.assignedEmployee?.role,
+          row.serialNumber, row.assetTag, row.condition, lifecycleMeta[row.lifecycle]?.label || row.lifecycle, row.status ? 'Active' : 'Deactivated', row.location,
           dateInputValue(row.purchaseDate), row.purchaseCost, row.vendor, row.invoiceNumber, dateInputValue(row.warrantyExpiry), row.notes,
         ]),
       );
@@ -377,7 +404,23 @@ export default function AssetManagementPage({ mode }) {
     }
   };
 
-  const downloadTemplate = () => downloadCsv('asset-import-template.csv', importHeaders, [['Laptop', 'Electronics', centers[0]?.name || 'Center name', 1, 'SN-0001', '', 'Good', 'Lab 1', '2026-01-15', 25000, 'Vendor Ltd', 'INV-100', '2029-01-15', '']]);
+  const downloadTemplate = () => downloadCsv('asset-import-template.csv', importHeaders, [[
+    'Laptop',
+    'Electronics',
+    centers[0]?.name || 'Center name',
+    1,
+    'SN-0001',
+    'Good',
+    projects[0]?.name || '',
+    'Manufacturer',
+    'Model',
+    employees[0]?.name || '',
+    'In Stock',
+    'Lab 1',
+    '2026-01-15',
+    '2029-01-15',
+    '',
+  ]]);
 
   const handleImportFile = async (event) => {
     const file = event.target.files?.[0];
@@ -388,8 +431,9 @@ export default function AssetManagementPage({ mode }) {
       setFeedback({ severity: 'error', message: 'The file has no data rows.' });
       return;
     }
-    const header = table[0].map((value) => value.toLowerCase().replace(/[^a-z0-9]/g, ''));
-    const pick = (cells, name) => (cells[header.indexOf(name.toLowerCase())] ?? '').trim();
+    const normalizeHeader = (value) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const header = table[0].map(normalizeHeader);
+    const pick = (cells, name) => (cells[header.indexOf(normalizeHeader(name))] ?? '').trim();
     const importRows = [];
     const errors = [];
     table.slice(1).forEach((cells, index) => {
@@ -397,22 +441,42 @@ export default function AssetManagementPage({ mode }) {
       const itemName = pick(cells, 'itemName');
       const categoryName = pick(cells, 'category').toLowerCase();
       const centerName = (pick(cells, 'center') || pick(cells, 'centre')).toLowerCase();
+      const projectName = pick(cells, 'project').toLowerCase();
+      const employeeName = pick(cells, 'assignedEmployee').toLowerCase();
       const matches = items.filter((item) => item.name.toLowerCase() === itemName.toLowerCase() && (!categoryName || item.category?.name?.toLowerCase() === categoryName));
       const center = centers.find((entry) => entry.name.toLowerCase() === centerName);
       if (matches.length !== 1) { errors.push({ row: line, message: matches.length ? `Item "${itemName}" exists in several categories; add a category column.` : `Item "${itemName}" not found.` }); return; }
       if (!center) { errors.push({ row: line, message: `Center "${pick(cells, 'center')}" not found or not accessible.` }); return; }
+      const matchingProjects = projectName
+        ? projects.filter((project) => project.name.toLowerCase() === projectName || project.suffix.toLowerCase() === projectName)
+        : [];
+      if (projectName && matchingProjects.length !== 1) {
+        errors.push({ row: line, message: matchingProjects.length ? `Project "${pick(cells, 'project')}" is ambiguous; use its exact project name.` : `Active project "${pick(cells, 'project')}" not found.` });
+        return;
+      }
+      const matchingEmployees = employeeName ? employees.filter((employee) => employee.name.toLowerCase() === employeeName) : [];
+      if (employeeName && matchingEmployees.length !== 1) {
+        errors.push({ row: line, message: matchingEmployees.length ? `Employee "${pick(cells, 'assignedEmployee')}" is ambiguous; use a unique employee name.` : `Active employee "${pick(cells, 'assignedEmployee')}" not found.` });
+        return;
+      }
+      const lifecycle = normalizeLifecycle(pick(cells, 'assetStatus'));
+      if (!lifecycle) {
+        errors.push({ row: line, message: 'Asset status must be In Stock or In Use.' });
+        return;
+      }
       importRows.push({
         itemMasterId: matches[0].id,
         centerId: center.id,
         quantity: pick(cells, 'quantity') === '' ? 1 : Number(pick(cells, 'quantity')),
         serialNumber: pick(cells, 'serialNumber'),
-        assetTag: pick(cells, 'assetTag'),
         condition: normalizeCondition(pick(cells, 'condition')),
+        projectId: matchingProjects[0]?.id || '',
+        manufacturer: pick(cells, 'manufacturer'),
+        modelNumber: pick(cells, 'modelNumber'),
+        assignedEmployeeId: matchingEmployees[0]?.id || '',
+        lifecycle,
         location: pick(cells, 'location'),
         purchaseDate: pick(cells, 'purchaseDate') || null,
-        purchaseCost: pick(cells, 'purchaseCost'),
-        vendor: pick(cells, 'vendor'),
-        invoiceNumber: pick(cells, 'invoiceNumber'),
         warrantyExpiry: pick(cells, 'warrantyExpiry') || null,
         notes: pick(cells, 'notes'),
       });
@@ -429,7 +493,10 @@ export default function AssetManagementPage({ mode }) {
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || `Unable to delete ${config.title.toLowerCase()}.`);
       setDeleteTarget(null);
-      setFeedback({ severity: 'success', message: result.message || 'Deactivated successfully.' });
+      setFeedback({
+        severity: 'success',
+        message: result.message || (mode === 'items' && !deleteTarget.status ? 'Item permanently deleted.' : 'Deactivated successfully.'),
+      });
       await loadData();
     } catch (error) {
       setFeedback({ severity: 'error', message: error.message || 'Unable to delete.' });
@@ -442,6 +509,10 @@ export default function AssetManagementPage({ mode }) {
   if (!admin) return null;
 
   const filteredRows = rows;
+  const isPermanentItemDelete = mode === 'items' && deleteTarget?.status === false;
+  const isPermanentAssetDelete = mode === 'assets' && deleteTarget?.status === false;
+  const isPermanentDelete = isPermanentItemDelete || isPermanentAssetDelete;
+  const deleteRecordName = deleteTarget?.assetCode || deleteTarget?.name || deleteTarget?.itemMaster?.name || 'this record';
 
   const columns = mode === 'categories'
     ? [
@@ -465,19 +536,30 @@ export default function AssetManagementPage({ mode }) {
           ['Item', (row) => row.itemMaster?.name || '—'],
           ['Category', (row) => row.itemMaster?.category?.name || '—'],
           ['Center', (row) => row.center?.name || '—'],
+          ['Project', (row) => row.project?.name || '—'],
           ['Quantity', (row) => `${row.quantity} ${row.itemMaster?.unit || ''}`.trim()],
+          ['Manufacturer / Model', (row) => [row.manufacturer, row.modelNumber].filter(Boolean).join(' / ') || '—'],
+          ['Assigned Employee', (row) => row.assignedEmployee?.name || '—'],
           ['Asset tag / Serial', (row) => [row.assetTag, row.serialNumber].filter(Boolean).join(' / ') || '—'],
           ['Condition', (row) => conditions.find((item) => item.value === row.condition)?.label || row.condition],
-          ['Status', (row) => <Chip size="small" label={lifecycleMeta[row.lifecycle]?.label || row.lifecycle} color={lifecycleMeta[row.lifecycle]?.color || 'default'} />],
+          ['Asset status', (row) => <Chip size="small" label={lifecycleMeta[row.lifecycle]?.label || row.lifecycle} color={lifecycleMeta[row.lifecycle]?.color || 'default'} />],
+          ['Record status', (row) => <Chip size="small" label={row.status ? 'Active' : 'Deactivated'} color={row.status ? 'success' : 'default'} />],
           ['Location', (row) => row.location || '—'],
         ];
 
-  const lowValueColumns = mode === 'assets' ? ['Category', 'Location', 'Asset tag / Serial'] : [];
+  const lowValueColumns = mode === 'assets' ? ['Category', 'Location', 'Asset tag / Serial', 'Manufacturer / Model', 'Assigned Employee'] : [];
   const hideOnXs = (label) => (lowValueColumns.includes(label) ? { display: { xs: 'none', md: 'table-cell' } } : {});
   const totalQuantity = paged.meta.totalQuantity || 0;
   const itemOptions = mode === 'assets' && editing?.itemMaster && !items.some((item) => item.id === editing.itemMasterId)
     ? [{ id: editing.itemMasterId, name: editing.itemMaster.name, category: editing.itemMaster.category }, ...items]
     : items;
+  const employeeOptions = mode === 'assets' && editing?.assignedEmployee && !employees.some((employee) => employee.id === editing.assignedEmployeeId)
+    ? [editing.assignedEmployee, ...employees]
+    : employees;
+  const selectedEmployee = employeeOptions.find((employee) => employee.id === form.assignedEmployeeId) || null;
+  const projectOptions = mode === 'assets' && editing?.project && !projects.some((project) => project.id === editing.projectId)
+    ? [editing.project, ...projects]
+    : projects;
 
   const renderField = (name, label, options = {}) => (
     <TextField
@@ -534,6 +616,28 @@ export default function AssetManagementPage({ mode }) {
               {conditions.map((condition) => <MenuItem key={condition.value} value={condition.value}>{condition.label}</MenuItem>)}
             </Select>
           </FormControl>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 180 }, width: { xs: '100%', sm: 'auto' } }}>
+            <InputLabel id="asset-project-filter-label">Project</InputLabel>
+            <Select labelId="asset-project-filter-label" label="Project" value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)}>
+              <MenuItem value="">All projects</MenuItem>
+              {projects.map((project) => <MenuItem key={project.id} value={project.id}>{project.name} · {project.suffix}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 160 }, width: { xs: '100%', sm: 'auto' } }}>
+            <InputLabel id="asset-status-filter-label">Status</InputLabel>
+            <Select labelId="asset-status-filter-label" label="Status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <MenuItem value="">All asset statuses</MenuItem>
+              {Object.entries(lifecycleMeta).map(([value, meta]) => <MenuItem key={value} value={value}>{meta.label}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 180 }, width: { xs: '100%', sm: 'auto' } }}>
+            <InputLabel id="asset-record-status-filter-label">Record status</InputLabel>
+            <Select labelId="asset-record-status-filter-label" label="Record status" value={recordStatusFilter} onChange={(event) => setRecordStatusFilter(event.target.value)}>
+              <MenuItem value="">All records</MenuItem>
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="deactivated">Deactivated</MenuItem>
+            </Select>
+          </FormControl>
           <Typography color="text.secondary" sx={{ whiteSpace: { xs: 'normal', sm: 'nowrap' } }}>{paged.total} records · Total quantity: <strong>{totalQuantity}</strong></Typography>
           <Button size="small" startIcon={<Download />} onClick={exportCsv} disabled={!paged.total}>Export CSV</Button>
           <Button size="small" startIcon={<QrCode2 />} onClick={() => printLabels()} disabled={!paged.total}>Print Labels</Button>
@@ -541,7 +645,7 @@ export default function AssetManagementPage({ mode }) {
       </Stack>
 
       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflowX: 'auto' }}>
-        <Table size="small" sx={{ minWidth: { xs: 480, md: 760 } }}>
+        <Table size="small" sx={{ minWidth: mode === 'assets' ? { xs: 480, md: 1080 } : { xs: 480, md: 760 } }}>
           <TableHead sx={{ bgcolor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700, whiteSpace: 'nowrap' } }}>
             <TableRow>
               {columns.map(([label]) => <TableCell key={label} sx={hideOnXs(label)}>{label}</TableCell>)}
@@ -552,10 +656,10 @@ export default function AssetManagementPage({ mode }) {
             {loading ? (
               <TableRow><TableCell colSpan={columns.length + 1}><Loader variant="section" label={`Loading ${config.title.toLowerCase()}...`} sx={{ minHeight: 100 }} /></TableCell></TableRow>
             ) : filteredRows.length === 0 ? (
-              <TableRow><TableCell colSpan={columns.length + 1} align="center" sx={{ py: 5, color: 'text.secondary' }}>{search || centerFilter || conditionFilter ? 'No records match your search.' : 'No records yet.'}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={columns.length + 1} align="center" sx={{ py: 5, color: 'text.secondary' }}>{search || centerFilter || conditionFilter || projectFilter || statusFilter || recordStatusFilter ? 'No records match your search.' : 'No records yet.'}</TableCell></TableRow>
             ) : filteredRows.map((row) => (
               <TableRow key={row.id} hover sx={{ '&.MuiTableRow-hover:hover': { bgcolor: '#f8fbff' } }}>
-                {columns.map(([label, render]) => <TableCell key={label} sx={{ overflowWrap: 'anywhere', ...hideOnXs(label) }}>{render(row)}</TableCell>)}
+                {columns.map(([label, render]) => <TableCell key={label} sx={{ whiteSpace: mode === 'assets' ? 'nowrap' : undefined, overflowWrap: 'anywhere', ...hideOnXs(label) }}>{render(row)}</TableCell>)}
                 <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                   {mode === 'assets' && row.lifecycle !== 'DISPOSED' ? <Tooltip title="Print label" arrow><IconButton size="small" aria-label="Print asset label" onClick={() => printLabels([row])}><QrCode2 fontSize="small" /></IconButton></Tooltip> : null}
                   {mode === 'assets' && canTrack ? <Tooltip title="Journey" arrow><IconButton size="small" aria-label="View asset journey" onClick={() => router.push(`/admin/asset-management/tracking?q=${encodeURIComponent(row.assetCode)}`)}><History fontSize="small" /></IconButton></Tooltip> : null}
@@ -563,7 +667,7 @@ export default function AssetManagementPage({ mode }) {
                   {mode === 'assets' && canEdit && row.lifecycle === 'UNDER_REPAIR' ? <Tooltip title="Return from repair" arrow><IconButton size="small" color="success" aria-label="Return from repair" onClick={() => openLifecycle('return_from_repair', row)}><TaskAlt fontSize="small" /></IconButton></Tooltip> : null}
                   {mode === 'assets' && canEdit && row.lifecycle !== 'DISPOSED' ? <Tooltip title="Dispose" arrow><IconButton size="small" color="error" aria-label="Dispose asset" onClick={() => openLifecycle('dispose', row)}><Block fontSize="small" /></IconButton></Tooltip> : null}
                   {canEdit && !(mode === 'assets' && row.lifecycle === 'DISPOSED') ? <Tooltip title="Edit" arrow><IconButton size="small" aria-label={`Edit ${config.title}`} onClick={() => openEdit(row)}><Edit fontSize="small" /></IconButton></Tooltip> : null}
-                  {canDelete ? <Tooltip title="Delete" arrow><IconButton size="small" color="error" aria-label={`Delete ${config.title}`} onClick={() => setDeleteTarget(row)}><Delete fontSize="small" /></IconButton></Tooltip> : null}
+                  {canDelete ? <Tooltip title={mode === 'assets' && row.status === false ? 'Permanently delete asset' : 'Deactivate record'} arrow><IconButton size="small" color="error" aria-label={mode === 'assets' && row.status === false ? `Permanently delete asset ${row.assetCode}` : `Deactivate ${config.title}`} onClick={() => setDeleteTarget(row)}><Delete fontSize="small" /></IconButton></Tooltip> : null}
                 </TableCell>
               </TableRow>
             ))}
@@ -590,9 +694,6 @@ export default function AssetManagementPage({ mode }) {
                 </Select>
               </FormControl>
               {renderField('unit', 'Unit (e.g. piece, set)')}
-              {renderField('manufacturer', 'Manufacturer')}
-              {renderField('modelNumber', 'Model number')}
-              {renderField('description', 'Description', { multiline: true })}
             </> : null}
             {mode === 'assets' ? <>
               <FormControl size="small" fullWidth required disabled={Boolean(editing)}>
@@ -607,9 +708,40 @@ export default function AssetManagementPage({ mode }) {
                   {centers.map((center) => <MenuItem key={center.id} value={center.id}>{center.name}</MenuItem>)}
                 </Select>
               </FormControl>
+              <FormControl size="small" fullWidth>
+                <InputLabel id="asset-project-label">Project</InputLabel>
+                <Select labelId="asset-project-label" label="Project" value={form.projectId} onChange={(event) => setForm((current) => ({ ...current, projectId: event.target.value }))}>
+                  <MenuItem value="">No project</MenuItem>
+                  {projectOptions.map((project) => <MenuItem key={project.id} value={project.id}>{project.name} · {project.suffix}</MenuItem>)}
+                </Select>
+              </FormControl>
               {editing ? <Alert severity="info">To move this asset to another center, use Asset Transfer.</Alert> : <Alert severity="info">The asset code is generated automatically from the item category. Items with a serial number must have quantity 1.</Alert>}
               {renderField('quantity', 'Quantity', { type: 'number', required: true, inputProps: { min: 1, step: 1 } })}
-              {renderField('assetTag', 'Asset tag')}
+              {renderField('manufacturer', 'Manufacturer')}
+              {renderField('modelNumber', 'Model number')}
+              <Autocomplete
+                options={employeeOptions}
+                filterOptions={(options, { inputValue }) => {
+                  const query = inputValue.trim().toLowerCase();
+                  return options.filter((employee) => employee.role !== 'ADMIN'
+                    && `${employee.name} ${employee.role}`.toLowerCase().includes(query));
+                }}
+                value={selectedEmployee}
+                onChange={(_, employee) => setForm((current) => ({ ...current, assignedEmployeeId: employee?.id || '' }))}
+                getOptionLabel={(employee) => `${employee.name} · ${employee.role}`}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                renderInput={(params) => <TextField {...params} label="Assigned Employee" placeholder="Search employees" size="small" />}
+                noOptionsText="No matching employees"
+                clearOnEscape
+              />
+              <FormControl size="small" fullWidth>
+                <InputLabel id="asset-lifecycle-label">Stock status</InputLabel>
+                <Select labelId="asset-lifecycle-label" label="Stock status" value={form.lifecycle} onChange={(event) => setForm((current) => ({ ...current, lifecycle: event.target.value }))}>
+                  <MenuItem value="AVAILABLE">In Stock</MenuItem>
+                  <MenuItem value="IN_USE">In Use</MenuItem>
+                  {form.lifecycle === 'UNDER_REPAIR' ? <MenuItem value="UNDER_REPAIR">Under repair</MenuItem> : null}
+                </Select>
+              </FormControl>
               {renderField('serialNumber', 'Serial number')}
               <FormControl size="small" fullWidth>
                 <InputLabel id="asset-condition-label">Condition</InputLabel>
@@ -619,9 +751,6 @@ export default function AssetManagementPage({ mode }) {
               </FormControl>
               {renderField('location', 'Location')}
               {renderField('purchaseDate', 'Purchase date', { type: 'date', InputLabelProps: { shrink: true } })}
-              {renderField('purchaseCost', 'Purchase cost', { type: 'number', inputProps: { min: 0, step: '0.01' } })}
-              {renderField('vendor', 'Vendor / supplier')}
-              {renderField('invoiceNumber', 'Invoice number')}
               {renderField('warrantyExpiry', 'Warranty expiry', { type: 'date', InputLabelProps: { shrink: true } })}
               {renderField('notes', 'Notes', { multiline: true })}
             </> : null}
@@ -653,6 +782,30 @@ export default function AssetManagementPage({ mode }) {
               </Select>
             </FormControl>
             <FormControl size="small" fullWidth>
+              <InputLabel id="bulk-project-label">Project</InputLabel>
+              <Select labelId="bulk-project-label" label="Project" value={bulkForm.projectId} onChange={(event) => setBulkForm((current) => ({ ...current, projectId: event.target.value }))}>
+                <MenuItem value="">No project</MenuItem>
+                {projects.map((project) => <MenuItem key={project.id} value={project.id}>{project.name} · {project.suffix}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <TextField label="Manufacturer" size="small" fullWidth value={bulkForm.manufacturer} onChange={(event) => setBulkForm((current) => ({ ...current, manufacturer: event.target.value }))} />
+            <TextField label="Model number" size="small" fullWidth value={bulkForm.modelNumber} onChange={(event) => setBulkForm((current) => ({ ...current, modelNumber: event.target.value }))} />
+            <Autocomplete
+              options={employees}
+              value={employees.find((employee) => employee.id === bulkForm.assignedEmployeeId) || null}
+              onChange={(_, employee) => setBulkForm((current) => ({ ...current, assignedEmployeeId: employee?.id || '' }))}
+              filterOptions={(options, { inputValue }) => {
+                const query = inputValue.trim().toLowerCase();
+                return options.filter((employee) => employee.role !== 'ADMIN'
+                  && `${employee.name} ${employee.role}`.toLowerCase().includes(query));
+              }}
+              getOptionLabel={(employee) => `${employee.name} · ${employee.role}`}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              renderInput={(params) => <TextField {...params} label="Assigned Employee" placeholder="Search employees" size="small" />}
+              noOptionsText="No matching employees"
+              clearOnEscape
+            />
+            <FormControl size="small" fullWidth>
               <InputLabel id="bulk-entry-label">Entry type</InputLabel>
               <Select labelId="bulk-entry-label" label="Entry type" value={bulkForm.entry} onChange={(event) => setBulkForm((current) => ({ ...current, entry: event.target.value }))}>
                 <MenuItem value="serials">List of serial numbers (one asset per serial)</MenuItem>
@@ -668,7 +821,14 @@ export default function AssetManagementPage({ mode }) {
                 {conditions.map((condition) => <MenuItem key={condition.value} value={condition.value}>{condition.label}</MenuItem>)}
               </Select>
             </FormControl>
-            {[['location', 'Location'], ['purchaseDate', 'Purchase date', 'date'], ['purchaseCost', 'Purchase cost (per unit)', 'number'], ['vendor', 'Vendor / supplier'], ['invoiceNumber', 'Invoice number'], ['warrantyExpiry', 'Warranty expiry', 'date']].map(([name, label, type]) => (
+            <FormControl size="small" fullWidth>
+              <InputLabel id="bulk-lifecycle-label">Asset status</InputLabel>
+              <Select labelId="bulk-lifecycle-label" label="Asset status" value={bulkForm.lifecycle} onChange={(event) => setBulkForm((current) => ({ ...current, lifecycle: event.target.value }))}>
+                <MenuItem value="AVAILABLE">In Stock</MenuItem>
+                <MenuItem value="IN_USE">In Use</MenuItem>
+              </Select>
+            </FormControl>
+            {[['location', 'Location'], ['purchaseDate', 'Purchase date', 'date'], ['warrantyExpiry', 'Warranty expiry', 'date']].map(([name, label, type]) => (
               <TextField key={name} label={label} type={type || 'text'} size="small" fullWidth value={bulkForm[name]} onChange={(event) => setBulkForm((current) => ({ ...current, [name]: event.target.value }))} InputLabelProps={type === 'date' ? { shrink: true } : undefined} inputProps={type === 'number' ? { min: 0, step: '0.01' } : undefined} />
             ))}
             {rowErrors.length ? <Alert severity="error">{rowErrors.slice(0, 8).map((entry) => <div key={`${entry.row}-${entry.message}`}>Row {entry.row}: {entry.message}</div>)}</Alert> : null}
@@ -742,14 +902,26 @@ export default function AssetManagementPage({ mode }) {
       </Dialog>
 
       <Dialog open={Boolean(deleteTarget)} onClose={() => !saving && setDeleteTarget(null)} fullWidth maxWidth="xs">
-        <DialogTitle sx={{ bgcolor: '#0a336b', color: '#ffffff', fontWeight: 700 }}>Deactivate record?</DialogTitle>
+        <DialogTitle sx={{ bgcolor: '#0a336b', color: '#ffffff', fontWeight: 700 }}>{isPermanentDelete ? 'Permanently delete record?' : 'Deactivate record?'}</DialogTitle>
         <DialogContent dividers>
-          <Typography sx={{ overflowWrap: 'anywhere' }}>Deactivate <strong>{deleteTarget?.name || deleteTarget?.itemMaster?.name || 'this record'}</strong>?</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Existing asset records are preserved.</Typography>
+          <Typography sx={{ overflowWrap: 'anywhere' }}>
+            {isPermanentDelete ? 'Permanently delete' : 'Deactivate'} <strong>{deleteRecordName}</strong>?
+          </Typography>
+          {isPermanentAssetDelete ? (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              This asset and all related transfer records and history will be permanently deleted. This cannot be undone or recovered.
+            </Alert>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              {isPermanentItemDelete
+                ? 'This cannot be undone. All associated asset records, transfers, and history will also be permanently deleted.'
+                : 'Existing asset records are preserved.'}
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteTarget(null)} disabled={saving}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={remove} disabled={saving}>{saving ? 'Working...' : 'Deactivate'}</Button>
+          <Button color="error" variant="contained" onClick={remove} disabled={saving}>{saving ? 'Working...' : isPermanentDelete ? 'Permanently Delete' : 'Deactivate'}</Button>
         </DialogActions>
       </Dialog>
     </Box>

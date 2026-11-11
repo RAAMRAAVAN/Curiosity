@@ -10,7 +10,7 @@ export async function GET(req) {
   try {
     const include = {
       category: { select: { id: true, name: true, status: true } },
-      _count: { select: { assets: true } },
+      _count: { select: { assets: { where: { status: true } } } },
     };
     const orderBy = [{ status: 'desc' }, { name: 'asc' }];
     const pagination = parsePagination(req);

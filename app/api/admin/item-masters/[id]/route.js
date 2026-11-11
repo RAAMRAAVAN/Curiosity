@@ -46,8 +46,30 @@ export async function DELETE(req, { params }) {
 
   try {
     const { id } = await params;
-    const item = await prisma.itemMaster.findUnique({ where: { id }, select: { id: true } });
+    const item = await prisma.itemMaster.findUnique({ where: { id }, select: { id: true, status: true } });
     if (!item) return ApiResponse.error('Item master not found.', 404);
+
+    if (!item.status) {
+      await prisma.$transaction(async (tx) => {
+        const assets = await tx.assetList.findMany({ where: { itemMasterId: id }, select: { id: true } });
+        const assetIds = assets.map((asset) => asset.id);
+
+        if (assetIds.length) {
+          await tx.assetTransfer.deleteMany({
+            where: {
+              OR: [
+                { assetId: { in: assetIds } },
+                { resultingAssetId: { in: assetIds } },
+              ],
+            },
+          });
+          await tx.assetList.deleteMany({ where: { id: { in: assetIds } } });
+        }
+
+        await tx.itemMaster.delete({ where: { id } });
+      });
+      return ApiResponse.success({ id }, 'Item master permanently deleted.');
+    }
 
     const activeAssets = await prisma.assetList.count({ where: { itemMasterId: id, status: true } });
     if (activeAssets) return ApiResponse.error('Remove or deactivate this item’s assets before deleting it.', 409);

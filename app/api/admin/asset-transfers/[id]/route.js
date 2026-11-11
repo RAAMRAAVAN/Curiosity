@@ -68,7 +68,7 @@ export async function PATCH(req, { params }) {
           await tx.assetList.update({ where: { id: asset.id }, data: { quantity: { decrement: transfer.quantity } } });
           const child = await tx.assetList.create({
             data: {
-              assetCode: await generateAssetCode(tx, asset.itemMaster.categoryId),
+              assetCode: await generateAssetCode(tx, asset.itemMasterId, transfer.toCenterId),
               itemMasterId: asset.itemMasterId,
               centerId: transfer.toCenterId,
               quantity: transfer.quantity,
@@ -79,6 +79,10 @@ export async function PATCH(req, { params }) {
               invoiceNumber: asset.invoiceNumber,
               warrantyExpiry: asset.warrantyExpiry,
               notes: asset.notes,
+              manufacturer: asset.manufacturer,
+              modelNumber: asset.modelNumber,
+              assignedEmployeeId: asset.assignedEmployeeId,
+              projectId: asset.projectId,
               parentAssetId: asset.id,
             },
           });

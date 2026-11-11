@@ -48,7 +48,7 @@ export default function AssetStockSummaryPage() {
   const params = { groupBy, centerId: centerFilter, categoryId: categoryFilter };
   const paged = usePagedData({ endpoint: ENDPOINT, enabled: !authLoading && Boolean(admin), params });
   const { rows, loading, search, setSearch } = paged;
-  const totals = paged.meta.totals || { available: 0, underRepair: 0, inTransit: 0, disposed: 0, totalCost: 0 };
+  const totals = paged.meta.totals || { available: 0, inUse: 0, underRepair: 0, inTransit: 0, disposed: 0, totalCost: 0 };
   const filterOptions = paged.meta.filterOptions || { centers: [], categories: [] };
 
   if (authLoading) return <Loader variant="page" size={64} thickness={4} sx={{ bgcolor: '#eef4fb', p: 3 }} />;
@@ -66,8 +66,8 @@ export default function AssetStockSummaryPage() {
       const all = await fetchAllPages(ENDPOINT, { ...params, search: search.trim() });
       downloadCsv(
         `stock-summary-${new Date().toISOString().slice(0, 10)}.csv`,
-        [...columns.map(([label]) => label), 'Available', 'Under repair', 'Pending transfer (reserved)', 'Disposed', 'Records', 'Total purchase cost'],
-        all.map((row) => [...columns.map(([, field]) => row[field]), row.available, row.underRepair, row.inTransit, row.disposed, row.records, Number(row.totalCost).toFixed(2)]),
+        [...columns.map(([label]) => label), 'In stock', 'In use', 'Under repair', 'Pending transfer (reserved)', 'Disposed', 'Records', 'Total purchase cost'],
+        all.map((row) => [...columns.map(([, field]) => row[field]), row.available, row.inUse, row.underRepair, row.inTransit, row.disposed, row.records, Number(row.totalCost).toFixed(2)]),
       );
     } catch (error) {
       setExportError(error.message);
@@ -75,7 +75,8 @@ export default function AssetStockSummaryPage() {
   };
 
   const cards = [
-    ['Available', totals.available],
+    ['In stock', totals.available],
+    ['In use', totals.inUse],
     ['Under repair', totals.underRepair],
     ['Pending transfer', totals.inTransit],
     ['Disposed', totals.disposed],
@@ -85,7 +86,7 @@ export default function AssetStockSummaryPage() {
   return (
     <Box sx={{ width: '100%', p: { xs: 1, sm: 2, md: 3 } }}>
       <Typography variant="h5" fontWeight={700} sx={{ color: '#0a336b', fontSize: { xs: 20, sm: 24 } }}>Stock Summary</Typography>
-      <Typography color="text.secondary" sx={{ mt: 0.5, mb: 3 }}>Asset quantities by center, category and item. Pending transfer units are still counted in Available until received.</Typography>
+      <Typography color="text.secondary" sx={{ mt: 0.5, mb: 3 }}>Asset quantities by center, category and item. Pending transfer units are still counted as In Stock until received.</Typography>
 
       {paged.error ? <Alert severity="error" sx={{ mb: 2 }}>{paged.error}</Alert> : null}
       {exportError ? <Alert severity="error" sx={{ mb: 2 }} onClose={() => setExportError('')}>{exportError}</Alert> : null}
@@ -125,11 +126,12 @@ export default function AssetStockSummaryPage() {
       </Stack>
 
       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflowX: 'auto' }}>
-        <Table size="small" sx={{ minWidth: { xs: 480, md: 700 } }}>
+        <Table size="small" sx={{ minWidth: { xs: 480, md: 850 } }}>
           <TableHead sx={{ bgcolor: '#0a336b', '& .MuiTableCell-root': { color: '#ffffff', fontWeight: 700, whiteSpace: 'nowrap' } }}>
             <TableRow>
               {columns.map(([label]) => <TableCell key={label}>{label}</TableCell>)}
-              <TableCell align="right">Available</TableCell>
+              <TableCell align="right">In stock</TableCell>
+              <TableCell align="right">In use</TableCell>
               <TableCell align="right">Under repair</TableCell>
               <TableCell align="right">Pending transfer</TableCell>
               <TableCell align="right" sx={{ display: { xs: 'none', md: 'table-cell' } }}>Disposed</TableCell>
@@ -139,13 +141,14 @@ export default function AssetStockSummaryPage() {
           </TableHead>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={columns.length + 6}><Loader variant="section" label="Loading stock summary..." sx={{ minHeight: 100 }} /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={columns.length + 7}><Loader variant="section" label="Loading stock summary..." sx={{ minHeight: 100 }} /></TableCell></TableRow>
             ) : rows.length === 0 ? (
-              <TableRow><TableCell colSpan={columns.length + 6} align="center" sx={{ py: 5, color: 'text.secondary' }}>No stock found.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={columns.length + 7} align="center" sx={{ py: 5, color: 'text.secondary' }}>No stock found.</TableCell></TableRow>
             ) : rows.map((row) => (
               <TableRow key={row.key} hover sx={{ '&.MuiTableRow-hover:hover': { bgcolor: '#f8fbff' } }}>
                 {columns.map(([label, field]) => <TableCell key={label} sx={{ overflowWrap: 'anywhere' }}>{row[field] || '—'}</TableCell>)}
                 <TableCell align="right">{row.available}</TableCell>
+                <TableCell align="right">{row.inUse}</TableCell>
                 <TableCell align="right">{row.underRepair}</TableCell>
                 <TableCell align="right">{row.inTransit}</TableCell>
                 <TableCell align="right" sx={{ display: { xs: 'none', md: 'table-cell' } }}>{row.disposed}</TableCell>

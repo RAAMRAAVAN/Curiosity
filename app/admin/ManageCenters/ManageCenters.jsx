@@ -29,7 +29,7 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import { Delete, Edit, Add } from "@mui/icons-material";
+import { Block, Edit, Add } from "@mui/icons-material";
 
 const centerTypeOptions = [
   { value: 'TUITION_CENTER', label: 'Tuition Centre' },
@@ -43,13 +43,20 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const [isAssetManagementLogin, setIsAssetManagementLogin] = useState(false);
 
-  const paged = usePagedData({ endpoint: '/api/admin/centers' });
+  const fixedCenterType = isAssetManagementLogin ? 'MANAGEMENT_OFFICE' : 'TUITION_CENTER';
+  const paged = usePagedData({ endpoint: '/api/admin/centers', params: { centerType: fixedCenterType } });
   const { rows: centers, loading } = paged;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCenter, setEditingCenter] = useState(null);
   const [form, setForm] = useState({ name: "", slug: "", centerType: 'TUITION_CENTER', status: true });
   const [alert, setAlert] = useState(null);
+  const fixedCenterTypeLabel = centerTypeLabels[fixedCenterType];
+
+  useEffect(() => {
+    setIsAssetManagementLogin(sessionStorage.getItem('adminModule') === 'assets');
+  }, []);
 
   const hasPermission = (permission) => {
     if (String(role || '').toUpperCase() === 'ADMIN') return true;
@@ -86,7 +93,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
     }
 
     setEditingCenter(null);
-    setForm({ name: "", slug: "", centerType: 'TUITION_CENTER', status: true });
+    setForm({ name: "", slug: "", centerType: fixedCenterType, status: true });
     setAlert(null);
     setDialogOpen(true);
   };
@@ -101,7 +108,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
     setForm({
       name: center.name || "",
       slug: center.slug || "",
-      centerType: center.centerType || 'TUITION_CENTER',
+      centerType: fixedCenterType,
       status: center.status ?? true,
     });
     setAlert(null);
@@ -127,7 +134,10 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
         method,
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          centerType: fixedCenterType,
+        }),
       });
       const data = await response.json();
 
@@ -148,7 +158,7 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
     }
   };
 
-  const handleDelete = async (centerId) => {
+  const handleDeactivate = async (centerId) => {
     if (!canDeleteCenters) {
       setMessage("You are not authorized to perform this operation.");
       return;
@@ -162,16 +172,16 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
       const data = await response.json();
       if (data.success) {
         setAlert(null);
-        setMessage(data.message || "Center deleted successfully.");
+        setMessage(data.message || "Center deactivated successfully.");
         await loadCenters();
       } else {
-        const message = data.message || "Unable to delete center.";
+        const message = data.message || "Unable to deactivate center.";
         setAlert({ severity: "error", message });
         setMessage(message);
       }
     } catch (error) {
       console.error(error);
-      setMessage("Unable to delete center.");
+      setMessage("Unable to deactivate center.");
     }
   };
 
@@ -241,10 +251,12 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
                         </Tooltip>
                       ) : null}
                       {canDeleteCenters ? (
-                        <Tooltip title="Delete center" arrow>
-                          <IconButton aria-label={`Delete ${center.name || 'center'}`} onClick={() => handleDelete(center.id)} size="small" sx={{ backgroundColor: '#fee2e2', color: '#b91c1c', '&:hover': { backgroundColor: '#fecaca' } }}>
-                            <Delete fontSize="small" />
-                          </IconButton>
+                        <Tooltip title={center.status ? 'Deactivate center' : 'Center is inactive'} arrow>
+                          <span>
+                            <IconButton aria-label={`Deactivate ${center.name || 'center'}`} onClick={() => handleDeactivate(center.id)} disabled={!center.status} size="small" sx={{ backgroundColor: '#fee2e2', color: '#b91c1c', '&:hover': { backgroundColor: '#fecaca' } }}>
+                              <Block fontSize="small" />
+                            </IconButton>
+                          </span>
                         </Tooltip>
                       ) : null}
                     </Stack>
@@ -334,18 +346,13 @@ export default function ManageCenters({ setMessage, role, permissions = [] }) {
               size={isMobile ? "small" : "medium"}
             />
             <TextField
-              select
               label="Center Type"
-              value={form.centerType}
-              onChange={(e) => setForm({ ...form, centerType: e.target.value })}
+              value={fixedCenterTypeLabel}
               fullWidth
               required
+              disabled
               size={isMobile ? "small" : "medium"}
-            >
-              {centerTypeOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
-              ))}
-            </TextField>
+            />
             <TextField
               select
               label="Status"

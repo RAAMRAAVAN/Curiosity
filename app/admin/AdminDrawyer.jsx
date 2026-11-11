@@ -39,6 +39,7 @@ import {
   Inventory2,
   Category,
   ListAlt,
+  Workspaces,
 } from "@mui/icons-material";
 
 const drawerWidth = 320;
@@ -120,6 +121,7 @@ const AdminDrawer = ({
     'results-3-16': '/admin/assessment-results-3-16',
     'asset-categories': '/admin/asset-management/categories',
     'asset-items': '/admin/asset-management/items',
+    projects: '/admin/asset-management/projects',
     'asset-list': '/admin/asset-management/assets',
     'asset-transfer': '/admin/asset-management/transfers',
     'asset-receive': '/admin/asset-management/receive',
@@ -207,6 +209,12 @@ const AdminDrawer = ({
       permission: 'users.view',
     },
     {
+      title: "Manage Centers",
+      value: "centers",
+      icon: <Apartment />,
+      permission: 'centers.view',
+    },
+    {
       title: "Manage Classes",
       value: "classes",
       icon: <School />,
@@ -217,12 +225,6 @@ const AdminDrawer = ({
       value: "teachers",
       icon: <Person />,
       permission: 'teachers.view',
-    },
-    {
-      title: "Manage Centers",
-      value: "centers",
-      icon: <Apartment />,
-      permission: 'centers.view',
     },
     {
       title: "Manage Students",
@@ -246,6 +248,9 @@ const AdminDrawer = ({
 
   const visibleAssessmentItems = assessmentSubmenuItems.filter((item) => hasPermission(item.permission));
   const visibleAssetManagementItems = assetManagementSubmenuItems.filter((item) => hasPermission(item.permission));
+  const canViewUsers = hasPermission('users.view');
+  const canViewCenters = hasPermission('centers.view');
+  const canViewProjects = hasPermission('projects.view');
   const visibleAttendanceItems = attendanceSubmenuItems.filter((item) => hasPermission(item.permission));
   const visibleMenuItems = adminModuleMode === 'assets' ? [] : menuItems.filter((item) => {
     if (!item.permission) return true;
@@ -264,7 +269,10 @@ const AdminDrawer = ({
     pathname === '/admin/assessment-results-3-16'
   );
   const [assessmentModuleOpen, setAssessmentModuleOpen] = useState(Boolean(isAssessmentViewActive || isAssessmentRouteActive));
-  const isAssetManagementRouteActive = typeof pathname === 'string' && pathname.startsWith('/admin/asset-management');
+  const isProjectsRouteActive = typeof pathname === 'string' && pathname.startsWith('/admin/asset-management/projects');
+  const isAssetManagementRouteActive = typeof pathname === 'string'
+    && pathname.startsWith('/admin/asset-management')
+    && !isProjectsRouteActive;
   const [assetManagementModuleOpen, setAssetManagementModuleOpen] = useState(Boolean(isAssetManagementViewActive || isAssetManagementRouteActive));
   const isAttendanceRouteActive = typeof pathname === 'string' && pathname.startsWith('/admin/attendance');
   const [attendanceModuleOpen, setAttendanceModuleOpen] = useState(Boolean(isAttendanceViewActive || isAttendanceRouteActive));
@@ -533,6 +541,34 @@ const AdminDrawer = ({
                 ))}
               </Box>
             ) : null}
+          </>
+        ) : null}
+
+        {adminModuleMode === 'assets' ? (
+          <>
+            {[
+              ...(canViewUsers ? [{ title: 'Manage Users', value: 'users', icon: <People /> }] : []),
+              ...(canViewCenters ? [{ title: 'Manage Centers', value: 'centers', icon: <Apartment /> }] : []),
+              ...(canViewProjects ? [{ title: 'Projects', value: 'projects', icon: <Workspaces /> }] : []),
+            ].map((item) => (
+              <ListItem key={item.value} disablePadding>
+                <ListItemButton
+                  selected={adminView === item.value}
+                  onClick={() => handleMenuNavigation(item.value)}
+                  sx={{
+                    mx: 1,
+                    my: 0.25,
+                    borderRadius: 2,
+                    color: '#ffffff',
+                    '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.12)', color: '#ffffff' },
+                    '&.Mui-selected:hover': { bgcolor: 'rgba(255,255,255,0.18)' },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 42, color: '#ffffff' }}>{item.icon}</ListItemIcon>
+                  <ListItemText primary={item.title} primaryTypographyProps={{ fontSize: 14, fontWeight: adminView === item.value ? 600 : 400, color: '#ffffff' }} />
+                </ListItemButton>
+              </ListItem>
+            ))}
           </>
         ) : null}
 

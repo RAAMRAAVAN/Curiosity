@@ -18,7 +18,8 @@ export const formatDate = (value) => (value
   : '—');
 
 export const lifecycleMeta = {
-  AVAILABLE: { label: 'Available', color: 'success' },
+  AVAILABLE: { label: 'In Stock', color: 'success' },
+  IN_USE: { label: 'In Use', color: 'info' },
   UNDER_REPAIR: { label: 'Under repair', color: 'warning' },
   DISPOSED: { label: 'Disposed', color: 'default' },
 };
